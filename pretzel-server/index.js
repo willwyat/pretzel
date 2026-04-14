@@ -71,15 +71,55 @@ function resolveTarget(done) {
 const app = express();
 app.use(express.json());
 
+const SPEAK_BODY_LIMIT = 256 * 1024;
+const SPEAK_QUERY_LIMIT = 4096;
+
+function readRawBody(req, limit) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > limit) {
+        reject(Object.assign(new Error("payload too large"), { status: 413 }));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("error", reject);
+  });
+}
+
 function speak(text) {
   execFile(SPEAK_SCRIPT, [text], (err) => {
     if (err) console.error("speak error:", err.message);
   });
 }
 
-app.post("/pretzel/speak", (req, res) => {
-  const { text } = req.body;
-  if (!text) return res.status(400).json({ error: "text is required" });
+app.post("/pretzel/speak", async (req, res) => {
+  const ct = (req.headers["content-type"] || "").toLowerCase();
+  let text = "";
+  try {
+    if (ct.includes("text/plain")) {
+      text = (await readRawBody(req, SPEAK_BODY_LIMIT)).trim();
+    } else if (typeof req.body?.text === "string") {
+      text = req.body.text.trim();
+    }
+    if (!text && typeof req.query.text === "string") {
+      text = req.query.text.trim().slice(0, SPEAK_QUERY_LIMIT);
+    }
+  } catch (e) {
+    const st = e.status || 500;
+    return res.status(st).json({ error: e.message });
+  }
+  if (!text) {
+    return res.status(400).json({
+      error: "text is required",
+      hint: "Use Content-Type: text/plain with the phrase as the raw body (apostrophes are fine), or JSON {\"text\":\"...\"} with Content-Type: application/json, or POST ?text= plus URL-encoded phrase.",
+    });
+  }
   speak(text);
   res.json({ ok: true });
 });
