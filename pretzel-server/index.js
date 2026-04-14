@@ -560,6 +560,8 @@ async function speakWeatherRoute(req, res) {
 
 app.get("/pretzel/speak-weather", speakWeatherRoute);
 app.post("/pretzel/speak-weather", speakWeatherRoute);
+// POST: same announce flow as speak-weather (on-demand from app / curl)
+app.post("/pretzel/weather", speakWeatherRoute);
 
 app.get("/pretzel/speak", (req, res) => {
   const raw = typeof req.query.text === "string" ? req.query.text : "";
