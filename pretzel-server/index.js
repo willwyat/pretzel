@@ -106,20 +106,42 @@ function speak(text) {
   });
 }
 
-app.post("/pretzel/speak", async (req, res) => {
+const speakHint =
+  "Apostrophe in I'm breaks shell single quotes around -d '...'. Easiest: GET with curl -G and --data-urlencode (see below), or repo scripts/curl-speak.sh \"...\", or POST text/plain with double-quoted body.";
+
+async function extractSpeakTextFromPost(req) {
   const ct = (req.headers["content-type"] || "").toLowerCase();
   let text = "";
+  if (ct.includes("text/plain")) {
+    text = normalizeSpeakText(await readRawBody(req, SPEAK_BODY_LIMIT));
+  } else if (typeof req.body?.text === "string") {
+    text = normalizeSpeakText(req.body.text);
+  }
+  if (!text && typeof req.query.text === "string") {
+    text = normalizeSpeakText(req.query.text.slice(0, SPEAK_QUERY_LIMIT));
+  }
+  return text;
+}
+
+app.get("/pretzel/speak", (req, res) => {
+  const raw = typeof req.query.text === "string" ? req.query.text : "";
+  const text = normalizeSpeakText(raw.slice(0, SPEAK_QUERY_LIMIT));
+  if (!text) {
+    return res.status(400).json({
+      error: "text is required",
+      example:
+        "curl -sS -G http://pretzel.local:3001/pretzel/speak --data-urlencode \"text=How are you? I'm great\"",
+      hint: speakHint,
+    });
+  }
+  speak(text);
+  res.json({ ok: true });
+});
+
+app.post("/pretzel/speak", async (req, res) => {
+  let text = "";
   try {
-    if (ct.includes("text/plain")) {
-      text = normalizeSpeakText(await readRawBody(req, SPEAK_BODY_LIMIT));
-    } else if (typeof req.body?.text === "string") {
-      text = normalizeSpeakText(req.body.text);
-    }
-    if (!text && typeof req.query.text === "string") {
-      text = normalizeSpeakText(
-        req.query.text.slice(0, SPEAK_QUERY_LIMIT),
-      );
-    }
+    text = await extractSpeakTextFromPost(req);
   } catch (e) {
     const st = e.status || 500;
     return res.status(st).json({ error: e.message });
@@ -127,7 +149,9 @@ app.post("/pretzel/speak", async (req, res) => {
   if (!text) {
     return res.status(400).json({
       error: "text is required",
-      hint: "Shell: -d '{\"text\":\"...I'm...\"}' fails because ' in I'm ends single quotes (you see dquote>). Use text/plain + double-quoted --data-binary \"...I'm...\", a heredoc, or JSON with outer double quotes and escaped \\\" inside. NBSP in the body is normalized to a regular space.",
+      example:
+        "curl -sS -G http://pretzel.local:3001/pretzel/speak --data-urlencode \"text=How are you? I'm great\"",
+      hint: speakHint,
     });
   }
   speak(text);
