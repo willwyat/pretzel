@@ -92,6 +92,14 @@ function readRawBody(req, limit) {
   });
 }
 
+/** NBSP / narrow NBSP (common from web paste); BOM strip. */
+function normalizeSpeakText(s) {
+  return s
+    .replace(/\ufeff/g, "")
+    .replace(/[\u00a0\u202f]/g, " ")
+    .trim();
+}
+
 function speak(text) {
   execFile(SPEAK_SCRIPT, [text], (err) => {
     if (err) console.error("speak error:", err.message);
@@ -103,12 +111,14 @@ app.post("/pretzel/speak", async (req, res) => {
   let text = "";
   try {
     if (ct.includes("text/plain")) {
-      text = (await readRawBody(req, SPEAK_BODY_LIMIT)).trim();
+      text = normalizeSpeakText(await readRawBody(req, SPEAK_BODY_LIMIT));
     } else if (typeof req.body?.text === "string") {
-      text = req.body.text.trim();
+      text = normalizeSpeakText(req.body.text);
     }
     if (!text && typeof req.query.text === "string") {
-      text = req.query.text.trim().slice(0, SPEAK_QUERY_LIMIT);
+      text = normalizeSpeakText(
+        req.query.text.slice(0, SPEAK_QUERY_LIMIT),
+      );
     }
   } catch (e) {
     const st = e.status || 500;
@@ -117,7 +127,7 @@ app.post("/pretzel/speak", async (req, res) => {
   if (!text) {
     return res.status(400).json({
       error: "text is required",
-      hint: "Use Content-Type: text/plain with the phrase as the raw body (apostrophes are fine), or JSON {\"text\":\"...\"} with Content-Type: application/json, or POST ?text= plus URL-encoded phrase.",
+      hint: "Shell: -d '{\"text\":\"...I'm...\"}' fails because ' in I'm ends single quotes (you see dquote>). Use text/plain + double-quoted --data-binary \"...I'm...\", a heredoc, or JSON with outer double quotes and escaped \\\" inside. NBSP in the body is normalized to a regular space.",
     });
   }
   speak(text);
