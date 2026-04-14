@@ -1,10 +1,55 @@
 const express = require("express");
+const dgram = require("dgram");
 const WebSocket = require("ws");
 
+// LG TV on this LAN (inline; repo is private):
+//   IPv4 192.168.1.186 /24, gateway 192.168.1.1, DNS 192.168.1.1
+//   WOL MAC 30:34:DB:78:6A:06
+//   IPv6 prefix /64 2600:4041:5896:d700::, gateway fe80::8e8b:5bff:fe62:193, DNS 2600:4041:5896:d700::1
 const TV_IP = "192.168.1.186";
 const TV_PORT = 3001;
 const CLIENT_KEY = process.env.CLIENT_KEY || "";
 const PORT = 3000;
+/** Wake-on-LAN target; env overrides default below. */
+const TV_WOL_MAC = (
+  process.env.TV_WOL_MAC ||
+  process.env.TV_MAC ||
+  "30:34:DB:78:6A:06"
+).trim();
+const TV_WOL_BROADCAST = (process.env.TV_WOL_BROADCAST || "255.255.255.255").trim();
+
+function parseMac(macStr) {
+  const hex = macStr.replace(/[:-]/g, "").toLowerCase();
+  if (!/^[0-9a-f]{12}$/.test(hex)) return null;
+  return hex;
+}
+
+function sendWakeOnLan(macHex) {
+  const macBuf = Buffer.from(macHex, "hex");
+  const body = Buffer.alloc(6 + 16 * 6);
+  body.fill(0xff, 0, 6);
+  for (let i = 6; i < body.length; i += 6) macBuf.copy(body, i);
+  const socket = dgram.createSocket("udp4");
+  return new Promise((resolve, reject) => {
+    socket.once("error", (e) => {
+      try {
+        socket.close();
+      } catch {}
+      reject(e);
+    });
+    try {
+      socket.setBroadcast(true);
+    } catch (e) {
+      socket.close();
+      return reject(e);
+    }
+    socket.send(body, 0, body.length, 9, TV_WOL_BROADCAST, (err) => {
+      socket.close();
+      if (err) reject(err);
+      else resolve();
+    });
+  });
+}
 
 const app = express();
 app.use(express.json());
@@ -183,6 +228,47 @@ app.post("/tv/power/off", async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+app.post("/tv/power/on", async (req, res) => {
+  const macHex = parseMac(TV_WOL_MAC);
+  let wolSent = false;
+  let turnOnRequested = false;
+  const warnings = [];
+
+  if (macHex) {
+    try {
+      await sendWakeOnLan(macHex);
+      wolSent = true;
+    } catch (e) {
+      warnings.push(`wol: ${e.message}`);
+    }
+  }
+
+  if (ws?.readyState === WebSocket.OPEN) {
+    try {
+      await send("ssap://system/turnOn");
+      turnOnRequested = true;
+    } catch (e) {
+      warnings.push(`turnOn: ${e.message}`);
+    }
+  }
+
+  if (wolSent || turnOnRequested) {
+    return res.json({
+      ok: true,
+      wolSent,
+      turnOnRequested,
+      ...(warnings.length ? { warnings } : {}),
+    });
+  }
+
+  res.status(503).json({
+    ok: false,
+    error: macHex
+      ? warnings.join("; ") || "Power on failed"
+      : "TV is unreachable and Wake-on-LAN is not configured. Set TV_WOL_MAC (or TV_MAC) for the TV Ethernet/Wi-Fi MAC on this host.",
+  });
 });
 
 app.get("/tv/volume", async (req, res) => {
