@@ -14,28 +14,6 @@ const PREFERRED_CONTROL =
     ? envControl.trim()
     : "Speaker";
 
-// #region agent log
-function debugLog(payload) {
-  const body = {
-    sessionId: "53bd17",
-    timestamp: Date.now(),
-    runId: payload.runId ?? "pre-fix",
-    ...payload,
-  };
-  try {
-    console.error("[pretzel-debug]", JSON.stringify(body));
-  } catch (_) {}
-  fetch("http://127.0.0.1:7936/ingest/c2b7cbb4-2867-44d0-a699-3b5c23b6c228", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Debug-Session-Id": "53bd17",
-    },
-    body: JSON.stringify(body),
-  }).catch(() => {});
-}
-// #endregion
-
 /** First successful sget output (has [n%]) wins; reused for later requests. */
 let resolvedTarget = null;
 
@@ -71,14 +49,6 @@ function resolveTarget(done) {
       const err = new Error(
         "No ALSA simple volume control found (exhausted env preferred + common controls on cards 0–4)",
       );
-      // #region agent log
-      debugLog({
-        location: "index.js:resolveTarget",
-        message: "resolve failed after full candidate list",
-        hypothesisId: "H1",
-        data: { triedCount: tries.length, preferred: [PREFERRED_CARD, PREFERRED_CONTROL] },
-      });
-      // #endregion
       return done(err, null, null);
     }
     const [card, control] = tries[i++];
@@ -89,15 +59,6 @@ function resolveTarget(done) {
       (err, stdout) => {
         if (!err && stdout && /\[\d+%\]/.test(stdout)) {
           resolvedTarget = { card, control };
-          // #region agent log
-          debugLog({
-            location: "index.js:resolveTarget",
-            message: "resolved amixer target",
-            hypothesisId: "FIX",
-            runId: "post-fix",
-            data: { card, control },
-          });
-          // #endregion
           return done(null, resolvedTarget, stdout);
         }
         next();
@@ -125,18 +86,6 @@ app.post("/pretzel/speak", (req, res) => {
 });
 
 app.get("/pretzel/volume", (req, res) => {
-  // #region agent log
-  debugLog({
-    location: "index.js:GET /pretzel/volume",
-    message: "volume get: entering",
-    hypothesisId: "H1",
-    data: {
-      preferredCard: PREFERRED_CARD,
-      preferredControl: PREFERRED_CONTROL,
-      cached: !!resolvedTarget,
-    },
-  });
-  // #endregion
   resolveTarget((err, target, probeStdout) => {
     if (err) {
       return res.status(500).json({ error: err.message });
@@ -144,14 +93,6 @@ app.get("/pretzel/volume", (req, res) => {
     if (probeStdout) {
       const match = probeStdout.match(/\[(\d+)%\]/);
       const volume = match ? parseInt(match[1], 10) : null;
-      // #region agent log
-      debugLog({
-        location: "index.js:GET /pretzel/volume ok",
-        message: "parsed volume from probe",
-        hypothesisId: "H3",
-        data: { volume, target },
-      });
-      // #endregion
       return res.json({ ok: true, volume });
     }
     execFile(
@@ -165,14 +106,6 @@ app.get("/pretzel/volume", (req, res) => {
         }
         const match = stdout.match(/\[(\d+)%\]/);
         const volume = match ? parseInt(match[1], 10) : null;
-        // #region agent log
-        debugLog({
-          location: "index.js:GET /pretzel/volume ok",
-          message: "parsed volume",
-          hypothesisId: "H3",
-          data: { volume, rawSample: stdout?.slice(0, 500) ?? "" },
-        });
-        // #endregion
         res.json({ ok: true, volume });
       },
     );
@@ -184,14 +117,6 @@ app.post("/pretzel/volume", (req, res) => {
   if (volume === undefined)
     return res.status(400).json({ error: "volume is required" });
   const clamped = Math.max(0, Math.min(100, volume));
-  // #region agent log
-  debugLog({
-    location: "index.js:POST /pretzel/volume",
-    message: "volume set: entering",
-    hypothesisId: "H2",
-    data: { clamped, cached: !!resolvedTarget },
-  });
-  // #endregion
   resolveTarget((err, target) => {
     if (err) {
       return res.status(500).json({ error: err.message });
