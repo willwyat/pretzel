@@ -1,10 +1,18 @@
 const express = require("express");
-const { exec } = require("child_process");
+const { exec, execFile } = require("child_process");
 
 const PORT = 3001;
 const SPEAK_SCRIPT = "/home/william/pretzel/scripts/speak.sh";
-const AMIXER_CARD = 2;
-const AMIXER_CONTROL = "Speaker";
+
+const envCard = process.env.PRETZEL_AMIXER_CARD;
+const envControl = process.env.PRETZEL_AMIXER_CONTROL;
+const parsedPreferred =
+  envCard !== undefined && envCard !== "" ? Number(envCard) : 2;
+const PREFERRED_CARD = Number.isFinite(parsedPreferred) ? parsedPreferred : 2;
+const PREFERRED_CONTROL =
+  typeof envControl === "string" && envControl.trim() !== ""
+    ? envControl.trim()
+    : "Speaker";
 
 // #region agent log
 function debugLog(payload) {
@@ -23,6 +31,77 @@ function debugLog(payload) {
   }).catch(() => {});
 }
 // #endregion
+
+/** First successful sget output (has [n%]) wins; reused for later requests. */
+let resolvedTarget = null;
+
+function volumeCandidates() {
+  const names = ["PCM", "Headphone", "Speaker", "Master", "Digital"];
+  const cards = [0, 1, 2, 3, 4];
+  const out = [[PREFERRED_CARD, PREFERRED_CONTROL]];
+  for (const c of cards) {
+    for (const n of names) {
+      out.push([c, n]);
+    }
+  }
+  const seen = new Set();
+  return out.filter(([c, n]) => {
+    const k = `${c}:${n}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+/**
+ * @param {(err: Error|null, target: {card:number,control:string}|null, probeStdout: string|null) => void} done
+ */
+function resolveTarget(done) {
+  if (resolvedTarget) {
+    return done(null, resolvedTarget, null);
+  }
+  const tries = volumeCandidates();
+  let i = 0;
+  function next() {
+    if (i >= tries.length) {
+      const err = new Error(
+        "No ALSA simple volume control found (exhausted env preferred + common controls on cards 0–4)",
+      );
+      // #region agent log
+      debugLog({
+        location: "index.js:resolveTarget",
+        message: "resolve failed after full candidate list",
+        hypothesisId: "H1",
+        data: { triedCount: tries.length, preferred: [PREFERRED_CARD, PREFERRED_CONTROL] },
+      });
+      // #endregion
+      return done(err, null, null);
+    }
+    const [card, control] = tries[i++];
+    execFile(
+      "amixer",
+      ["-c", String(card), "sget", control],
+      { encoding: "utf8" },
+      (err, stdout) => {
+        if (!err && stdout && /\[\d+%\]/.test(stdout)) {
+          resolvedTarget = { card, control };
+          // #region agent log
+          debugLog({
+            location: "index.js:resolveTarget",
+            message: "resolved amixer target",
+            hypothesisId: "FIX",
+            runId: "post-fix",
+            data: { card, control },
+          });
+          // #endregion
+          return done(null, resolvedTarget, stdout);
+        }
+        next();
+      },
+    );
+  }
+  next();
+}
 
 const app = express();
 app.use(express.json());
@@ -45,48 +124,55 @@ app.get("/pretzel/volume", (req, res) => {
   // #region agent log
   debugLog({
     location: "index.js:GET /pretzel/volume",
-    message: "volume get: using amixer target",
+    message: "volume get: entering",
     hypothesisId: "H1",
-    data: { card: AMIXER_CARD, control: AMIXER_CONTROL },
+    data: {
+      preferredCard: PREFERRED_CARD,
+      preferredControl: PREFERRED_CONTROL,
+      cached: !!resolvedTarget,
+    },
   });
   // #endregion
-  exec(
-    `amixer -c ${AMIXER_CARD} sget '${AMIXER_CONTROL}'`,
-    (err, stdout) => {
-      if (err) {
-        exec(
-          `sh -c 'for c in 0 1 2; do echo "====card $c===="; amixer -c $c scontrols 2>&1; done'`,
-          (e2, discovery) => {
-            // #region agent log
-            debugLog({
-              location: "index.js:GET /pretzel/volume err",
-              message: "amixer sget failed; discovery scontrols",
-              hypothesisId: "H1",
-              data: {
-                amixerError: err.message,
-                discovery: discovery?.slice(0, 4000) ?? null,
-                discoveryExecError: e2?.message ?? null,
-              },
-            });
-            // #endregion
-            return res.status(500).json({ error: err.message });
-          },
-        );
-        return;
-      }
-      const match = stdout.match(/\[(\d+)%\]/);
-      const volume = match ? parseInt(match[1]) : null;
+  resolveTarget((err, target, probeStdout) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    if (probeStdout) {
+      const match = probeStdout.match(/\[(\d+)%\]/);
+      const volume = match ? parseInt(match[1], 10) : null;
       // #region agent log
       debugLog({
         location: "index.js:GET /pretzel/volume ok",
-        message: "parsed volume",
+        message: "parsed volume from probe",
         hypothesisId: "H3",
-        data: { volume, rawSample: stdout?.slice(0, 500) ?? "" },
+        data: { volume, target },
       });
       // #endregion
-      res.json({ ok: true, volume });
-    },
-  );
+      return res.json({ ok: true, volume });
+    }
+    execFile(
+      "amixer",
+      ["-c", String(target.card), "sget", target.control],
+      { encoding: "utf8" },
+      (e2, stdout) => {
+        if (e2) {
+          resolvedTarget = null;
+          return res.status(500).json({ error: e2.message });
+        }
+        const match = stdout.match(/\[(\d+)%\]/);
+        const volume = match ? parseInt(match[1], 10) : null;
+        // #region agent log
+        debugLog({
+          location: "index.js:GET /pretzel/volume ok",
+          message: "parsed volume",
+          hypothesisId: "H3",
+          data: { volume, rawSample: stdout?.slice(0, 500) ?? "" },
+        });
+        // #endregion
+        res.json({ ok: true, volume });
+      },
+    );
+  });
 });
 
 app.post("/pretzel/volume", (req, res) => {
@@ -97,39 +183,29 @@ app.post("/pretzel/volume", (req, res) => {
   // #region agent log
   debugLog({
     location: "index.js:POST /pretzel/volume",
-    message: "volume set: using amixer target",
+    message: "volume set: entering",
     hypothesisId: "H2",
-    data: { card: AMIXER_CARD, control: AMIXER_CONTROL, clamped },
+    data: { clamped, cached: !!resolvedTarget },
   });
   // #endregion
-  exec(
-    `amixer -c ${AMIXER_CARD} sset '${AMIXER_CONTROL}' ${clamped}%`,
-    (err) => {
-      if (err) {
-        exec(
-          `sh -c 'for c in 0 1 2; do echo "====card $c===="; amixer -c $c scontrols 2>&1; done'`,
-          (e2, discovery) => {
-            // #region agent log
-            debugLog({
-              location: "index.js:POST /pretzel/volume err",
-              message: "amixer sset failed; discovery scontrols",
-              hypothesisId: "H2",
-              data: {
-                amixerError: err.message,
-                discovery: discovery?.slice(0, 4000) ?? null,
-                discoveryExecError: e2?.message ?? null,
-              },
-            });
-            // #endregion
-            return res.status(500).json({ error: err.message });
-          },
-        );
-        return;
-      }
-      if (announce) speak(`Changed my volume to ${clamped} percent`);
-      res.json({ ok: true, volume: clamped });
-    },
-  );
+  resolveTarget((err, target) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    execFile(
+      "amixer",
+      ["-c", String(target.card), "sset", target.control, `${clamped}%`],
+      { encoding: "utf8" },
+      (e2) => {
+        if (e2) {
+          resolvedTarget = null;
+          return res.status(500).json({ error: e2.message });
+        }
+        if (announce) speak(`Changed my volume to ${clamped} percent`);
+        res.json({ ok: true, volume: clamped });
+      },
+    );
+  });
 });
 
 app.get("/pretzel/status", (req, res) => {
