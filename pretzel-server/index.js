@@ -222,6 +222,30 @@ function todayLabel() {
   return `${day}, ${month} ${date}${suffix}`;
 }
 
+/** One paragraph for TTS from an Open-Meteo forecast payload. */
+function buildSpeakWeatherUtterance(wx) {
+  const now = new Date();
+  const localTime = now.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: TZ,
+  });
+  const temp = Math.round(wx.current.temperature_2m);
+  const condition = describeWeather(wx.current.weathercode);
+  const precip = wx.daily.precipitation_probability_max[0];
+  const sunsetStr = fmtTime(wx.daily.sunset[0]);
+
+  let s =
+    `Here's the weather for ${todayLabel()}. It's ${localTime}. ` +
+    `Currently ${temp} degrees celsius and ${condition}.`;
+  if (precip >= 40) {
+    s += ` There is a ${precip} percent chance of rain today.`;
+  }
+  s += ` Sunset is around ${sunsetStr}.`;
+  return s;
+}
+
 const speakHint =
   "Apostrophe in I'm breaks shell single quotes around -d '...'. Easiest: GET with curl -G and --data-urlencode (see below), or repo scripts/curl-speak.sh \"...\", or POST text/plain with double-quoted body.";
 
@@ -522,6 +546,20 @@ app.get("/pretzel/weather", async (req, res) => {
     });
   }
 });
+
+async function speakWeatherRoute(req, res) {
+  try {
+    const wx = await fetchWeather();
+    const text = buildSpeakWeatherUtterance(wx);
+    speak(text);
+    res.json({ ok: true, spoken: text });
+  } catch (e) {
+    res.status(502).json({ ok: false, error: e.message });
+  }
+}
+
+app.get("/pretzel/speak-weather", speakWeatherRoute);
+app.post("/pretzel/speak-weather", speakWeatherRoute);
 
 app.get("/pretzel/speak", (req, res) => {
   const raw = typeof req.query.text === "string" ? req.query.text : "";
