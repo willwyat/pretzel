@@ -3,6 +3,26 @@ const { exec } = require("child_process");
 
 const PORT = 3001;
 const SPEAK_SCRIPT = "/home/william/pretzel/scripts/speak.sh";
+const AMIXER_CARD = 2;
+const AMIXER_CONTROL = "Speaker";
+
+// #region agent log
+function debugLog(payload) {
+  fetch("http://127.0.0.1:7936/ingest/c2b7cbb4-2867-44d0-a699-3b5c23b6c228", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "53bd17",
+    },
+    body: JSON.stringify({
+      sessionId: "53bd17",
+      timestamp: Date.now(),
+      runId: payload.runId ?? "pre-fix",
+      ...payload,
+    }),
+  }).catch(() => {});
+}
+// #endregion
 
 const app = express();
 app.use(express.json());
@@ -22,12 +42,51 @@ app.post("/pretzel/speak", (req, res) => {
 });
 
 app.get("/pretzel/volume", (req, res) => {
-  exec("amixer -c 2 sget 'Speaker'", (err, stdout) => {
-    if (err) return res.status(500).json({ error: err.message });
-    const match = stdout.match(/\[(\d+)%\]/);
-    const volume = match ? parseInt(match[1]) : null;
-    res.json({ ok: true, volume });
+  // #region agent log
+  debugLog({
+    location: "index.js:GET /pretzel/volume",
+    message: "volume get: using amixer target",
+    hypothesisId: "H1",
+    data: { card: AMIXER_CARD, control: AMIXER_CONTROL },
   });
+  // #endregion
+  exec(
+    `amixer -c ${AMIXER_CARD} sget '${AMIXER_CONTROL}'`,
+    (err, stdout) => {
+      if (err) {
+        exec(
+          `sh -c 'for c in 0 1 2; do echo "====card $c===="; amixer -c $c scontrols 2>&1; done'`,
+          (e2, discovery) => {
+            // #region agent log
+            debugLog({
+              location: "index.js:GET /pretzel/volume err",
+              message: "amixer sget failed; discovery scontrols",
+              hypothesisId: "H1",
+              data: {
+                amixerError: err.message,
+                discovery: discovery?.slice(0, 4000) ?? null,
+                discoveryExecError: e2?.message ?? null,
+              },
+            });
+            // #endregion
+            return res.status(500).json({ error: err.message });
+          },
+        );
+        return;
+      }
+      const match = stdout.match(/\[(\d+)%\]/);
+      const volume = match ? parseInt(match[1]) : null;
+      // #region agent log
+      debugLog({
+        location: "index.js:GET /pretzel/volume ok",
+        message: "parsed volume",
+        hypothesisId: "H3",
+        data: { volume, rawSample: stdout?.slice(0, 500) ?? "" },
+      });
+      // #endregion
+      res.json({ ok: true, volume });
+    },
+  );
 });
 
 app.post("/pretzel/volume", (req, res) => {
@@ -35,11 +94,42 @@ app.post("/pretzel/volume", (req, res) => {
   if (volume === undefined)
     return res.status(400).json({ error: "volume is required" });
   const clamped = Math.max(0, Math.min(100, volume));
-  exec(`amixer -c 2 sset 'Speaker' ${clamped}%`, (err) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (announce) speak(`Changed my volume to ${clamped} percent`);
-    res.json({ ok: true, volume: clamped });
+  // #region agent log
+  debugLog({
+    location: "index.js:POST /pretzel/volume",
+    message: "volume set: using amixer target",
+    hypothesisId: "H2",
+    data: { card: AMIXER_CARD, control: AMIXER_CONTROL, clamped },
   });
+  // #endregion
+  exec(
+    `amixer -c ${AMIXER_CARD} sset '${AMIXER_CONTROL}' ${clamped}%`,
+    (err) => {
+      if (err) {
+        exec(
+          `sh -c 'for c in 0 1 2; do echo "====card $c===="; amixer -c $c scontrols 2>&1; done'`,
+          (e2, discovery) => {
+            // #region agent log
+            debugLog({
+              location: "index.js:POST /pretzel/volume err",
+              message: "amixer sset failed; discovery scontrols",
+              hypothesisId: "H2",
+              data: {
+                amixerError: err.message,
+                discovery: discovery?.slice(0, 4000) ?? null,
+                discoveryExecError: e2?.message ?? null,
+              },
+            });
+            // #endregion
+            return res.status(500).json({ error: err.message });
+          },
+        );
+        return;
+      }
+      if (announce) speak(`Changed my volume to ${clamped} percent`);
+      res.json({ ok: true, volume: clamped });
+    },
+  );
 });
 
 app.get("/pretzel/status", (req, res) => {
