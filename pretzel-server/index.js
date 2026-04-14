@@ -1,5 +1,5 @@
 const express = require("express");
-const { exec, execFile } = require("child_process");
+const { execFile } = require("child_process");
 
 const PORT = 3001;
 const SPEAK_SCRIPT = "/home/william/pretzel/scripts/speak.sh";
@@ -72,8 +72,7 @@ const app = express();
 app.use(express.json());
 
 function speak(text) {
-  const safe = text.replace(/"/g, '\\"');
-  exec(`${SPEAK_SCRIPT} "${safe}"`, (err) => {
+  execFile(SPEAK_SCRIPT, [text], (err) => {
     if (err) console.error("speak error:", err.message);
   });
 }
