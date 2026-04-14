@@ -16,18 +16,22 @@ const PREFERRED_CONTROL =
 
 // #region agent log
 function debugLog(payload) {
+  const body = {
+    sessionId: "53bd17",
+    timestamp: Date.now(),
+    runId: payload.runId ?? "pre-fix",
+    ...payload,
+  };
+  try {
+    console.error("[pretzel-debug]", JSON.stringify(body));
+  } catch (_) {}
   fetch("http://127.0.0.1:7936/ingest/c2b7cbb4-2867-44d0-a699-3b5c23b6c228", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-Debug-Session-Id": "53bd17",
     },
-    body: JSON.stringify({
-      sessionId: "53bd17",
-      timestamp: Date.now(),
-      runId: payload.runId ?? "pre-fix",
-      ...payload,
-    }),
+    body: JSON.stringify(body),
   }).catch(() => {});
 }
 // #endregion
