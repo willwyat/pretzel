@@ -309,6 +309,34 @@ app.post("/tv/mute", async (req, res) => {
   }
 });
 
+app.post("/tv/home", async (req, res) => {
+  try {
+    const r = await sendKey("HOME");
+    res.json(r);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post("/tv/back", async (req, res) => {
+  try {
+    const r = await sendKey("BACK");
+    res.json(r);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Quick Settings / Q Settings (Magic Remote); not necessarily full "All Settings" tree.
+app.post("/tv/settings", async (req, res) => {
+  try {
+    const r = await sendKey("MENU");
+    res.json(r);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post("/tv/button", async (req, res) => {
   const { button } = req.body;
   const allowed = [
@@ -320,14 +348,18 @@ app.post("/tv/button", async (req, res) => {
     "BACK",
     "HOME",
     "EXIT",
+    "MENU",
+    "QMENU",
+    "SETTINGS",
   ];
   if (!allowed.includes(button)) {
     return res
       .status(400)
       .json({ error: `Invalid button. Allowed: ${allowed.join(", ")}` });
   }
+  const keyName = button === "SETTINGS" ? "MENU" : button;
   try {
-    const r = await sendKey(button);
+    const r = await sendKey(keyName);
     res.json(r);
   } catch (e) {
     res.status(500).json({ error: e.message });
