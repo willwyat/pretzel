@@ -1,7 +1,7 @@
 # 1. Clone or pull the repo on the Pi, then install deps and build the UI (after each pull):
 #      cd ~/pretzel && git pull
 #      cd ~/pretzel/remote-ui && npm ci && npm run build
-#    (`dist/` is required before `node server.js`; it is not committed. Use `npm install` only if you omit a lockfile.)
+#    (`dist/` is required before `node server.cjs`; it is not committed. Use `npm install` only if you omit a lockfile.)
 #
 # 2. Copy this file to systemd and edit User + WorkingDirectory to match your Pi account and repo path:
 #      sudo cp ~/pretzel/remote-ui/remote-ui.service.example /etc/systemd/system/remote-ui.service
@@ -26,12 +26,12 @@ Type=simple
 # Replace `pi` and path with your login and where you cloned `pretzel`.
 User=pi
 WorkingDirectory=/home/pi/pretzel/remote-ui
-ExecStart=/usr/bin/node server.js
+ExecStart=/usr/bin/node server.cjs
 Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
 # Optional: match repo root VERSION after deploy (see README).
-# Environment=PRETZEL_STACK_VERSION=1.3.2
+# Environment=PRETZEL_STACK_VERSION=1.3.3
 # Environment=REMOTE_UI_PORT=8080
 # Environment=TV_RELAY_URL=http://127.0.0.1:3000
 # Environment=PRETZEL_SERVER_URL=http://127.0.0.1:3001

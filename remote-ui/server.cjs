@@ -1,6 +1,6 @@
 /**
- * Single-port entry for guests: Vite-built UI in dist/ + /tv/* → tv-relay
- * + /pretzel/* and /lifx/* → pretzel-server. Run `npm run build` before start.
+ * CommonJS entry (server.cjs) so Node always uses require(), even if package.json
+ * gains "type": "module" for the Vite app. Run `npm run build` before start.
  */
 "use strict";
 
