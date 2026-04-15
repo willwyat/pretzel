@@ -12,11 +12,14 @@ const PRETZEL_SERVER =
 
 const app = express();
 
+// Express strips the mount path (/tv, /pretzel) before the proxy sees it, so we
+// put the prefix back — upstream expects /tv/* and /pretzel/*, not bare /status.
 app.use(
   "/tv",
   createProxyMiddleware({
     target: TV_RELAY,
     changeOrigin: true,
+    pathRewrite: (p) => "/tv" + p,
   }),
 );
 
@@ -25,6 +28,7 @@ app.use(
   createProxyMiddleware({
     target: PRETZEL_SERVER,
     changeOrigin: true,
+    pathRewrite: (p) => "/pretzel" + p,
   }),
 );
 
