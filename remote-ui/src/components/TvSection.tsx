@@ -28,48 +28,88 @@ export function TvSection() {
   const [turningOff, setTurningOff] = useState(false);
   const [turningOn, setTurningOn] = useState(false);
   const armedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const syncPollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [statusRes, volRes] = await Promise.all([
-        fetchJson("/tv/status"),
-        fetchJson("/tv/volume"),
-      ]);
-      // Status answers "is the relay up + is the TV socket open?". Volume uses the TV
-      // socket and returns 500 when disconnected — that must not imply relay offline.
-      if (!statusRes.ok) {
-        setRelayOffline(true);
-        setConnected(false);
-        return;
-      }
-      const status = statusRes.data as TvStatusBody;
-      setRelayOffline(false);
-      setConnected(!!status.connected);
-      setInputConnected(!!status.inputConnected);
-      if (volRes.ok) {
-        const volJson = volRes.data as TvVolumeBody;
-        const vs = volJson.volumeStatus;
-        if (vs && typeof vs.volume === "number") {
-          setVolume(vs.volume);
-          setLocalVolume(vs.volume);
-          setMuted(!!vs.muteStatus);
-          if (typeof vs.maxVolume === "number" && vs.maxVolume > 0) {
-            setMaxVolume(vs.maxVolume);
-          }
-        }
-      }
-    } catch {
-      setRelayOffline(true);
-      setConnected(false);
-    } finally {
-      setLoading(false);
+  const clearSyncPoll = useCallback(() => {
+    if (syncPollTimerRef.current != null) {
+      clearTimeout(syncPollTimerRef.current);
+      syncPollTimerRef.current = null;
     }
   }, []);
+
+  type TvFetchSnapshot = { connected: boolean; relayReachable: boolean };
+
+  const fetchAll = useCallback(
+    async (opts?: { quiet?: boolean }): Promise<TvFetchSnapshot> => {
+      const quiet = opts?.quiet ?? false;
+      if (!quiet) setLoading(true);
+      try {
+        const [statusRes, volRes] = await Promise.all([
+          fetchJson("/tv/status"),
+          fetchJson("/tv/volume"),
+        ]);
+        // Status answers "is the relay up + is the TV socket open?". Volume uses the TV
+        // socket and returns 500 when disconnected — that must not imply relay offline.
+        if (!statusRes.ok) {
+          setRelayOffline(true);
+          setConnected(false);
+          return { connected: false, relayReachable: false };
+        }
+        const status = statusRes.data as TvStatusBody;
+        setRelayOffline(false);
+        const isConnected = !!status.connected;
+        setConnected(isConnected);
+        setInputConnected(!!status.inputConnected);
+        if (volRes.ok) {
+          const volJson = volRes.data as TvVolumeBody;
+          const vs = volJson.volumeStatus;
+          if (vs && typeof vs.volume === "number") {
+            setVolume(vs.volume);
+            setLocalVolume(vs.volume);
+            setMuted(!!vs.muteStatus);
+            if (typeof vs.maxVolume === "number" && vs.maxVolume > 0) {
+              setMaxVolume(vs.maxVolume);
+            }
+          }
+        }
+        return { connected: isConnected, relayReachable: true };
+      } catch {
+        setRelayOffline(true);
+        setConnected(false);
+        return { connected: false, relayReachable: false };
+      } finally {
+        if (!quiet) setLoading(false);
+      }
+    },
+    [],
+  );
+
+  const startSyncPoll = useCallback(
+    (
+      until: (s: TvFetchSnapshot) => boolean,
+      maxMs: number,
+      intervalMs: number,
+    ) => {
+      clearSyncPoll();
+      const deadline = Date.now() + maxMs;
+      const tick = async () => {
+        const snap = await fetchAll({ quiet: true });
+        if (until(snap) || Date.now() >= deadline) {
+          clearSyncPoll();
+          return;
+        }
+        syncPollTimerRef.current = setTimeout(() => void tick(), intervalMs);
+      };
+      syncPollTimerRef.current = setTimeout(() => void tick(), intervalMs);
+    },
+    [clearSyncPoll, fetchAll],
+  );
 
   useEffect(() => {
     void fetchAll();
   }, [fetchAll]);
+
+  useEffect(() => () => clearSyncPoll(), [clearSyncPoll]);
 
   useEffect(() => {
     if (!powerOffArmed) return;
@@ -139,23 +179,43 @@ export function TvSection() {
       return;
     }
     setPowerOffArmed(false);
+    clearSyncPoll();
     setTurningOff(true);
     void fetchJson("/tv/power/off", { method: "POST" })
-      .catch(() => {})
-      .finally(() => {
+      .then(async (r) => {
         setTurningOff(false);
-        void fetchAll();
+        const snap = await fetchAll();
+        if (!r.ok || !snap.relayReachable || !snap.connected) return;
+        startSyncPoll(
+          (s) => !s.connected || !s.relayReachable,
+          45_000,
+          1_500,
+        );
+      })
+      .catch(async () => {
+        setTurningOff(false);
+        await fetchAll();
       });
   };
 
   const handlePowerOnClick = () => {
     if (relayOffline || loading || turningOn || connected) return;
+    clearSyncPoll();
     setTurningOn(true);
     void fetchJson("/tv/power/on", { method: "POST" })
-      .catch(() => {})
-      .finally(() => {
+      .then(async (r) => {
         setTurningOn(false);
-        void fetchAll();
+        const snap = await fetchAll();
+        if (!r.ok || !snap.relayReachable || snap.connected) return;
+        startSyncPoll(
+          (s) => s.connected || !s.relayReachable,
+          120_000,
+          2_500,
+        );
+      })
+      .catch(async () => {
+        setTurningOn(false);
+        await fetchAll();
       });
   };
 
