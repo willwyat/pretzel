@@ -47,15 +47,15 @@ Longer comments and pairing notes for tv-relay are in [tv-relay/tv-relay.service
 
 ## Release version (`VERSION` and git tags)
 
-- **Repo version:** The file [VERSION](VERSION) holds a single semver line (e.g. `1.3.0`). This is the stack-wide release identifier agents should bump when committing (see [AGENTS.md](AGENTS.md)).
-- **Git tags:** To label a release on GitHub, create an **annotated** tag on the release commit, e.g. `git tag -a v1.3.0 -m "Release 1.3.0"` then `git push origin v1.3.0`. Tags appear under the repo’s “Tags”; you can create a **GitHub Release** from a tag for notes and visibility. Prefer tagging intentional releases, not every commit.
+- **Repo version:** The file [VERSION](VERSION) holds a single semver line (e.g. `1.3.1`). This is the stack-wide release identifier agents should bump when committing (see [AGENTS.md](AGENTS.md)).
+- **Git tags:** To label a release on GitHub, create an **annotated** tag on the release commit, e.g. `git tag -a v1.3.1 -m "Release 1.3.1"` then `git push origin v1.3.1`. Tags appear under the repo’s “Tags”; you can create a **GitHub Release** from a tag for notes and visibility. Prefer tagging intentional releases, not every commit.
 
 ## Systemd: which version is running?
 
 Example unit files include an optional env var (commented) you can enable on the Pi:
 
 ```ini
-# Environment=PRETZEL_STACK_VERSION=1.3.0
+# Environment=PRETZEL_STACK_VERSION=1.3.1
 ```
 
 Set the value to match [VERSION](VERSION) after each deploy. Inspect what systemd passed to a unit:

@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "description": "LAN reverse proxy + Vite React UI for tv-relay and pretzel-server",
-  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
