@@ -75,19 +75,22 @@ export function LightsSection() {
     }
   }, []);
 
-  const handleBrightness = useCallback(async (light: Light, brightness: number) => {
-    try {
-      await fetchJson(lifxStatePath(light.id), {
-        method: "PUT",
-        body: JSON.stringify({ brightness, duration: 0.3 }),
-      });
-      setLights((prev) =>
-        prev.map((l) => (l.id === light.id ? { ...l, brightness } : l)),
-      );
-    } catch {
-      /* resync on refresh */
-    }
-  }, []);
+  const handleBrightness = useCallback(
+    async (light: Light, brightness: number) => {
+      try {
+        await fetchJson(lifxStatePath(light.id), {
+          method: "PUT",
+          body: JSON.stringify({ brightness, duration: 0.3 }),
+        });
+        setLights((prev) =>
+          prev.map((l) => (l.id === light.id ? { ...l, brightness } : l)),
+        );
+      } catch {
+        /* resync on refresh */
+      }
+    },
+    [],
+  );
 
   const handleColor = useCallback(async (light: Light, color: string) => {
     try {
@@ -113,9 +116,7 @@ export function LightsSection() {
                   : kelvinMatch
                     ? 0
                     : baseColor.saturation,
-              kelvin: kelvinMatch
-                ? Number(kelvinMatch[1])
-                : baseColor.kelvin,
+              kelvin: kelvinMatch ? Number(kelvinMatch[1]) : baseColor.kelvin,
             },
           };
         }),
@@ -157,7 +158,9 @@ export function LightsSection() {
             aria-hidden
           />
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-gray-100">LIFX lights</h2>
+            <h2 className="text-base font-semibold text-gray-100">
+              LIFX lights
+            </h2>
             <p className="text-xs text-gray-400">
               {loading && lights.length === 0
                 ? "Loading…"
@@ -197,7 +200,7 @@ export function LightsSection() {
               <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                 {groupName}
               </h3>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3">
                 {groupLights.map((light) => (
                   <LightCard
                     key={light.id}
@@ -213,7 +216,9 @@ export function LightsSection() {
         </div>
 
         {!loading && lights.length === 0 && !error && !offline && (
-          <p className="py-8 text-center text-sm text-gray-500">No lights found.</p>
+          <p className="py-8 text-center text-sm text-gray-500">
+            No lights found.
+          </p>
         )}
       </div>
     </section>
