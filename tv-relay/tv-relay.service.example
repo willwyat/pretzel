@@ -1,6 +1,6 @@
-# Copy to /etc/systemd/system/pretzel-tv-relay.service, adjust User and paths, then:
+# Copy to /etc/systemd/system/tv-relay.service, adjust User and paths, then:
 #   sudo systemctl daemon-reload
-#   sudo systemctl enable --now pretzel-tv-relay
+#   sudo systemctl enable --now tv-relay
 #
 # This is separate from pretzel-server (port 3001). Wyat NEXT_PUBLIC_TV_RELAY_URL must
 # point at this service (port 3000 by default).
