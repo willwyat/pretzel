@@ -1,0 +1,38 @@
+# 1. Clone or pull the repo on the Pi, then install deps (after each pull if package-lock changed):
+#      cd ~/pretzel && git pull
+#      cd ~/pretzel/remote-ui && npm ci
+#    (use `npm install` if you do not keep a lockfile; `npm ci` is preferred in deploys.)
+#
+# 2. Copy this file to systemd and edit User + WorkingDirectory to match your Pi account and repo path:
+#      sudo cp tv-remote-ui.service.example /etc/systemd/system/tv-remote-ui.service
+#      sudo nano /etc/systemd/system/tv-remote-ui.service
+#
+# 3. Enable and start:
+#      sudo systemctl daemon-reload
+#      sudo systemctl enable --now tv-remote-ui
+#      sudo systemctl status tv-remote-ui
+#
+# Guest URL (same LAN): http://<pi-ip>:8080/
+# Use a DHCP reservation or mDNS for a stable URL in QR codes.
+# Start tv-relay (:3000) and pretzel-server (:3001) before this service (or add After= in [Unit]).
+
+[Unit]
+Description=Pretzel LAN remote UI (proxy + static on 8080)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Replace `pi` and path with your login and where you cloned `pretzel`.
+User=pi
+WorkingDirectory=/home/pi/pretzel/remote-ui
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+# Environment=REMOTE_UI_PORT=8080
+# Environment=TV_RELAY_URL=http://127.0.0.1:3000
+# Environment=PRETZEL_SERVER_URL=http://127.0.0.1:3001
+
+[Install]
+WantedBy=multi-user.target

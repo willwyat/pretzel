@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pretzel remote</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <h1 class="page-title">Pretzel remote</h1>
+  <p class="hint page-hint">Same Wi‑Fi only. TV + Pi speaker.</p>
+
+  <!-- Mirrors Wyat TVCard.tsx -->
+  <div class="card">
+    <div class="card-head">
+      <span id="tvStatusDot" class="status-dot" title="" aria-hidden="true"></span>
+      <div class="card-head-text">
+        <h2 class="card-title">LG TV</h2>
+        <p id="tvSubtitle" class="subtitle">Loading…</p>
+      </div>
+      <button type="button" id="tvRefresh" class="btn-refresh" style="display: none">
+        Refresh
+      </button>
+    </div>
+    <div class="card-body">
+      <div id="tvError" class="err" style="display: none"></div>
+      <div class="vol-row">
+        <span class="vol-icon" aria-hidden="true">🔈</span>
+        <input type="range" id="tvVol" min="0" max="100" value="0" />
+        <span id="tvVolPct" class="vol-pct">0%</span>
+        <button type="button" id="tvMute" class="btn-icon" title="Mute">🔇</button>
+      </div>
+
+      <div id="tvRemoteSection" class="remote-wrap" hidden>
+        <p class="remote-label">Remote</p>
+        <div class="remote-dpad" aria-label="TV directional pad">
+          <span class="remote-spacer"></span>
+          <button type="button" class="remote-btn" id="btnUp" data-remote title="Up">▲</button>
+          <span class="remote-spacer"></span>
+          <button type="button" class="remote-btn" id="btnLeft" data-remote title="Left">◀</button>
+          <button type="button" class="remote-btn remote-ok" id="btnEnter" data-remote title="OK / Enter">OK</button>
+          <button type="button" class="remote-btn" id="btnRight" data-remote title="Right">▶</button>
+          <span class="remote-spacer"></span>
+          <button type="button" class="remote-btn" id="btnDown" data-remote title="Down">▼</button>
+          <span class="remote-spacer"></span>
+        </div>
+        <div class="remote-row">
+          <button type="button" class="remote-wide" id="btnBack" data-remote title="Back">Back</button>
+          <button type="button" class="remote-wide" id="btnHome" data-remote title="Home">Home</button>
+          <button type="button" class="remote-wide" id="btnSettings" data-remote title="Quick settings">Settings</button>
+        </div>
+      </div>
+
+      <div class="power-row">
+        <div id="tvPowerOnWrap">
+          <span id="tvWaking" class="hint" style="display: none">Waking TV…</span>
+          <button type="button" id="tvPowerOn" class="btn-power-on">
+            Power on
+          </button>
+        </div>
+        <div id="tvPowerOffWrap" style="display: none">
+          <span id="tvTurningOff" class="hint" style="display: none">Turning off…</span>
+          <button type="button" id="tvPowerOff" class="btn-power-off">
+            Power off
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mirrors Wyat PretzelSpeakerCard.tsx -->
+  <div class="card">
+    <div class="card-head card-head-between">
+      <div class="card-head-left">
+        <span id="pzStatusDot" class="status-dot" title="" aria-hidden="true"></span>
+        <div class="card-head-text">
+          <h2 class="card-title">Pi speaker</h2>
+          <p id="pzSubtitle" class="subtitle">Loading…</p>
+        </div>
+      </div>
+      <button type="button" id="pzRefresh" class="btn-refresh" style="display: none">
+        Refresh
+      </button>
+    </div>
+    <div class="card-body">
+      <div id="pretzelError" class="err" style="display: none"></div>
+      <div class="vol-row">
+        <span class="vol-icon" aria-hidden="true">🔈</span>
+        <input type="range" id="pzVol" min="0" max="100" value="0" />
+        <span id="pzVolPct" class="vol-pct">0%</span>
+      </div>
+      <div class="speak-block">
+        <label class="speak-label" for="speakText">Speak on Pretzel</label>
+        <textarea
+          id="speakText"
+          rows="3"
+          maxlength="8000"
+          placeholder="Type something for OpenAI TTS on the Pi…"
+        ></textarea>
+        <div class="speak-footer">
+          <span id="speakCount" class="char-count">0/8000</span>
+          <div class="speak-actions">
+            <button type="button" id="weatherBtn" class="btn-secondary">Weather</button>
+            <button type="button" id="speakBtn" class="btn-secondary">Speak</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

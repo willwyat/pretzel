@@ -1,0 +1,14 @@
+{
+  "name": "pretzel-remote-ui",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LAN reverse proxy + static UI for tv-relay and pretzel-server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "http-proxy-middleware": "^3.0.3"
+  }
+}
