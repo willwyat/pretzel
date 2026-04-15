@@ -1,0 +1,75 @@
+# Pretzel
+
+Node services and scripts that run on the **Pretzel** Pi: LG TV relay, Pi speaker API (TTS, volume, weather), and a LAN guest UI that proxies to both.
+
+## Components
+
+| Area | Path | Role | Default port | Systemd example |
+|------|------|------|--------------|-----------------|
+| Pi speaker / TTS / volume / weather API | [pretzel-server/](pretzel-server/) | Express | **3001** | [pretzel-server/pretzel-server.service.example](pretzel-server/pretzel-server.service.example) |
+| LG TV relay (HTTP + WebSocket to TV) | [tv-relay/](tv-relay/) | Express + `ws` | **3000** | [tv-relay/tv-relay.service.example](tv-relay/tv-relay.service.example) |
+| Guest LAN UI + reverse proxy | [remote-ui/](remote-ui/) | Static UI; `/tv` → 3000, `/pretzel` → 3001 | **8080** | [remote-ui/remote-ui.service.example](remote-ui/remote-ui.service.example) |
+| Shell helpers | [scripts/](scripts/) | e.g. `speak.sh` (see `SPEAK_SCRIPT` in pretzel-server) | — | — |
+
+Ports for pretzel-server and tv-relay are set in their `index.js` files unless you add env-based configuration later.
+
+## Traffic flow
+
+Guests on the same Wi‑Fi open the Pi on port **8080**. The UI talks to **relative** URLs `/tv/*` and `/pretzel/*`; `remote-ui` forwards them to localhost **3000** and **3001**.
+
+```mermaid
+flowchart LR
+  Browser[Browser_LAN]
+  RemoteUI[remote-ui_8080]
+  TvRelay[tv-relay_3000]
+  PretzelSrv[pretzel-server_3001]
+  Browser --> RemoteUI
+  RemoteUI --> TvRelay
+  RemoteUI --> PretzelSrv
+```
+
+## Deploy on the Pi (summary)
+
+1. Clone or pull: `cd ~/pretzel && git pull`
+2. Install dependencies where there is a lockfile:
+   - `cd ~/pretzel/pretzel-server && npm ci`
+   - `cd ~/pretzel/tv-relay && npm ci`
+   - `cd ~/pretzel/remote-ui && npm ci`
+3. Install systemd units from the `*.service.example` files (copy to `/etc/systemd/system/`, edit `User` and `WorkingDirectory`), then:
+   - `sudo systemctl daemon-reload`
+   - `sudo systemctl enable --now pretzel-server tv-relay remote-ui`  
+   (enable only the units you use; start **pretzel-server** and **tv-relay** before **remote-ui**.)
+
+Longer comments and pairing notes for tv-relay are in [tv-relay/tv-relay.service.example](tv-relay/tv-relay.service.example) and [remote-ui/remote-ui.service.example](remote-ui/remote-ui.service.example).
+
+## Release version (`VERSION` and git tags)
+
+- **Repo version:** The file [VERSION](VERSION) holds a single semver line (e.g. `1.0.0`). This is the stack-wide release identifier agents should bump when committing (see [AGENTS.md](AGENTS.md)).
+- **Git tags:** To label a release on GitHub, create an **annotated** tag on the release commit, e.g. `git tag -a v1.0.0 -m "Release 1.0.0"` then `git push origin v1.0.0`. Tags appear under the repo’s “Tags”; you can create a **GitHub Release** from a tag for notes and visibility. Prefer tagging intentional releases, not every commit.
+
+## Systemd: which version is running?
+
+Example unit files include an optional env var (commented) you can enable on the Pi:
+
+```ini
+# Environment=PRETZEL_STACK_VERSION=1.0.0
+```
+
+Set the value to match [VERSION](VERSION) after each deploy. Inspect what systemd passed to a unit:
+
+```bash
+systemctl show remote-ui -p Environment
+systemctl show tv-relay -p Environment
+systemctl show pretzel-server -p Environment
+```
+
+**Git commit on the machine (optional):** You can add another line, e.g. `Environment=PRETZEL_GIT_SHA=abc1234`, filled from `git rev-parse --short HEAD` on the Pi when debugging. GitHub commit URL: `https://github.com/<owner>/<repo>/commit/<full-sha>`.
+
+## Quick health checks (on the Pi)
+
+```bash
+curl -sS http://127.0.0.1:3000/tv/status
+curl -sS http://127.0.0.1:3001/pretzel/status
+curl -sS http://127.0.0.1:8080/tv/status
+curl -sS http://127.0.0.1:8080/pretzel/status
+```
