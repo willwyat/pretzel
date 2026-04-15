@@ -1,0 +1,23 @@
+# Copy to /etc/systemd/system/pretzel-tv-relay.service, adjust User and paths, then:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now pretzel-tv-relay
+#
+# This is separate from pretzel-server (port 3001). Wyat NEXT_PUBLIC_TV_RELAY_URL must
+# point at this service (port 3000 by default).
+
+[Unit]
+Description=Pretzel LG TV relay (HTTP :3000 to Wyat; WebSocket to TV)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=william
+WorkingDirectory=/home/william/pretzel/tv-relay
+ExecStart=/usr/bin/node index.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

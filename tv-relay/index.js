@@ -1,6 +1,5 @@
 const express = require("express");
 const dgram = require("dgram");
-const fs = require("fs");
 const WebSocket = require("ws");
 
 // LG TV on this LAN (inline; repo is private):
@@ -21,33 +20,8 @@ const TV_WOL_BROADCAST = (
   process.env.TV_WOL_BROADCAST || "255.255.255.255"
 ).trim();
 
-// #region agent log
-const DEBUG_LOG_PATH = "/Users/will/GitHub/wyat-ai/.cursor/debug-9f555e.log";
-const DEBUG_INGEST =
-  "http://127.0.0.1:7593/ingest/5413b9bf-d401-4859-8955-68a6e93b8414";
-function agentLog(location, message, data, hypothesisId) {
-  const payload = {
-    sessionId: "9f555e",
-    location,
-    message,
-    data,
-    hypothesisId,
-    timestamp: Date.now(),
-  };
-  try {
-    fs.appendFileSync(DEBUG_LOG_PATH, JSON.stringify(payload) + "\n");
-  } catch (_) {}
-  fetch(DEBUG_INGEST, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Debug-Session-Id": "9f555e",
-    },
-    body: JSON.stringify(payload),
-  }).catch(() => {});
-  console.error("[debug-agent]", JSON.stringify(payload));
-}
-// #endregion
+// TV_IP is the WebSocket target only. HTTP routes (e.g. POST /tv/power/on) are served
+// by *this* relay on PORT — not by the TV. Use this Pi's IP or 127.0.0.1 for curl/tests.
 
 function parseMac(macStr) {
   const hex = macStr.replace(/[:-]/g, "").toLowerCase();
@@ -60,7 +34,7 @@ function sendWakeOnLan(macHex) {
   const body = Buffer.alloc(6 + 16 * 6);
   body.fill(0xff, 0, 6);
   for (let i = 6; i < body.length; i += 6) macBuf.copy(body, i);
-  const socket = dgram.createSocket("udp4");
+  const socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
   return new Promise((resolve, reject) => {
     socket.once("error", (e) => {
       try {
@@ -68,16 +42,20 @@ function sendWakeOnLan(macHex) {
       } catch {}
       reject(e);
     });
-    try {
-      socket.setBroadcast(true);
-    } catch (e) {
-      socket.close();
-      return reject(e);
-    }
-    socket.send(body, 0, body.length, 9, TV_WOL_BROADCAST, (err) => {
-      socket.close();
-      if (err) reject(err);
-      else resolve();
+    // Bind before setBroadcast — unbound sockets can throw EBADF on Linux (Node dgram).
+    socket.bind(0, "0.0.0.0", () => {
+      try {
+        socket.setBroadcast(true);
+      } catch (e) {
+        socket.close();
+        reject(e);
+        return;
+      }
+      socket.send(body, 0, body.length, 9, TV_WOL_BROADCAST, (err) => {
+        socket.close();
+        if (err) reject(err);
+        else resolve();
+      });
     });
   });
 }
@@ -262,18 +240,6 @@ app.post("/tv/power/off", async (req, res) => {
 });
 
 app.post("/tv/power/on", async (req, res) => {
-  // #region agent log
-  agentLog(
-    "tv-relay/index.js:powerOn:entry",
-    "POST /tv/power/on handler started",
-    {
-      note: "HTTP must target this Pi (PORT), not TV_IP; TV_IP is for WebSocket only",
-      tvIpConfigured: TV_IP,
-      relayListenPort: PORT,
-    },
-    "H1",
-  );
-  // #endregion
   const macHex = parseMac(TV_WOL_MAC);
   let wolSent = false;
   let turnOnRequested = false;
@@ -296,15 +262,6 @@ app.post("/tv/power/on", async (req, res) => {
       warnings.push(`turnOn: ${e.message}`);
     }
   }
-
-  // #region agent log
-  agentLog(
-    "tv-relay/index.js:powerOn:exit",
-    "POST /tv/power/on handler finished",
-    { wolSent, turnOnRequested, warningCount: warnings.length, will503: !(wolSent || turnOnRequested) },
-    "H3",
-  );
-  // #endregion
 
   if (wolSent || turnOnRequested) {
     return res.json({
@@ -385,4 +342,8 @@ app.get("/tv/status", (req, res) => {
 });
 
 connect();
-app.listen(PORT, "0.0.0.0", () => console.log(`TV relay listening on ${PORT}`));
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(
+    `TV relay listening on ${PORT} (not pretzel-server :3001). Test: curl -sS -X POST http://127.0.0.1:${PORT}/tv/power/on`,
+  );
+});
