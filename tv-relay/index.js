@@ -466,6 +466,21 @@ app.post("/tv/settings", async (req, res) => {
   }
 });
 
+for (const [path, key] of [
+  ["/tv/up", "UP"],
+  ["/tv/down", "DOWN"],
+  ["/tv/left", "LEFT"],
+  ["/tv/right", "RIGHT"],
+]) {
+  app.post(path, async (req, res) => {
+    try {
+      res.json(await sendKey(key));
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+}
+
 app.post("/tv/button", async (req, res) => {
   const { button } = req.body;
   const allowed = [
@@ -518,6 +533,6 @@ app.all("/tv/status", (req, res) => {
 connect();
 app.listen(PORT, "0.0.0.0", () => {
   console.log(
-    `TV relay listening on ${PORT} (not pretzel-server :3001). Status: curl -sS http://127.0.0.1:${PORT}/tv/status | Power on: curl -sS -X POST http://127.0.0.1:${PORT}/tv/power/on`,
+    `TV relay listening on ${PORT} (not pretzel-server :3001). Status: curl -sS http://127.0.0.1:${PORT}/tv/status | D-pad: POST /tv/up|down|left|right | OK: POST /tv/button body {\"button\":\"ENTER\"} | Power on: curl -sS -X POST http://127.0.0.1:${PORT}/tv/power/on`,
   );
 });
