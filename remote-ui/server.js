@@ -1,5 +1,6 @@
 /**
- * Single-port entry for guests: static UI + /tv/* → tv-relay + /pretzel/* and /lifx/* → pretzel-server.
+ * Single-port entry for guests: Vite-built UI in dist/ + /tv/* → tv-relay
+ * + /pretzel/* and /lifx/* → pretzel-server. Run `npm run build` before start.
  */
 const path = require("path");
 const express = require("express");
@@ -41,7 +42,7 @@ app.use(
   }),
 );
 
-app.use(express.static(path.join(__dirname, "public"), { maxAge: "1h" }));
+app.use(express.static(path.join(__dirname, "dist"), { maxAge: "1h" }));
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(

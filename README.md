@@ -1,6 +1,6 @@
 # Pretzel
 
-Node services and scripts that run on the **Pretzel** Pi: LG TV relay, Pi speaker API (TTS, volume, weather, LIFX proxy), and a LAN guest UI that proxies to them.
+Node services and scripts that run on the **Pretzel** Pi: LG TV relay, Pi speaker API (TTS, volume, weather, LIFX proxy), and a LAN guest UI (**Vite + React**, built to `remote-ui/dist/`) that proxies to them.
 
 ## Components
 
@@ -8,7 +8,7 @@ Node services and scripts that run on the **Pretzel** Pi: LG TV relay, Pi speake
 |------|------|------|--------------|-----------------|
 | Pi speaker / TTS / volume / weather / LIFX proxy | [pretzel-server/](pretzel-server/) | Express (`/pretzel/*`, `/lifx/*` on **3001**) | **3001** | [pretzel-server/pretzel-server.service.example](pretzel-server/pretzel-server.service.example) |
 | LG TV relay (HTTP + WebSocket to TV) | [tv-relay/](tv-relay/) | Express + `ws` | **3000** | [tv-relay/tv-relay.service.example](tv-relay/tv-relay.service.example) |
-| Guest LAN UI + reverse proxy | [remote-ui/](remote-ui/) | Static UI; `/tv` → 3000, `/pretzel` and `/lifx` → 3001 | **8080** | [remote-ui/remote-ui.service.example](remote-ui/remote-ui.service.example) |
+| Guest LAN UI + reverse proxy | [remote-ui/](remote-ui/) | Vite + React → `dist/`; `/tv` → 3000, `/pretzel` and `/lifx` → 3001 | **8080** | [remote-ui/remote-ui.service.example](remote-ui/remote-ui.service.example) |
 | Shell helpers | [scripts/](scripts/) | e.g. `speak.sh` (see `SPEAK_SCRIPT` in pretzel-server) | — | — |
 
 Ports for pretzel-server and tv-relay are set in their `index.js` files unless you add env-based configuration later.
@@ -36,7 +36,8 @@ flowchart LR
 2. Install dependencies where there is a lockfile:
    - `cd ~/pretzel/pretzel-server && npm ci`
    - `cd ~/pretzel/tv-relay && npm ci`
-   - `cd ~/pretzel/remote-ui && npm ci`
+   - `cd ~/pretzel/remote-ui && npm ci && npm run build`  
+   (`remote-ui` must be **built** after each pull that changes the UI; `dist/` is gitignored. For local UI work: `cd ~/pretzel/remote-ui && npm run dev` — Vite proxies `/tv`, `/pretzel`, `/lifx` to **3000** / **3001**.)
 3. Install systemd units from the `*.service.example` files (copy to `/etc/systemd/system/`, edit `User` and `WorkingDirectory`), then:
    - `sudo systemctl daemon-reload`
    - `sudo systemctl enable --now pretzel-server tv-relay remote-ui`  
@@ -46,15 +47,15 @@ Longer comments and pairing notes for tv-relay are in [tv-relay/tv-relay.service
 
 ## Release version (`VERSION` and git tags)
 
-- **Repo version:** The file [VERSION](VERSION) holds a single semver line (e.g. `1.2.0`). This is the stack-wide release identifier agents should bump when committing (see [AGENTS.md](AGENTS.md)).
-- **Git tags:** To label a release on GitHub, create an **annotated** tag on the release commit, e.g. `git tag -a v1.2.0 -m "Release 1.2.0"` then `git push origin v1.2.0`. Tags appear under the repo’s “Tags”; you can create a **GitHub Release** from a tag for notes and visibility. Prefer tagging intentional releases, not every commit.
+- **Repo version:** The file [VERSION](VERSION) holds a single semver line (e.g. `1.3.0`). This is the stack-wide release identifier agents should bump when committing (see [AGENTS.md](AGENTS.md)).
+- **Git tags:** To label a release on GitHub, create an **annotated** tag on the release commit, e.g. `git tag -a v1.3.0 -m "Release 1.3.0"` then `git push origin v1.3.0`. Tags appear under the repo’s “Tags”; you can create a **GitHub Release** from a tag for notes and visibility. Prefer tagging intentional releases, not every commit.
 
 ## Systemd: which version is running?
 
 Example unit files include an optional env var (commented) you can enable on the Pi:
 
 ```ini
-# Environment=PRETZEL_STACK_VERSION=1.2.0
+# Environment=PRETZEL_STACK_VERSION=1.3.0
 ```
 
 Set the value to match [VERSION](VERSION) after each deploy. Inspect what systemd passed to a unit:
