@@ -117,6 +117,18 @@ function send(uri, payload = {}) {
   });
 }
 
+/**
+ * getPointerInputSocket often returns a full ws:// URL (port 3000); sometimes a host path.
+ * Do not coerce ws→wss — the pointer endpoint may be plain ws on another port.
+ */
+function pointerInputWebSocketUrl(socketPathRaw, tvIp, mainWssPort) {
+  if (!socketPathRaw || typeof socketPathRaw !== "string") return null;
+  const s = socketPathRaw.trim();
+  if (/^wss?:\/\//i.test(s)) return s;
+  const path = s.startsWith("/") ? s : `/${s}`;
+  return `wss://${tvIp}:${mainWssPort}${path}`;
+}
+
 async function connectInputSocket() {
   if (!ws || ws.readyState !== WebSocket.OPEN) {
     lastInputSocketError = "Main TV WebSocket not open";
@@ -143,13 +155,20 @@ async function connectInputSocket() {
     );
     const socketPath = r?.payload?.socketPath;
     if (!socketPath) {
-      lastInputSocketError =
-        "getPointerInputSocket: no socketPath (TV may deny input or need pairing)";
+      const detail = r?.payload
+        ? JSON.stringify(r.payload).slice(0, 500)
+        : JSON.stringify(r).slice(0, 500);
+      lastInputSocketError = `getPointerInputSocket: no socketPath. payload=${detail}`;
       console.error("No input socket path", JSON.stringify(r));
       scheduleInputSocketRetry(5000);
       return;
     }
-    const url = `wss://${TV_IP}${socketPath}`;
+    const url = pointerInputWebSocketUrl(socketPath, TV_IP, TV_PORT);
+    if (!url) {
+      lastInputSocketError = "getPointerInputSocket: invalid socketPath";
+      scheduleInputSocketRetry(5000);
+      return;
+    }
     inputWs = new WebSocket(url, { rejectUnauthorized: false });
     inputWs.on("open", () => {
       console.log("Input socket connected");
@@ -273,9 +292,31 @@ function connect() {
       console.log("TV:", JSON.stringify(msg));
       if (msg.type === "registered") setTimeout(connectInputSocket, 1000);
       if (msg.id && pendingRequests.has(msg.id)) {
-        const { resolve } = pendingRequests.get(msg.id);
+        const { resolve, reject } = pendingRequests.get(msg.id);
         pendingRequests.delete(msg.id);
-        resolve(msg);
+        if (msg.type === "error") {
+          reject(
+            new Error(
+              typeof msg.error === "string"
+                ? msg.error
+                : msg.message || "TV returned type:error",
+            ),
+          );
+        } else if (
+          msg.payload &&
+          Object.prototype.hasOwnProperty.call(msg.payload, "returnValue") &&
+          msg.payload.returnValue === false
+        ) {
+          reject(
+            new Error(
+              msg.payload.errorText ||
+                msg.payload.errorCode ||
+                "TV denied request (returnValue: false)",
+            ),
+          );
+        } else {
+          resolve(msg);
+        }
       }
     } catch {}
   });
