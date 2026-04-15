@@ -67,6 +67,20 @@ let ws = null;
 let inputWs = null;
 let pendingRequests = new Map();
 let msgId = 1;
+let inputRetryTimer = null;
+/** Set when pointer input setup fails; omitted from /tv/status when null. */
+let lastInputSocketError = null;
+
+function scheduleInputSocketRetry(ms = 4000) {
+  if (inputRetryTimer) clearTimeout(inputRetryTimer);
+  inputRetryTimer = setTimeout(() => {
+    inputRetryTimer = null;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (inputWs && inputWs.readyState === WebSocket.OPEN) return;
+    if (inputWs && inputWs.readyState === WebSocket.CONNECTING) return;
+    connectInputSocket();
+  }, ms);
+}
 
 function sendKey(keyName) {
   return new Promise((resolve, reject) => {
@@ -104,19 +118,56 @@ function send(uri, payload = {}) {
 }
 
 async function connectInputSocket() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    lastInputSocketError = "Main TV WebSocket not open";
+    return;
+  }
+  if (
+    inputWs &&
+    (inputWs.readyState === WebSocket.CONNECTING ||
+      inputWs.readyState === WebSocket.OPEN)
+  ) {
+    return;
+  }
+  if (inputWs) {
+    try {
+      inputWs.removeAllListeners();
+      inputWs.close();
+    } catch {}
+    inputWs = null;
+  }
   try {
+    lastInputSocketError = null;
     const r = await send(
       "ssap://com.webos.service.networkinput/getPointerInputSocket",
     );
     const socketPath = r?.payload?.socketPath;
-    if (!socketPath) return console.error("No input socket path");
+    if (!socketPath) {
+      lastInputSocketError =
+        "getPointerInputSocket: no socketPath (TV may deny input or need pairing)";
+      console.error("No input socket path", JSON.stringify(r));
+      scheduleInputSocketRetry(5000);
+      return;
+    }
     const url = `wss://${TV_IP}${socketPath}`;
     inputWs = new WebSocket(url, { rejectUnauthorized: false });
-    inputWs.on("open", () => console.log("Input socket connected"));
-    inputWs.on("error", (e) => console.error("Input socket error:", e.message));
-    inputWs.on("close", () => console.log("Input socket closed"));
+    inputWs.on("open", () => {
+      console.log("Input socket connected");
+      lastInputSocketError = null;
+    });
+    inputWs.on("error", (e) => {
+      console.error("Input socket error:", e.message);
+      lastInputSocketError = e.message;
+    });
+    inputWs.on("close", () => {
+      console.log("Input socket closed");
+      inputWs = null;
+      scheduleInputSocketRetry(3000);
+    });
   } catch (e) {
+    lastInputSocketError = e.message;
     console.error("Failed to connect input socket:", e.message);
+    scheduleInputSocketRetry(5000);
   }
 }
 
@@ -205,6 +256,15 @@ function connect() {
         },
       }),
     );
+    // If we never see type "registered" (firmware quirks), still try input after main socket is up.
+    setTimeout(() => {
+      if (
+        ws?.readyState === WebSocket.OPEN &&
+        (!inputWs || inputWs.readyState !== WebSocket.OPEN)
+      ) {
+        connectInputSocket();
+      }
+    }, 5000);
   });
 
   ws.on("message", (data) => {
@@ -221,6 +281,10 @@ function connect() {
   });
 
   ws.on("close", () => {
+    if (inputRetryTimer) {
+      clearTimeout(inputRetryTimer);
+      inputRetryTimer = null;
+    }
     console.log("TV disconnected, reconnecting in 5s...");
     inputWs = null;
     setTimeout(connect, 5000);
@@ -370,12 +434,25 @@ app.get("/tv/status", (req, res) => {
   res.json({
     connected: ws?.readyState === WebSocket.OPEN,
     inputConnected: inputWs?.readyState === WebSocket.OPEN,
+    ...(lastInputSocketError != null && lastInputSocketError !== ""
+      ? { lastInputSocketError }
+      : {}),
   });
+});
+
+app.post("/tv/status", (req, res) => {
+  res
+    .status(405)
+    .set("Allow", "GET")
+    .json({
+      error: "Use GET /tv/status",
+      hint: `curl -sS http://127.0.0.1:${PORT}/tv/status`,
+    });
 });
 
 connect();
 app.listen(PORT, "0.0.0.0", () => {
   console.log(
-    `TV relay listening on ${PORT} (not pretzel-server :3001). Test: curl -sS -X POST http://127.0.0.1:${PORT}/tv/power/on`,
+    `TV relay listening on ${PORT} (not pretzel-server :3001). Status: curl -sS http://127.0.0.1:${PORT}/tv/status | Power on: curl -sS -X POST http://127.0.0.1:${PORT}/tv/power/on`,
   );
 });
