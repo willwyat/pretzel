@@ -199,6 +199,18 @@ function minutesUntil(iso) {
   return Math.round((target - now) / 60000);
 }
 
+/** For TTS: total minutes rounded to nearest `step`, then "x hours and y minutes". */
+function formatDurationHoursMinutesRounded(totalMinutes, step = 5) {
+  const rounded = Math.max(0, Math.round(totalMinutes / step) * step);
+  const h = Math.floor(rounded / 60);
+  const m = rounded % 60;
+  if (h === 0 && m === 0) return "less than 5 minutes";
+  const hourPart = h > 0 ? `${h} ${h === 1 ? "hour" : "hours"}` : null;
+  const minPart = m > 0 ? `${m} ${m === 1 ? "minute" : "minutes"}` : null;
+  if (hourPart && minPart) return `${hourPart} and ${minPart}`;
+  return hourPart || minPart;
+}
+
 // Today's full date string: "Tuesday, April 14th" (calendar day in TZ)
 function todayLabel() {
   const d = new Date();
@@ -235,14 +247,16 @@ function buildSpeakWeatherUtterance(wx) {
   const condition = describeWeather(wx.current.weathercode);
   const precip = wx.daily.precipitation_probability_max[0];
   const sunsetStr = fmtTime(wx.daily.sunset[0]);
+  const untilSunsetMins = minutesUntil(wx.daily.sunset[0]);
+  const untilSunsetSpeak = formatDurationHoursMinutesRounded(untilSunsetMins);
 
   let s =
-    `Here's the weather for ${todayLabel()}. It's ${localTime}. ` +
+    `Here's the weather for ${todayLabel()} at ${localTime}. ` +
     `Currently ${temp} degrees celsius and ${condition}.`;
   if (precip >= 40) {
     s += ` There is a ${precip} percent chance of rain today.`;
   }
-  s += ` Sunset is around ${sunsetStr}.`;
+  s += ` Sunset is around ${sunsetStr}, which is in about ${untilSunsetSpeak}.`;
   return s;
 }
 
@@ -563,9 +577,7 @@ app.put("/lifx/lights/states", async (req, res) => {
   if (!token) return;
   const states = req.body?.states;
   if (Array.isArray(states) && states.length > 50) {
-    return res
-      .status(400)
-      .json({ error: "Maximum 50 state entries allowed" });
+    return res.status(400).json({ error: "Maximum 50 state entries allowed" });
   }
   try {
     const upstream = await fetch(`${LIFX_API_BASE}/lights/states`, {
@@ -720,7 +732,7 @@ app.get("/pretzel/speak", (req, res) => {
     return res.status(400).json({
       error: "text is required",
       example:
-        "curl -sS -G http://pretzel.local:3001/pretzel/speak --data-urlencode \"text=How are you? I'm great\"",
+        'curl -sS -G http://pretzel.local:3001/pretzel/speak --data-urlencode "text=How are you? I\'m great"',
       hint: speakHint,
     });
   }
@@ -740,7 +752,7 @@ app.post("/pretzel/speak", async (req, res) => {
     return res.status(400).json({
       error: "text is required",
       example:
-        "curl -sS -G http://pretzel.local:3001/pretzel/speak --data-urlencode \"text=How are you? I'm great\"",
+        'curl -sS -G http://pretzel.local:3001/pretzel/speak --data-urlencode "text=How are you? I\'m great"',
       hint: speakHint,
     });
   }
