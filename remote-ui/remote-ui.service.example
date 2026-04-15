@@ -4,13 +4,13 @@
 #    (use `npm install` if you do not keep a lockfile; `npm ci` is preferred in deploys.)
 #
 # 2. Copy this file to systemd and edit User + WorkingDirectory to match your Pi account and repo path:
-#      sudo cp tv-remote-ui.service.example /etc/systemd/system/tv-remote-ui.service
-#      sudo nano /etc/systemd/system/tv-remote-ui.service
+#      sudo cp ~/pretzel/remote-ui/remote-ui.service.example /etc/systemd/system/remote-ui.service
+#      sudo nano /etc/systemd/system/remote-ui.service
 #
 # 3. Enable and start:
 #      sudo systemctl daemon-reload
-#      sudo systemctl enable --now tv-remote-ui
-#      sudo systemctl status tv-remote-ui
+#      sudo systemctl enable --now remote-ui
+#      sudo systemctl status remote-ui
 #
 # Guest URL (same LAN): http://<pi-ip>:8080/
 # Use a DHCP reservation or mDNS for a stable URL in QR codes.
