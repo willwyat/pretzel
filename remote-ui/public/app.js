@@ -5,7 +5,7 @@ const PRETZEL_SPEAK_MAX_CHARS = 8000;
 
 /**
  * LG TV + Pi speaker remote UI — behavior aligned with Wyat:
- * - TVCard.tsx / PretzelSpeakerCard.tsx (fetch paths use same /tv/* and /pretzel/* as tv-relay.ts + pretzel-server client)
+ * - TVCard.tsx / PretzelSpeakerCard.tsx (fetch paths use same /tv/* and /pretzel/* as tv-relay.ts + pretzel-server client); LIFX uses /lifx/* via remote-ui proxy.
  */
 
 function $(id) {
@@ -33,6 +33,11 @@ let pzLocalVolume = 0;
 let pzDragging = false;
 let speakSending = false;
 let weatherSending = false;
+
+let lifxLoading = true;
+let lifxOffline = false;
+let lifxLights = [];
+let lifxTogglingId = null;
 
 async function fetchRes(url, opts) {
   const r = await fetch(url, {
@@ -63,6 +68,13 @@ function setTvErr(msg) {
 
 function setPzErr(msg) {
   const e = $("pretzelError");
+  e.textContent = msg || "";
+  e.style.display = msg ? "block" : "none";
+}
+
+function setLifxErr(msg) {
+  const e = $("lifxError");
+  if (!e) return;
   e.textContent = msg || "";
   e.style.display = msg ? "block" : "none";
 }
@@ -198,6 +210,165 @@ function renderPz() {
   $("speakBtn").disabled =
     pzOffline || speakSending || ta.value.trim().length === 0;
   $("speakBtn").textContent = speakSending ? "Sending…" : "Speak";
+}
+
+function lifxErrVisible() {
+  const e = $("lifxError");
+  return !!(e && e.textContent && e.style.display !== "none");
+}
+
+function renderLifx() {
+  const dot = $("lifxStatusDot");
+  const sub = $("lifxSubtitle");
+  if (!dot || !sub) return;
+
+  if (lifxOffline) {
+    dot.className = "status-dot bad";
+    dot.title = "Could not reach Pi";
+  } else if (lifxErrVisible()) {
+    dot.className = "status-dot warn";
+    dot.title = "LIFX or configuration issue";
+  } else if (!lifxLoading) {
+    dot.className = "status-dot ok";
+    dot.title = "Connected";
+  } else {
+    dot.className = "status-dot";
+    dot.title = "";
+  }
+
+  if (lifxLoading && lifxLights.length === 0) {
+    sub.textContent = "Loading…";
+  } else if (lifxOffline) {
+    sub.textContent = "Could not reach Pretzel";
+  } else if (lifxErrVisible()) {
+    sub.textContent = "See error below";
+  } else {
+    sub.textContent =
+      lifxLights.length === 0
+        ? "No lights in account"
+        : `${lifxLights.length} light${lifxLights.length === 1 ? "" : "s"}`;
+  }
+
+  const refreshBtn = $("lifxRefresh");
+  if (refreshBtn) refreshBtn.style.display = lifxLoading ? "none" : "inline-block";
+
+  const list = $("lifxList");
+  if (!list) return;
+  list.textContent = "";
+  if (lifxLoading && lifxLights.length === 0) return;
+
+  for (const light of lifxLights) {
+    const id = light.id;
+    if (id == null || id === "") continue;
+
+    const row = document.createElement("div");
+    row.className = "lifx-row";
+
+    const meta = document.createElement("div");
+    meta.className = "lifx-row-meta";
+    const labelEl = document.createElement("div");
+    labelEl.className = "lifx-row-name";
+    const name =
+      typeof light.label === "string" && light.label.trim()
+        ? light.label.trim()
+        : String(id);
+    labelEl.textContent = name;
+    const powerEl = document.createElement("span");
+    powerEl.className = "lifx-row-power";
+    const on = String(light.power || "").toLowerCase() === "on";
+    powerEl.textContent = on ? "On" : "Off";
+    meta.appendChild(labelEl);
+    meta.appendChild(powerEl);
+
+    const actions = document.createElement("div");
+    actions.className = "lifx-row-actions";
+    const btnOn = document.createElement("button");
+    btnOn.type = "button";
+    btnOn.className = "btn-secondary lifx-btn";
+    btnOn.textContent = "On";
+    const btnOff = document.createElement("button");
+    btnOff.type = "button";
+    btnOff.className = "btn-secondary lifx-btn";
+    btnOff.textContent = "Off";
+    const busy = lifxTogglingId === id;
+    const blocked = lifxOffline || lifxLoading || busy;
+    btnOn.disabled = blocked || on;
+    btnOff.disabled = blocked || !on;
+    btnOn.addEventListener("click", () => void setLifxPower(id, "on"));
+    btnOff.addEventListener("click", () => void setLifxPower(id, "off"));
+    actions.appendChild(btnOn);
+    actions.appendChild(btnOff);
+
+    row.appendChild(meta);
+    row.appendChild(actions);
+    list.appendChild(row);
+  }
+}
+
+async function fetchLifxLights() {
+  setLifxErr("");
+  lifxLoading = true;
+  renderLifx();
+  try {
+    const res = await fetchRes("/lifx/lights/all");
+    if (!res.ok) {
+      lifxOffline = false;
+      const raw = res.data && res.data.error;
+      const msg =
+        typeof raw === "string"
+          ? raw
+          : res.status === 500
+            ? "LIFX not configured on Pi (set LIFX_API_TOKEN)"
+            : `Request failed (${res.status})`;
+      setLifxErr(msg);
+      lifxLights = [];
+      return;
+    }
+    if (!Array.isArray(res.data)) {
+      lifxOffline = false;
+      setLifxErr("Unexpected response from Pi");
+      lifxLights = [];
+      return;
+    }
+    lifxOffline = false;
+    lifxLights = res.data;
+  } catch {
+    lifxOffline = true;
+    lifxLights = [];
+    setLifxErr("Could not reach Pretzel");
+  } finally {
+    lifxLoading = false;
+    renderLifx();
+  }
+}
+
+async function setLifxPower(lightId, power) {
+  if (lifxTogglingId != null) return;
+  lifxTogglingId = lightId;
+  renderLifx();
+  const path = `/lifx/lights/${encodeURIComponent(`id:${lightId}`)}/state`;
+  try {
+    const res = await fetchRes(path, {
+      method: "PUT",
+      body: JSON.stringify({ power }),
+    });
+    if (!res.ok) {
+      const raw = res.data && res.data.error;
+      setLifxErr(
+        typeof raw === "string"
+          ? raw
+          : `Could not change light (${res.status})`,
+      );
+      return;
+    }
+    setLifxErr("");
+    await fetchLifxLights();
+  } catch {
+    setLifxErr("Could not reach Pretzel");
+  } finally {
+    lifxTogglingId = null;
+    renderLifx();
+  }
 }
 
 async function fetchAllTv() {
@@ -453,6 +624,10 @@ function wire() {
   $("btnHome").addEventListener("click", () => sendRemote("/tv/home"));
   $("btnBack").addEventListener("click", () => sendRemote("/tv/back"));
   $("btnSettings").addEventListener("click", () => sendRemote("/tv/settings"));
+
+  $("lifxRefresh").addEventListener("click", () => {
+    void fetchLifxLights();
+  });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -461,6 +636,8 @@ document.addEventListener("DOMContentLoaded", () => {
   wire();
   renderTv();
   renderPz();
+  renderLifx();
   void fetchAllTv();
   void fetchPzVolume();
+  void fetchLifxLights();
 });

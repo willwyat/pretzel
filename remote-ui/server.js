@@ -1,5 +1,5 @@
 /**
- * Single-port entry for guests: static UI + /tv/* → tv-relay + /pretzel/* → pretzel-server.
+ * Single-port entry for guests: static UI + /tv/* → tv-relay + /pretzel/* and /lifx/* → pretzel-server.
  */
 const path = require("path");
 const express = require("express");
@@ -12,8 +12,8 @@ const PRETZEL_SERVER =
 
 const app = express();
 
-// Express strips the mount path (/tv, /pretzel) before the proxy sees it, so we
-// put the prefix back — upstream expects /tv/* and /pretzel/*, not bare /status.
+// Express strips the mount path before the proxy sees it, so we put the prefix
+// back — upstream expects /tv/*, /pretzel/*, /lifx/*, not bare paths.
 app.use(
   "/tv",
   createProxyMiddleware({
@@ -32,10 +32,19 @@ app.use(
   }),
 );
 
+app.use(
+  "/lifx",
+  createProxyMiddleware({
+    target: PRETZEL_SERVER,
+    changeOrigin: true,
+    pathRewrite: (p) => "/lifx" + p,
+  }),
+);
+
 app.use(express.static(path.join(__dirname, "public"), { maxAge: "1h" }));
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(
-    `Pretzel remote UI + proxy on ${PORT} → TV ${TV_RELAY} | pretzel ${PRETZEL_SERVER}`,
+    `Pretzel remote UI + proxy on ${PORT} → TV ${TV_RELAY} | pretzel+LIFX ${PRETZEL_SERVER}`,
   );
 });

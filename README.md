@@ -1,6 +1,6 @@
 # Pretzel
 
-Node services and scripts that run on the **Pretzel** Pi: LG TV relay, Pi speaker API (TTS, volume, weather), and a LAN guest UI that proxies to both.
+Node services and scripts that run on the **Pretzel** Pi: LG TV relay, Pi speaker API (TTS, volume, weather, LIFX proxy), and a LAN guest UI that proxies to them.
 
 ## Components
 
@@ -8,16 +8,16 @@ Node services and scripts that run on the **Pretzel** Pi: LG TV relay, Pi speake
 |------|------|------|--------------|-----------------|
 | Pi speaker / TTS / volume / weather / LIFX proxy | [pretzel-server/](pretzel-server/) | Express (`/pretzel/*`, `/lifx/*` on **3001**) | **3001** | [pretzel-server/pretzel-server.service.example](pretzel-server/pretzel-server.service.example) |
 | LG TV relay (HTTP + WebSocket to TV) | [tv-relay/](tv-relay/) | Express + `ws` | **3000** | [tv-relay/tv-relay.service.example](tv-relay/tv-relay.service.example) |
-| Guest LAN UI + reverse proxy | [remote-ui/](remote-ui/) | Static UI; `/tv` → 3000, `/pretzel` → 3001 | **8080** | [remote-ui/remote-ui.service.example](remote-ui/remote-ui.service.example) |
+| Guest LAN UI + reverse proxy | [remote-ui/](remote-ui/) | Static UI; `/tv` → 3000, `/pretzel` and `/lifx` → 3001 | **8080** | [remote-ui/remote-ui.service.example](remote-ui/remote-ui.service.example) |
 | Shell helpers | [scripts/](scripts/) | e.g. `speak.sh` (see `SPEAK_SCRIPT` in pretzel-server) | — | — |
 
 Ports for pretzel-server and tv-relay are set in their `index.js` files unless you add env-based configuration later.
 
-**LIFX (optional):** Set `LIFX_API_TOKEN` on the Pi for `/lifx/*` (LIFX HTTP API proxy). Optional `LIFX_API_URL` defaults to `https://api.lifx.com/v1`. These routes are on port **3001** (not under `/pretzel`); `remote-ui` on **8080** does not proxy `/lifx` unless you add that separately.
+**LIFX (optional):** Set `LIFX_API_TOKEN` on the Pi for `/lifx/*` on pretzel-server (**3001**). Optional `LIFX_API_URL` defaults to `https://api.lifx.com/v1`. Guests on **8080** use the same-origin path `/lifx/*` (proxied to **3001** by `remote-ui`).
 
 ## Traffic flow
 
-Guests on the same Wi‑Fi open the Pi on port **8080**. The UI talks to **relative** URLs `/tv/*` and `/pretzel/*`; `remote-ui` forwards them to localhost **3000** and **3001**.
+Guests on the same Wi‑Fi open the Pi on port **8080**. The UI talks to **relative** URLs `/tv/*`, `/pretzel/*`, and `/lifx/*`; `remote-ui` forwards TV to **3000** and pretzel-server (speaker + LIFX) to **3001**.
 
 ```mermaid
 flowchart LR
@@ -46,15 +46,15 @@ Longer comments and pairing notes for tv-relay are in [tv-relay/tv-relay.service
 
 ## Release version (`VERSION` and git tags)
 
-- **Repo version:** The file [VERSION](VERSION) holds a single semver line (e.g. `1.1.0`). This is the stack-wide release identifier agents should bump when committing (see [AGENTS.md](AGENTS.md)).
-- **Git tags:** To label a release on GitHub, create an **annotated** tag on the release commit, e.g. `git tag -a v1.1.0 -m "Release 1.1.0"` then `git push origin v1.1.0`. Tags appear under the repo’s “Tags”; you can create a **GitHub Release** from a tag for notes and visibility. Prefer tagging intentional releases, not every commit.
+- **Repo version:** The file [VERSION](VERSION) holds a single semver line (e.g. `1.2.0`). This is the stack-wide release identifier agents should bump when committing (see [AGENTS.md](AGENTS.md)).
+- **Git tags:** To label a release on GitHub, create an **annotated** tag on the release commit, e.g. `git tag -a v1.2.0 -m "Release 1.2.0"` then `git push origin v1.2.0`. Tags appear under the repo’s “Tags”; you can create a **GitHub Release** from a tag for notes and visibility. Prefer tagging intentional releases, not every commit.
 
 ## Systemd: which version is running?
 
 Example unit files include an optional env var (commented) you can enable on the Pi:
 
 ```ini
-# Environment=PRETZEL_STACK_VERSION=1.1.0
+# Environment=PRETZEL_STACK_VERSION=1.2.0
 ```
 
 Set the value to match [VERSION](VERSION) after each deploy. Inspect what systemd passed to a unit:
@@ -74,4 +74,5 @@ curl -sS http://127.0.0.1:3000/tv/status
 curl -sS http://127.0.0.1:3001/pretzel/status
 curl -sS http://127.0.0.1:8080/tv/status
 curl -sS http://127.0.0.1:8080/pretzel/status
+curl -sS http://127.0.0.1:8080/lifx/scenes
 ```

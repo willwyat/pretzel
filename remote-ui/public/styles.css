@@ -256,3 +256,50 @@ textarea {
 .char-count { font-size: 0.75rem; color: var(--muted); }
 .speak-block textarea { margin-bottom: 0; }
 .power-armed { color: var(--warn); font-size: 0.85rem; margin-top: 0.5rem; }
+
+.lifx-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.lifx-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.lifx-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.lifx-row-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.lifx-row-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  word-break: break-word;
+}
+.lifx-row-power {
+  font-size: 0.6875rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.lifx-row-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+button.lifx-btn {
+  min-height: 2.25rem;
+  min-width: 3.25rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8125rem;
+}
