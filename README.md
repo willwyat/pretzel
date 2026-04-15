@@ -7,7 +7,7 @@ Node services and scripts that run on the **Pretzel** Pi: LG TV relay, Pi speake
 | Area | Path | Role | Default port | Systemd example |
 |------|------|------|--------------|-----------------|
 | Pi speaker / TTS / volume / weather / LIFX proxy | [pretzel-server/](pretzel-server/) | Express (`/pretzel/*`, `/lifx/*` on **3001**) | **3001** | [pretzel-server/pretzel-server.service.example](pretzel-server/pretzel-server.service.example) |
-| LG TV relay (HTTP + WebSocket to TV) | [tv-relay/](tv-relay/) | Express + `ws` | **3000** | [tv-relay/tv-relay.service.example](tv-relay/tv-relay.service.example) |
+| LG TV relay (HTTP + WebSocket to TV) | [tv-relay/](tv-relay/) | Express + `ws`; `GET /tv/status` adds `screenOn` via LG `getPowerState` when the main socket is up (standby can leave the socket open) | **3000** | [tv-relay/tv-relay.service.example](tv-relay/tv-relay.service.example) |
 | Guest LAN UI + reverse proxy | [remote-ui/](remote-ui/) | Vite + React → `dist/`; `/tv` → 3000, `/pretzel` and `/lifx` → 3001 | **8080** | [remote-ui/remote-ui.service.example](remote-ui/remote-ui.service.example) |
 | Shell helpers | [scripts/](scripts/) | e.g. `speak.sh` (see `SPEAK_SCRIPT` in pretzel-server) | — | — |
 
@@ -47,15 +47,15 @@ Longer comments and pairing notes for tv-relay are in [tv-relay/tv-relay.service
 
 ## Release version (`VERSION` and git tags)
 
-- **Repo version:** The file [VERSION](VERSION) holds a single semver line (e.g. `1.3.6`). This is the stack-wide release identifier agents should bump when committing (see [AGENTS.md](AGENTS.md)).
-- **Git tags:** To label a release on GitHub, create an **annotated** tag on the release commit, e.g. `git tag -a v1.3.6 -m "Release 1.3.6"` then `git push origin v1.3.6`. Tags appear under the repo’s “Tags”; you can create a **GitHub Release** from a tag for notes and visibility. Prefer tagging intentional releases, not every commit.
+- **Repo version:** The file [VERSION](VERSION) holds a single semver line (e.g. `1.3.7`). This is the stack-wide release identifier agents should bump when committing (see [AGENTS.md](AGENTS.md)).
+- **Git tags:** To label a release on GitHub, create an **annotated** tag on the release commit, e.g. `git tag -a v1.3.7 -m "Release 1.3.7"` then `git push origin v1.3.7`. Tags appear under the repo’s “Tags”; you can create a **GitHub Release** from a tag for notes and visibility. Prefer tagging intentional releases, not every commit.
 
 ## Systemd: which version is running?
 
 Example unit files include an optional env var (commented) you can enable on the Pi:
 
 ```ini
-# Environment=PRETZEL_STACK_VERSION=1.3.6
+# Environment=PRETZEL_STACK_VERSION=1.3.7
 ```
 
 Set the value to match [VERSION](VERSION) after each deploy. Inspect what systemd passed to a unit:

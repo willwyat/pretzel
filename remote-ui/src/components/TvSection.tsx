@@ -4,6 +4,9 @@ import { fetchJson } from "../lib/fetchJson";
 interface TvStatusBody {
   connected?: boolean;
   inputConnected?: boolean;
+  /** From tv-relay + LG getPowerState; omitted if query failed (fall back to socket only). */
+  screenOn?: boolean;
+  powerState?: string;
 }
 
 interface TvVolumeBody {
@@ -16,7 +19,10 @@ interface TvVolumeBody {
 
 export function TvSection() {
   const [relayOffline, setRelayOffline] = useState(false);
+  /** Main control WebSocket to TV (can stay open in LG standby). */
   const [connected, setConnected] = useState(false);
+  /** LG getPowerState; undefined = relay omitted field (use socket-only fallback). */
+  const [screenTvOn, setScreenTvOn] = useState<boolean | undefined>(undefined);
   const [inputConnected, setInputConnected] = useState(false);
   const [volume, setVolume] = useState(0);
   const [maxVolume, setMaxVolume] = useState(100);
@@ -37,7 +43,11 @@ export function TvSection() {
     }
   }, []);
 
-  type TvFetchSnapshot = { connected: boolean; relayReachable: boolean };
+  type TvFetchSnapshot = {
+    tvOn: boolean;
+    relayReachable: boolean;
+    socketConnected: boolean;
+  };
 
   const fetchAll = useCallback(
     async (opts?: { quiet?: boolean }): Promise<TvFetchSnapshot> => {
@@ -53,13 +63,23 @@ export function TvSection() {
         if (!statusRes.ok) {
           setRelayOffline(true);
           setConnected(false);
-          return { connected: false, relayReachable: false };
+          setScreenTvOn(undefined);
+          return {
+            tvOn: false,
+            relayReachable: false,
+            socketConnected: false,
+          };
         }
         const status = statusRes.data as TvStatusBody;
         setRelayOffline(false);
         const isConnected = !!status.connected;
         setConnected(isConnected);
         setInputConnected(!!status.inputConnected);
+        const explicitScreen =
+          typeof status.screenOn === "boolean" ? status.screenOn : undefined;
+        setScreenTvOn(explicitScreen);
+        const tvOn =
+          isConnected && (explicitScreen !== undefined ? explicitScreen : true);
         if (volRes.ok) {
           const volJson = volRes.data as TvVolumeBody;
           const vs = volJson.volumeStatus;
@@ -72,11 +92,20 @@ export function TvSection() {
             }
           }
         }
-        return { connected: isConnected, relayReachable: true };
+        return {
+          tvOn,
+          relayReachable: true,
+          socketConnected: isConnected,
+        };
       } catch {
         setRelayOffline(true);
         setConnected(false);
-        return { connected: false, relayReachable: false };
+        setScreenTvOn(undefined);
+        return {
+          tvOn: false,
+          relayReachable: false,
+          socketConnected: false,
+        };
       } finally {
         if (!quiet) setLoading(false);
       }
@@ -119,10 +148,14 @@ export function TvSection() {
     };
   }, [powerOffArmed]);
 
+  /** Picture / interactive on (LG getPowerState Active), not just WebSocket up. */
+  const tvOn =
+    connected && (typeof screenTvOn === "boolean" ? screenTvOn : true);
+
   const controlsDisabled =
-    relayOffline || !connected || loading || turningOff;
+    relayOffline || !tvOn || loading || turningOff;
   const remoteDisabled =
-    relayOffline || !connected || loading || turningOff || turningOn;
+    relayOffline || !tvOn || loading || turningOff || turningOn;
 
   const remoteBtnClass =
     "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-gray-600 text-gray-300 transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40";
@@ -185,9 +218,10 @@ export function TvSection() {
       .then(async (r) => {
         setTurningOff(false);
         const snap = await fetchAll();
-        if (!r.ok || !snap.relayReachable || !snap.connected) return;
+        if (!r.ok || !snap.relayReachable || !snap.tvOn) return;
         startSyncPoll(
-          (s) => !s.connected || !s.relayReachable,
+          (s) =>
+            !s.tvOn || !s.socketConnected || !s.relayReachable,
           45_000,
           1_500,
         );
@@ -199,16 +233,16 @@ export function TvSection() {
   };
 
   const handlePowerOnClick = () => {
-    if (relayOffline || loading || turningOn || connected) return;
+    if (relayOffline || loading || turningOn || tvOn) return;
     clearSyncPoll();
     setTurningOn(true);
     void fetchJson("/tv/power/on", { method: "POST" })
       .then(async (r) => {
         setTurningOn(false);
         const snap = await fetchAll();
-        if (!r.ok || !snap.relayReachable || snap.connected) return;
+        if (!r.ok || !snap.relayReachable || snap.tvOn) return;
         startSyncPoll(
-          (s) => s.connected || !s.relayReachable,
+          (s) => s.tvOn || !s.relayReachable,
           120_000,
           2_500,
         );
@@ -226,9 +260,11 @@ export function TvSection() {
 
   const statusDotClass = relayOffline
     ? "bg-red-500"
-    : connected
-      ? "bg-emerald-500"
-      : "bg-red-500";
+    : !connected
+      ? "bg-red-500"
+      : tvOn
+        ? "bg-emerald-500"
+        : "bg-amber-500";
 
   return (
     <section className="rounded-xl border border-gray-700 bg-gray-900">
@@ -239,9 +275,11 @@ export function TvSection() {
             title={
               relayOffline
                 ? "Relay offline"
-                : connected
-                  ? "Connected"
-                  : "Not connected"
+                : !connected
+                  ? "Not connected"
+                  : tvOn
+                    ? "On (Active)"
+                    : "Standby (socket up, screen not Active)"
             }
             aria-hidden
           />
@@ -253,6 +291,8 @@ export function TvSection() {
               <p className="text-xs text-gray-500">TV relay offline</p>
             ) : !connected ? (
               <p className="text-xs text-gray-500">TV not connected</p>
+            ) : !tvOn ? (
+              <p className="text-xs text-gray-500">TV standby</p>
             ) : (
               <p className="text-xs text-gray-400">
                 {inputConnected ? "Source connected" : "No source"}
@@ -321,7 +361,7 @@ export function TvSection() {
           </button>
         </div>
 
-        {connected && (
+        {tvOn && (
           <div className="mt-4 border-t border-gray-700 pt-4">
             <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-gray-500">
               Remote
@@ -411,7 +451,7 @@ export function TvSection() {
         )}
 
         <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-gray-700 pt-4">
-          {!connected && (
+          {!tvOn && (
             <>
               {turningOn ? (
                 <span className="text-xs text-gray-400">Waking TV…</span>

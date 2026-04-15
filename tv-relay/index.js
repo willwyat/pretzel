@@ -522,23 +522,46 @@ app.post("/tv/button", async (req, res) => {
 });
 
 // app.all so POST (and other non-GET) always hit this handler — avoids Express’s HTML "Cannot POST".
-app.all("/tv/status", (req, res) => {
-  if (req.method === "GET") {
-    return res.json({
-      connected: ws?.readyState === WebSocket.OPEN,
-      inputConnected: inputWs?.readyState === WebSocket.OPEN,
-      ...(lastInputSocketError != null && lastInputSocketError !== ""
-        ? { lastInputSocketError }
-        : {}),
-    });
+app.all("/tv/status", async (req, res) => {
+  if (req.method !== "GET") {
+    return res
+      .status(405)
+      .set("Allow", "GET")
+      .json({
+        error: "Use GET /tv/status",
+        hint: `curl -sS http://127.0.0.1:${PORT}/tv/status`,
+      });
   }
-  res
-    .status(405)
-    .set("Allow", "GET")
-    .json({
-      error: "Use GET /tv/status",
-      hint: `curl -sS http://127.0.0.1:${PORT}/tv/status`,
+  const socketConnected = ws?.readyState === WebSocket.OPEN;
+  const inputOk = inputWs?.readyState === WebSocket.OPEN;
+  const base = {
+    connected: socketConnected,
+    inputConnected: inputOk,
+    ...(lastInputSocketError != null && lastInputSocketError !== ""
+      ? { lastInputSocketError }
+      : {}),
+  };
+  // Main WS can stay open in standby / quick-start; "connected" alone is not "TV is on".
+  if (!socketConnected) {
+    return res.json({ ...base, screenOn: false });
+  }
+  try {
+    const r = await send(
+      "ssap://com.webos.service.tvpower/power/getPowerState",
+      {},
+    );
+    const state = r?.payload?.state;
+    const powerState = typeof state === "string" ? state : undefined;
+    const screenOn = powerState === "Active";
+    return res.json({
+      ...base,
+      ...(powerState !== undefined ? { powerState } : {}),
+      screenOn,
     });
+  } catch (e) {
+    // Omit screenOn so clients fall back to socket-only semantics (older firmware / errors).
+    return res.json(base);
+  }
 });
 
 connect();
