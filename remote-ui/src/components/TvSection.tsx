@@ -36,23 +36,27 @@ export function TvSection() {
         fetchJson("/tv/status"),
         fetchJson("/tv/volume"),
       ]);
-      if (!statusRes.ok || !volRes.ok) {
+      // Status answers "is the relay up + is the TV socket open?". Volume uses the TV
+      // socket and returns 500 when disconnected — that must not imply relay offline.
+      if (!statusRes.ok) {
         setRelayOffline(true);
         setConnected(false);
         return;
       }
       const status = statusRes.data as TvStatusBody;
-      const volJson = volRes.data as TvVolumeBody;
       setRelayOffline(false);
       setConnected(!!status.connected);
       setInputConnected(!!status.inputConnected);
-      const vs = volJson.volumeStatus;
-      if (vs && typeof vs.volume === "number") {
-        setVolume(vs.volume);
-        setLocalVolume(vs.volume);
-        setMuted(!!vs.muteStatus);
-        if (typeof vs.maxVolume === "number" && vs.maxVolume > 0) {
-          setMaxVolume(vs.maxVolume);
+      if (volRes.ok) {
+        const volJson = volRes.data as TvVolumeBody;
+        const vs = volJson.volumeStatus;
+        if (vs && typeof vs.volume === "number") {
+          setVolume(vs.volume);
+          setLocalVolume(vs.volume);
+          setMuted(!!vs.muteStatus);
+          if (typeof vs.maxVolume === "number" && vs.maxVolume > 0) {
+            setMaxVolume(vs.maxVolume);
+          }
         }
       }
     } catch {
@@ -186,7 +190,7 @@ export function TvSection() {
             {loading ? (
               <p className="text-xs text-gray-400">Loading…</p>
             ) : relayOffline ? (
-              <p className="text-xs text-gray-500">Pretzel offline</p>
+              <p className="text-xs text-gray-500">TV relay offline</p>
             ) : !connected ? (
               <p className="text-xs text-gray-500">TV not connected</p>
             ) : (
