@@ -1,9 +1,19 @@
 const express = require("express");
 const { execFile } = require("child_process");
+const { join } = require("path");
 const cron = require("node-cron");
 
 const PORT = 3001;
 const SPEAK_SCRIPT = "/home/william/pretzel/scripts/speak.sh";
+
+const REMINDER_SFX_START = join(__dirname, "pretzel-fx_reminder-start.mp3");
+const REMINDER_SFX_END = join(__dirname, "pretzel-fx_reminder-end.mp3");
+/** ALSA output for mpg123; default matches scripts/speak.sh `-a hw:2,0`. */
+const MPG123_DEVICE =
+  typeof process.env.PRETZEL_MPG123_DEVICE === "string" &&
+  process.env.PRETZEL_MPG123_DEVICE.trim() !== ""
+    ? process.env.PRETZEL_MPG123_DEVICE.trim()
+    : "hw:2,0";
 
 // ── Weather config ─────────────────────────────────────────────
 const LAT = 40.71;
@@ -111,6 +121,45 @@ function speak(text) {
   execFile(SPEAK_SCRIPT, [text], (err) => {
     if (err) console.error("speak error:", err.message);
   });
+}
+
+function execFileAsync(file, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    execFile(file, args, options, (err, stdout, stderr) => {
+      if (err) reject(err);
+      else resolve({ stdout, stderr });
+    });
+  });
+}
+
+function playReminderSfx(mp3Path) {
+  return execFileAsync("mpg123", ["-q", "-a", MPG123_DEVICE, mp3Path], {
+    timeout: 60_000,
+  });
+}
+
+function speakAsync(text) {
+  return new Promise((resolve) => {
+    execFile(SPEAK_SCRIPT, [text], (err) => {
+      if (err) console.error("speak error:", err.message);
+      resolve();
+    });
+  });
+}
+
+/** Start/end chimes around TTS for scheduled reminders and speak-weather. */
+async function speakWithReminderSfx(text) {
+  try {
+    await playReminderSfx(REMINDER_SFX_START);
+  } catch (e) {
+    console.error("reminder start sfx:", e.message);
+  }
+  await speakAsync(text);
+  try {
+    await playReminderSfx(REMINDER_SFX_END);
+  } catch (e) {
+    console.error("reminder end sfx:", e.message);
+  }
 }
 
 // ── Weather fetch ──────────────────────────────────────────────
@@ -251,7 +300,7 @@ function buildSpeakWeatherUtterance(wx) {
   const untilSunsetSpeak = formatDurationHoursMinutesRounded(untilSunsetMins);
 
   let s =
-    `Here's the weather for ${todayLabel()} at ${localTime}. ` +
+    `Here's the weather for ${todayLabel()} ${localTime}. ` +
     `Currently ${temp} degrees celsius and ${condition}.`;
   if (precip >= 40) {
     s += ` There is a ${precip} percent chance of rain today.`;
@@ -297,8 +346,8 @@ async function refreshSunsetReminder() {
 
   sunsetReminderTask = cron.schedule(
     `${minute} ${hour} * * *`,
-    () => {
-      speak(
+    async () => {
+      await speakWithReminderSfx(
         `Good evening! Time is now ${sunsetTimeStr}. ` +
           `The sun is setting now. Take a look outside for the amazing sunset view!`,
       );
@@ -325,14 +374,14 @@ cron.schedule(
           ? ` There's a ${precip} percent chance of rain today, so keep an umbrella handy.`
           : "";
 
-      speak(
+      await speakWithReminderSfx(
         `Good morning! Today is ${todayLabel()}. Time is now 9:30 AM. ` +
           `Today's weather is ${condition}, with temperatures around ${temp} degrees celsius.${rainNote} ` +
           `Oh and also — it's mealtime for Sugar and Spice. Feed them everything nice!!!`,
       );
     } catch (e) {
       console.error("9:30 reminder error:", e.message);
-      speak(
+      await speakWithReminderSfx(
         "Good morning! Time is now 9:30 AM. Oh and also — it's mealtime for Sugar and Spice. Feed them everything nice!!!",
       );
     }
@@ -356,14 +405,14 @@ cron.schedule(
           ? ` There's a ${precip} percent chance of rain this afternoon.`
           : " Low chance of rain today.";
 
-      speak(
+      await speakWithReminderSfx(
         `Good day! Time is now 12 o'clock at noon. ` +
           `Today's weather is ${condition}. It's about ${temp} degrees out.${rainNote} ` +
           `Please drink more water.`,
       );
     } catch (e) {
       console.error("12pm reminder error:", e.message);
-      speak(
+      await speakWithReminderSfx(
         "Good day! Time is now 12 o'clock at noon. Please drink more water.",
       );
     }
@@ -381,14 +430,14 @@ cron.schedule(
         tempAtHour(wx.hourly, 15) ?? Math.round(wx.current.temperature_2m);
       const sunsetStr = fmtTime(wx.daily.sunset[0]);
 
-      speak(
+      await speakWithReminderSfx(
         `Good afternoon! Time is now 3 o'clock. The sun will set at around ${sunsetStr} this evening. ` +
           `It's ${temp} degrees out. ` +
           `Oh and also — mealtime for Sugar and Spice. Feed them everything nice!!!`,
       );
     } catch (e) {
       console.error("3pm reminder error:", e.message);
-      speak(
+      await speakWithReminderSfx(
         "Good afternoon! Time is now 3 o'clock. Oh and also — mealtime for Sugar and Spice. Feed them everything nice!!!",
       );
     }
@@ -437,7 +486,7 @@ cron.schedule(
           ? ` And there might be showers later tonight, around ${maxPrecip} percent chance.`
           : "";
 
-      speak(
+      await speakWithReminderSfx(
         `Good afternoon! Time is now 6 o'clock. Time is now 6 o'clock! ` +
           `The sun will set ${sunsetCountdown}. ` +
           `It's ${temp} degrees out.${rainNote} ` +
@@ -445,7 +494,7 @@ cron.schedule(
       );
     } catch (e) {
       console.error("6pm reminder error:", e.message);
-      speak(
+      await speakWithReminderSfx(
         "Good afternoon! Time is now 6 o'clock. Time is now 6 o'clock! Oh and also — it's mealtime for Sugar and Spice. Feed them everything nice!!!",
       );
     }
@@ -469,8 +518,8 @@ cron.schedule(
 // 9:00 PM — wind down + supplements + cats
 cron.schedule(
   "0 21 * * *",
-  () => {
-    speak(
+  async () => {
+    await speakWithReminderSfx(
       `Good evening! Time is now 9 o'clock. Time is now 9 o'clock! ` +
         `Remember to take your supplements and feed the cats. ` +
         `And then wind down for bedtime in a couple of hours. ` +
@@ -495,7 +544,7 @@ cron.schedule(
       const hInt = Math.floor(deltaMin / 60);
       const mInt = deltaMin % 60;
 
-      speak(
+      await speakWithReminderSfx(
         `Good evening! Time is now 12 o'clock. ` +
           `Tomorrow, the sun will rise at around ${tomorrowSunrise}. ` +
           `That's in ${hInt} hours${mInt > 0 ? ` and ${mInt} minutes` : ""}. ` +
@@ -503,7 +552,7 @@ cron.schedule(
       );
     } catch (e) {
       console.error("Midnight reminder error:", e.message);
-      speak(
+      await speakWithReminderSfx(
         "Good evening! Time is now 12 o'clock. Let's wind down and prepare for sleep soon!",
       );
     }
@@ -713,7 +762,7 @@ async function speakWeatherRoute(req, res) {
   try {
     const wx = await fetchWeather();
     const text = buildSpeakWeatherUtterance(wx);
-    speak(text);
+    void speakWithReminderSfx(text);
     res.json({ ok: true, spoken: text });
   } catch (e) {
     res.status(502).json({ ok: false, error: e.message });
