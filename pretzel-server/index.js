@@ -497,7 +497,157 @@ cron.schedule(
   { timezone: TZ },
 );
 
+// ── LIFX Cloud API proxy ─────────────────────────────────────
+const lifxUrlEnv = process.env.LIFX_API_URL;
+const LIFX_API_BASE = (
+  typeof lifxUrlEnv === "string" && lifxUrlEnv.trim() !== ""
+    ? lifxUrlEnv.trim()
+    : "https://api.lifx.com/v1"
+).replace(/\/$/, "");
+
+/** Re-encode for URL path; keep `:` and `,` (wyat-ai lifx::encode_selector). */
+function encodeLifxSelector(selector) {
+  return String(selector)
+    .replace(/ /g, "%20")
+    .replace(/#/g, "%23")
+    .replace(/\?/g, "%3F")
+    .replace(/\[/g, "%5B")
+    .replace(/\]/g, "%5D");
+}
+
+function lifxBearerToken(res) {
+  const t = process.env.LIFX_API_TOKEN;
+  if (typeof t === "string" && t.trim() !== "") return t.trim();
+  res.status(500).json({ error: "LIFX_API_TOKEN not configured" });
+  return null;
+}
+
+const LIFX_STATE_KEYS = [
+  "power",
+  "color",
+  "brightness",
+  "duration",
+  "infrared",
+  "fast",
+];
+
+function lifxPickStateBody(body) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return {};
+  const out = {};
+  for (const k of LIFX_STATE_KEYS) {
+    if (body[k] !== undefined) out[k] = body[k];
+  }
+  return out;
+}
+
+async function lifxForwardJson(res, upstream) {
+  if (!upstream.ok) {
+    const body = await upstream.text();
+    return res
+      .status(502)
+      .json({ error: `LIFX API ${upstream.status}: ${body}` });
+  }
+  try {
+    const data = await upstream.json();
+    return res.json(data);
+  } catch (e) {
+    return res.status(502).json({ error: `Parse error: ${e.message}` });
+  }
+}
+
 // ── Routes ─────────────────────────────────────────────────────
+
+// Register `/lifx/lights/states` before `/lifx/lights/:selector/state` (Express order).
+app.put("/lifx/lights/states", async (req, res) => {
+  const token = lifxBearerToken(res);
+  if (!token) return;
+  const states = req.body?.states;
+  if (Array.isArray(states) && states.length > 50) {
+    return res
+      .status(400)
+      .json({ error: "Maximum 50 state entries allowed" });
+  }
+  try {
+    const upstream = await fetch(`${LIFX_API_BASE}/lights/states`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(req.body ?? {}),
+    });
+    await lifxForwardJson(res, upstream);
+  } catch (e) {
+    res.status(502).json({ error: `Request failed: ${e.message}` });
+  }
+});
+
+app.get("/lifx/scenes", async (req, res) => {
+  const token = lifxBearerToken(res);
+  if (!token) return;
+  try {
+    const upstream = await fetch(`${LIFX_API_BASE}/scenes`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    await lifxForwardJson(res, upstream);
+  } catch (e) {
+    res.status(502).json({ error: `Request failed: ${e.message}` });
+  }
+});
+
+app.get("/lifx/lights/:selector", async (req, res) => {
+  const token = lifxBearerToken(res);
+  if (!token) return;
+  const enc = encodeLifxSelector(req.params.selector);
+  try {
+    const upstream = await fetch(`${LIFX_API_BASE}/lights/${enc}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    await lifxForwardJson(res, upstream);
+  } catch (e) {
+    res.status(502).json({ error: `Request failed: ${e.message}` });
+  }
+});
+
+app.put("/lifx/lights/:selector/state", async (req, res) => {
+  const token = lifxBearerToken(res);
+  if (!token) return;
+  const enc = encodeLifxSelector(req.params.selector);
+  const payload = lifxPickStateBody(req.body);
+  try {
+    const upstream = await fetch(`${LIFX_API_BASE}/lights/${enc}/state`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    await lifxForwardJson(res, upstream);
+  } catch (e) {
+    res.status(502).json({ error: `Request failed: ${e.message}` });
+  }
+});
+
+app.post("/lifx/lights/:selector/state/delta", async (req, res) => {
+  const token = lifxBearerToken(res);
+  if (!token) return;
+  const enc = encodeLifxSelector(req.params.selector);
+  const payload = lifxPickStateBody(req.body);
+  try {
+    const upstream = await fetch(`${LIFX_API_BASE}/lights/${enc}/state/delta`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    await lifxForwardJson(res, upstream);
+  } catch (e) {
+    res.status(502).json({ error: `Request failed: ${e.message}` });
+  }
+});
 
 app.get("/pretzel/weather", async (req, res) => {
   const now = new Date();
