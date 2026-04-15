@@ -430,17 +430,17 @@ app.post("/tv/button", async (req, res) => {
   }
 });
 
-app.get("/tv/status", (req, res) => {
-  res.json({
-    connected: ws?.readyState === WebSocket.OPEN,
-    inputConnected: inputWs?.readyState === WebSocket.OPEN,
-    ...(lastInputSocketError != null && lastInputSocketError !== ""
-      ? { lastInputSocketError }
-      : {}),
-  });
-});
-
-app.post("/tv/status", (req, res) => {
+// app.all so POST (and other non-GET) always hit this handler — avoids Express’s HTML "Cannot POST".
+app.all("/tv/status", (req, res) => {
+  if (req.method === "GET") {
+    return res.json({
+      connected: ws?.readyState === WebSocket.OPEN,
+      inputConnected: inputWs?.readyState === WebSocket.OPEN,
+      ...(lastInputSocketError != null && lastInputSocketError !== ""
+        ? { lastInputSocketError }
+        : {}),
+    });
+  }
   res
     .status(405)
     .set("Allow", "GET")
