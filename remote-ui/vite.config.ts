@@ -15,6 +15,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (p) => "/tv" + p,
       },
+      "/pretzel/admin": {
+        target: "http://127.0.0.1:3001",
+        changeOrigin: true,
+      },
       "/pretzel": {
         target: "http://127.0.0.1:3001",
         changeOrigin: true,

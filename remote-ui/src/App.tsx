@@ -1,5 +1,6 @@
 import { LightsSection } from "./components/LightsSection";
 import { PretzelSection } from "./components/PretzelSection";
+import { SettingsSection } from "./components/SettingsSection";
 import { TvSection } from "./components/TvSection";
 
 export default function App() {
@@ -14,6 +15,7 @@ export default function App() {
         <TvSection />
         <PretzelSection />
         <LightsSection />
+        <SettingsSection />
       </div>
     </div>
   );

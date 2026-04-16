@@ -6,14 +6,32 @@ Node services and scripts that run on the **Pretzel** Pi: LG TV relay, Pi speake
 
 | Area | Path | Role | Default port | Systemd example |
 |------|------|------|--------------|-----------------|
-| Pi speaker / TTS / volume / weather / LIFX proxy | [pretzel-server/](pretzel-server/) | Express (`/pretzel/*`, `/lifx/*` on **3001**) | **3001** | [pretzel-server/pretzel-server.service.example](pretzel-server/pretzel-server.service.example) |
+| Pi speaker / TTS / volume / weather / LIFX proxy | [pretzel-server/](pretzel-server/) | Express (`/pretzel/*`, `/lifx/*`, operator **`/pretzel/admin/*`** on **3001**) | **3001** | [pretzel-server/pretzel-server.service.example](pretzel-server/pretzel-server.service.example) |
 | LG TV relay (HTTP + WebSocket to TV) | [tv-relay/](tv-relay/) | Express + `ws`; `GET /tv/status` adds `screenOn` via LG `getPowerState` when the main socket is up (standby can leave the socket open) | **3000** | [tv-relay/tv-relay.service.example](tv-relay/tv-relay.service.example) |
-| Guest LAN UI + reverse proxy | [remote-ui/](remote-ui/) | Vite + React → `dist/`; `/tv` → 3000, `/pretzel` and `/lifx` → 3001 | **8080** | [remote-ui/remote-ui.service.example](remote-ui/remote-ui.service.example) |
+| Guest LAN UI + reverse proxy | [remote-ui/](remote-ui/) | Vite + React → `dist/`; `/tv` → 3000, `/pretzel` and `/lifx` → 3001; **Settings** (passcode) calls `/pretzel/admin/*` on pretzel-server | **8080** | [remote-ui/remote-ui.service.example](remote-ui/remote-ui.service.example) |
 | Shell helpers | [scripts/](scripts/) | `speak.sh TEXT [INSTRUCTIONS]` → OpenAI speech; no instructions uses **tts-1**, non-empty instructions use **gpt-4o-mini-tts** (see `SPEAK_SCRIPT` in pretzel-server) | — | — |
 
 Ports for pretzel-server and tv-relay are set in their `index.js` files unless you add env-based configuration later.
 
 **LIFX (optional):** Set `LIFX_API_TOKEN` on the Pi for `/lifx/*` on pretzel-server (**3001**). Optional `LIFX_API_URL` defaults to `https://api.lifx.com/v1`. Guests on **8080** use the same-origin path `/lifx/*` (proxied to **3001** by `remote-ui`).
+
+## Operator settings (remote UI)
+
+The **Settings** section on **8080** (after passcode unlock) runs **git pull** in `PRETZEL_REPO_ROOT`, restarts **pretzel-server** / **tv-relay**, and shows **systemd** last start times (`ActiveEnterTimestamp`). All of that goes to pretzel-server over **`/pretzel/admin/*`** with header **`X-Pretzel-Settings-Passcode`** (must match **`PRETZEL_SETTINGS_PASSCODE`** on the Pi; default matches the bundled UI passcode — rotate the env var for real deployments).
+
+- **`PRETZEL_REPO_ROOT`:** directory passed to `git -C` (default: parent of `pretzel-server`, i.e. the monorepo root on disk).
+- **Restart pretzel-server:** the HTTP response returns first; the browser connection then drops when the service restarts. Reload the page to refresh “last restarted” for that unit.
+- **sudo:** the service user needs passwordless **`systemctl restart pretzel-server.service`** and **`tv-relay.service`**. If **`systemctl show … ActiveEnterTimestamp`** fails without elevated rights, allow those read-only `show` commands too. Example (replace `william` with your `User=`):
+
+```
+william ALL=(root) NOPASSWD: /bin/systemctl restart pretzel-server.service, /bin/systemctl restart tv-relay.service, /bin/systemctl show pretzel-server.service, /bin/systemctl show tv-relay.service
+```
+
+Example status check:
+
+```bash
+curl -sS -H "X-Pretzel-Settings-Passcode: YOUR_SECRET" http://127.0.0.1:3001/pretzel/admin/status
+```
 
 ## Traffic flow
 
@@ -55,7 +73,7 @@ Longer comments and pairing notes for tv-relay are in [tv-relay/tv-relay.service
 Example unit files include an optional env var (commented) you can enable on the Pi:
 
 ```ini
-# Environment=PRETZEL_STACK_VERSION=1.4.1
+# Environment=PRETZEL_STACK_VERSION=1.5.0
 ```
 
 Set the value to match [VERSION](VERSION) after each deploy. Inspect what systemd passed to a unit:

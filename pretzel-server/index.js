@@ -1,5 +1,5 @@
 const express = require("express");
-const { execFile } = require("child_process");
+const { execFile, spawn } = require("child_process");
 const { join } = require("path");
 const cron = require("node-cron");
 
@@ -13,6 +13,18 @@ const MPG123_DEVICE =
   process.env.PRETZEL_MPG123_DEVICE.trim() !== ""
     ? process.env.PRETZEL_MPG123_DEVICE.trim()
     : "hw:2,0";
+
+const PRETZEL_SETTINGS_PASSCODE =
+  typeof process.env.PRETZEL_SETTINGS_PASSCODE === "string" &&
+  process.env.PRETZEL_SETTINGS_PASSCODE !== ""
+    ? process.env.PRETZEL_SETTINGS_PASSCODE
+    : "Asdf1234";
+
+const PRETZEL_REPO_ROOT =
+  typeof process.env.PRETZEL_REPO_ROOT === "string" &&
+  process.env.PRETZEL_REPO_ROOT.trim() !== ""
+    ? process.env.PRETZEL_REPO_ROOT.trim()
+    : join(__dirname, "..");
 
 // ── Weather config ─────────────────────────────────────────────
 const LAT = 40.71;
@@ -925,6 +937,115 @@ app.post("/pretzel/volume", (req, res) => {
 app.get("/pretzel/status", (req, res) => {
   res.json({ ok: true, host: "pretzel" });
 });
+
+// ── Operator admin (LAN + header secret; not strong auth) ───────
+function assertSettingsPass(req, res, next) {
+  const got = req.headers["x-pretzel-settings-passcode"];
+  if (typeof got !== "string" || got !== PRETZEL_SETTINGS_PASSCODE) {
+    return res.status(403).json({ ok: false, error: "Forbidden" });
+  }
+  next();
+}
+
+async function systemctlActiveEnterTimestamp(unit) {
+  try {
+    const { stdout } = await execFileAsync(
+      "systemctl",
+      ["show", unit, "-p", "ActiveEnterTimestamp", "--value"],
+      { encoding: "utf8", timeout: 15_000 },
+    );
+    const raw = stdout.trim();
+    if (!raw || raw.toLowerCase() === "n/a") {
+      return { activeEnterTimestamp: null, activeEnterTimestampIso: null };
+    }
+    const ms = Date.parse(raw);
+    return {
+      activeEnterTimestamp: raw,
+      activeEnterTimestampIso: Number.isFinite(ms)
+        ? new Date(ms).toISOString()
+        : null,
+    };
+  } catch (e) {
+    return {
+      activeEnterTimestamp: null,
+      activeEnterTimestampIso: null,
+      error: e.message,
+    };
+  }
+}
+
+app.get("/pretzel/admin/status", assertSettingsPass, async (req, res) => {
+  try {
+    const pretzelServer = await systemctlActiveEnterTimestamp(
+      "pretzel-server.service",
+    );
+    const tvRelay = await systemctlActiveEnterTimestamp("tv-relay.service");
+    res.json({
+      ok: true,
+      services: { pretzelServer, tvRelay },
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post("/pretzel/admin/git-pull", assertSettingsPass, async (req, res) => {
+  try {
+    await execFileAsync("git", ["-C", PRETZEL_REPO_ROOT, "pull"], {
+      timeout: 120_000,
+      encoding: "utf8",
+    });
+    const { stdout } = await execFileAsync(
+      "git",
+      ["-C", PRETZEL_REPO_ROOT, "rev-parse", "HEAD"],
+      { encoding: "utf8", timeout: 30_000 },
+    );
+    const pulledAt = new Date().toISOString();
+    res.json({ ok: true, commit: stdout.trim(), pulledAt });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post(
+  "/pretzel/admin/restart/pretzel-server",
+  assertSettingsPass,
+  (req, res) => {
+    res.json({
+      ok: true,
+      message:
+        "Restart initiated; this connection will drop. Reload the page to see updated status.",
+    });
+    res.on("finish", () => {
+      const child = spawn(
+        "sudo",
+        ["systemctl", "restart", "pretzel-server.service"],
+        { detached: true, stdio: "ignore" },
+      );
+      child.unref();
+    });
+  },
+);
+
+app.post(
+  "/pretzel/admin/restart/tv-relay",
+  assertSettingsPass,
+  async (req, res) => {
+    try {
+      await execFileAsync(
+        "sudo",
+        ["systemctl", "restart", "tv-relay.service"],
+        { timeout: 120_000 },
+      );
+      res.json({
+        ok: true,
+        message: "tv-relay restarted. Refresh status to see new start time.",
+      });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  },
+);
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Pretzel server listening on ${PORT}`);
