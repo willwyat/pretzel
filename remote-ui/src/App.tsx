@@ -1,22 +1,14 @@
-import { LightsSection } from "./components/LightsSection";
-import { PretzelSection } from "./components/PretzelSection";
-import { SettingsSection } from "./components/SettingsSection";
-import { TvSection } from "./components/TvSection";
+import { Route, Routes } from "react-router-dom";
+import { HomePage } from "./pages/HomePage";
+import { SettingsPage } from "./pages/SettingsPage";
 
 export default function App() {
   return (
     <div className="mx-auto min-h-screen max-w-lg px-4 py-6">
-      <h1 className="text-xl font-semibold text-gray-100">Pretzel remote</h1>
-      <p className="mt-1 text-sm text-gray-500">
-        Same Wi‑Fi only. TV, Pi speaker, LIFX.
-      </p>
-
-      <div className="mt-6 flex flex-col gap-6">
-        <TvSection />
-        <PretzelSection />
-        <LightsSection />
-        <SettingsSection />
-      </div>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+      </Routes>
     </div>
   );
 }

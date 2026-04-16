@@ -69,6 +69,11 @@ if (!fs.existsSync(distIndex)) {
   process.exit(1);
 }
 
+// SPA: serve React app for /settings (no static file on disk).
+app.get(/^\/settings(\/.*)?$/, (req, res) => {
+  res.sendFile(distIndex);
+});
+
 app.use(express.static(distDir, { maxAge: "1h" }));
 
 const server = app.listen(PORT, "0.0.0.0", () => {
