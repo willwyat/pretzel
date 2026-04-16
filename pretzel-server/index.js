@@ -277,6 +277,70 @@ function formatDurationHoursMinutesRounded(totalMinutes, step = 5) {
   return hourPart || minPart;
 }
 
+/** Next `wx.daily.sunrise` instant strictly after `now` (Open-Meteo daily order). */
+function nextSunriseIsoAfterNow(wx) {
+  for (const iso of wx.daily.sunrise) {
+    if (minutesUntil(iso) > 0) return iso;
+  }
+  return wx.daily.sunrise[wx.daily.sunrise.length - 1];
+}
+
+/** For speak-weather: sunset + duration, or next sunrise + duration after today's sunset. */
+function speakWeatherSunEventSentence(wx) {
+  const sunset0 = wx.daily.sunset[0];
+  if (minutesUntil(sunset0) > 0) {
+    return (
+      ` Sunset is ${fmtTime(sunset0)}, which is in about ` +
+      `${formatDurationHoursMinutesRounded(minutesUntil(sunset0))}.`
+    );
+  }
+  const rise = nextSunriseIsoAfterNow(wx);
+  return (
+    ` Sunrise is ${fmtTime(rise)}, which is in about ` +
+    `${formatDurationHoursMinutesRounded(minutesUntil(rise))}.`
+  );
+}
+
+/** 3pm reminder: sunset this evening, or post-sunset sunrise line. */
+function reminderAfternoonSunClause(wx) {
+  const sunset0 = wx.daily.sunset[0];
+  if (minutesUntil(sunset0) > 0) {
+    return `The sun will set at around ${fmtTime(sunset0)} this evening.`;
+  }
+  const rise = nextSunriseIsoAfterNow(wx);
+  return (
+    `The sun has set. The next sunrise is at around ${fmtTime(rise)}, in about ` +
+    `${formatDurationHoursMinutesRounded(minutesUntil(rise))}.`
+  );
+}
+
+/** 6pm reminder: sunset countdown, or sunrise countdown if sunset already passed. */
+function reminderSixPmSunClause(wx) {
+  const sunset = wx.daily.sunset[0];
+  const minsLeftRaw = minutesUntil(sunset);
+  const fmtCountdown = (mins, atStr) => {
+    if (mins <= 0) return `around ${atStr}`;
+    const hoursLeft = Math.floor(mins / 60);
+    const minsRem = mins % 60;
+    if (hoursLeft > 0 && minsRem > 0) {
+      return `in about ${hoursLeft} hour${hoursLeft > 1 ? "s" : ""} and ${minsRem} minutes, at ${atStr}`;
+    }
+    if (hoursLeft > 0) {
+      return `in about ${hoursLeft} hour${hoursLeft > 1 ? "s" : ""}, at ${atStr}`;
+    }
+    return `in about ${mins} minutes, at ${atStr}`;
+  };
+
+  if (minsLeftRaw > 0) {
+    const sunsetStr = fmtTime(sunset);
+    return `The sun will set ${fmtCountdown(minsLeftRaw, sunsetStr)}.`;
+  }
+  const rise = nextSunriseIsoAfterNow(wx);
+  const riseStr = fmtTime(rise);
+  const minsToRise = minutesUntil(rise);
+  return `The sun has set. The next sunrise is ${fmtCountdown(minsToRise, riseStr)}.`;
+}
+
 // Today's full date string: "Tuesday, April 14th" (calendar day in TZ)
 function todayLabel() {
   const d = new Date();
@@ -300,8 +364,11 @@ function todayLabel() {
   return `${day}, ${month} ${date}${suffix}`;
 }
 
-/** One paragraph for TTS from an Open-Meteo forecast payload. */
-function buildSpeakWeatherUtterance(wx) {
+/**
+ * One paragraph for TTS from Open-Meteo (always calls {@link fetchWeather} first).
+ */
+async function buildSpeakWeatherUtterance() {
+  const wx = await fetchWeather();
   const now = new Date();
   const localTime = now.toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -312,9 +379,6 @@ function buildSpeakWeatherUtterance(wx) {
   const temp = Math.round(wx.current.temperature_2m);
   const condition = describeWeather(wx.current.weathercode);
   const precip = wx.daily.precipitation_probability_max[0];
-  const sunsetStr = fmtTime(wx.daily.sunset[0]);
-  const untilSunsetMins = minutesUntil(wx.daily.sunset[0]);
-  const untilSunsetSpeak = formatDurationHoursMinutesRounded(untilSunsetMins);
 
   let s =
     `Here's the weather for ${todayLabel()} ${localTime}. ` +
@@ -322,7 +386,7 @@ function buildSpeakWeatherUtterance(wx) {
   if (precip >= 40) {
     s += ` There is a ${precip} percent chance of rain today.`;
   }
-  s += ` Sunset is around ${sunsetStr}, which is in about ${untilSunsetSpeak}.`;
+  s += speakWeatherSunEventSentence(wx);
   return s;
 }
 
@@ -445,10 +509,9 @@ cron.schedule(
       const wx = await fetchWeather();
       const temp =
         tempAtHour(wx.hourly, 15) ?? Math.round(wx.current.temperature_2m);
-      const sunsetStr = fmtTime(wx.daily.sunset[0]);
 
       await speakWithReminderSfx(
-        `Good afternoon! Time is now 3 o'clock. The sun will set at around ${sunsetStr} this evening. ` +
+        `Good afternoon! Time is now 3 o'clock. ${reminderAfternoonSunClause(wx)} ` +
           `It's ${temp} degrees out. ` +
           `Oh and also — mealtime for Sugar and Spice. Feed them everything nice!!!`,
       );
@@ -470,24 +533,6 @@ cron.schedule(
       const wx = await fetchWeather();
       const temp =
         tempAtHour(wx.hourly, 18) ?? Math.round(wx.current.temperature_2m);
-      const sunset = wx.daily.sunset[0];
-      const sunsetStr = fmtTime(sunset);
-      const minsLeftRaw = minutesUntil(sunset);
-
-      let sunsetCountdown;
-      if (minsLeftRaw <= 0) {
-        sunsetCountdown = `around ${sunsetStr}`;
-      } else {
-        const hoursLeft = Math.floor(minsLeftRaw / 60);
-        const minsRem = minsLeftRaw % 60;
-        if (hoursLeft > 0 && minsRem > 0) {
-          sunsetCountdown = `in about ${hoursLeft} hour${hoursLeft > 1 ? "s" : ""} and ${minsRem} minutes, at ${sunsetStr}`;
-        } else if (hoursLeft > 0) {
-          sunsetCountdown = `in about ${hoursLeft} hour${hoursLeft > 1 ? "s" : ""}, at ${sunsetStr}`;
-        } else {
-          sunsetCountdown = `in about ${minsLeftRaw} minutes, at ${sunsetStr}`;
-        }
-      }
 
       const todayYmd = ymdInTz(new Date(), TZ);
       const upcomingPrecip = [18, 19, 20, 21, 22].map((h) => {
@@ -504,15 +549,15 @@ cron.schedule(
           : "";
 
       await speakWithReminderSfx(
-        `Good afternoon! Time is now 6 o'clock. Time is now 6 o'clock! ` +
-          `The sun will set ${sunsetCountdown}. ` +
+        `Good afternoon! Time is now 6 o'clock. ` +
+          `${reminderSixPmSunClause(wx)} ` +
           `It's ${temp} degrees out.${rainNote} ` +
           `Oh and also — it's mealtime for Sugar and Spice. Feed them everything nice!!!`,
       );
     } catch (e) {
       console.error("6pm reminder error:", e.message);
       await speakWithReminderSfx(
-        "Good afternoon! Time is now 6 o'clock. Time is now 6 o'clock! Oh and also — it's mealtime for Sugar and Spice. Feed them everything nice!!!",
+        "Good afternoon! Time is now 6 o'clock. Oh and also — it's mealtime for Sugar and Spice. Feed them everything nice!!!",
       );
     }
   },
@@ -537,7 +582,7 @@ cron.schedule(
   "0 21 * * *",
   async () => {
     await speakWithReminderSfx(
-      `Good evening! Time is now 9 o'clock. Time is now 9 o'clock! ` +
+      `Good evening! Time is now 9 o'clock. ` +
         `Remember to take your supplements and feed the cats. ` +
         `And then wind down for bedtime in a couple of hours. ` +
         `Enjoy your night!`,
@@ -552,7 +597,7 @@ cron.schedule(
   async () => {
     try {
       const wx = await fetchWeather();
-      const sunriseIso = wx.daily.sunrise[1];
+      const sunriseIso = nextSunriseIsoAfterNow(wx);
       const tomorrowSunrise = fmtTime(sunriseIso);
       const sunriseMs = new Date(sunriseIso).getTime();
       const now = Date.now();
@@ -777,8 +822,7 @@ app.get("/pretzel/weather", async (req, res) => {
 
 async function speakWeatherRoute(req, res) {
   try {
-    const wx = await fetchWeather();
-    const text = buildSpeakWeatherUtterance(wx);
+    const text = await buildSpeakWeatherUtterance();
     void speakWithReminderSfx(text);
     res.json({ ok: true, spoken: text });
   } catch (e) {
