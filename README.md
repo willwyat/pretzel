@@ -9,7 +9,7 @@ Node services and scripts that run on the **Pretzel** Pi: LG TV relay, Pi speake
 | Pi speaker / TTS / volume / weather / LIFX proxy | [pretzel-server/](pretzel-server/) | Express (`/pretzel/*`, `/lifx/*` on **3001**) | **3001** | [pretzel-server/pretzel-server.service.example](pretzel-server/pretzel-server.service.example) |
 | LG TV relay (HTTP + WebSocket to TV) | [tv-relay/](tv-relay/) | Express + `ws`; `GET /tv/status` adds `screenOn` via LG `getPowerState` when the main socket is up (standby can leave the socket open) | **3000** | [tv-relay/tv-relay.service.example](tv-relay/tv-relay.service.example) |
 | Guest LAN UI + reverse proxy | [remote-ui/](remote-ui/) | Vite + React → `dist/`; `/tv` → 3000, `/pretzel` and `/lifx` → 3001 | **8080** | [remote-ui/remote-ui.service.example](remote-ui/remote-ui.service.example) |
-| Shell helpers | [scripts/](scripts/) | e.g. `speak.sh` (see `SPEAK_SCRIPT` in pretzel-server) | — | — |
+| Shell helpers | [scripts/](scripts/) | `speak.sh TEXT [INSTRUCTIONS]` → OpenAI speech; no instructions uses **tts-1**, non-empty instructions use **gpt-4o-mini-tts** (see `SPEAK_SCRIPT` in pretzel-server) | — | — |
 
 Ports for pretzel-server and tv-relay are set in their `index.js` files unless you add env-based configuration later.
 
@@ -55,7 +55,7 @@ Longer comments and pairing notes for tv-relay are in [tv-relay/tv-relay.service
 Example unit files include an optional env var (commented) you can enable on the Pi:
 
 ```ini
-# Environment=PRETZEL_STACK_VERSION=1.3.9
+# Environment=PRETZEL_STACK_VERSION=1.4.0
 ```
 
 Set the value to match [VERSION](VERSION) after each deploy. Inspect what systemd passed to a unit:

@@ -8,21 +8,31 @@ export function PretzelSection() {
   const [localVolume, setLocalVolume] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(true);
+  /** Reachable on the network (do not infer from /pretzel/volume — that can 500 if ALSA fails). */
   const [offline, setOffline] = useState(false);
+  const [volumeReadOk, setVolumeReadOk] = useState(false);
   const [speakText, setSpeakText] = useState("");
   const [speakSending, setSpeakSending] = useState(false);
   const [weatherSending, setWeatherSending] = useState(false);
 
   const fetchVolume = useCallback(async () => {
     setLoading(true);
+    setVolumeReadOk(false);
     try {
-      const res = await fetchJson("/pretzel/volume");
-      const data = res.data as { volume?: number };
-      if (!res.ok) {
+      const statusRes = await fetchJson("/pretzel/status");
+      if (!statusRes.ok) {
         setOffline(true);
         return;
       }
       setOffline(false);
+
+      const res = await fetchJson("/pretzel/volume");
+      const data = res.data as { volume?: number };
+      if (!res.ok) {
+        setVolumeReadOk(false);
+        return;
+      }
+      setVolumeReadOk(true);
       if (typeof data.volume === "number" && Number.isFinite(data.volume)) {
         const v = Math.max(0, Math.min(100, data.volume));
         setVolume(v);
@@ -30,6 +40,7 @@ export function PretzelSection() {
       }
     } catch {
       setOffline(true);
+      setVolumeReadOk(false);
     } finally {
       setLoading(false);
     }
@@ -50,6 +61,17 @@ export function PretzelSection() {
   }, []);
 
   const displayVol = dragging ? localVolume : volume;
+
+  const statusDotClass = offline
+    ? "bg-red-500"
+    : !volumeReadOk
+      ? "bg-amber-500"
+      : "bg-emerald-500";
+  const statusTitle = offline
+    ? "Pretzel server offline"
+    : !volumeReadOk
+      ? "Connected — volume read failed (check ALSA / amixer on the Pi)"
+      : "Connected";
 
   const handleSpeak = () => {
     const text = speakText.trim();
@@ -83,10 +105,8 @@ export function PretzelSection() {
       <div className="flex items-start justify-between gap-3 border-b border-gray-700 p-4">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <span
-            className={`mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full ${
-              offline ? "bg-red-500" : "bg-emerald-500"
-            }`}
-            title={offline ? "Pretzel server offline" : "Connected"}
+            className={`mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full ${statusDotClass}`}
+            title={statusTitle}
             aria-hidden
           />
           <div className="min-w-0">
@@ -96,7 +116,9 @@ export function PretzelSection() {
                 ? "Loading…"
                 : offline
                   ? "Pretzel server offline"
-                  : "USB audio on Pretzel"}
+                  : !volumeReadOk
+                    ? "Connected — could not read volume (ALSA)"
+                    : "USB audio on Pretzel"}
             </p>
           </div>
         </div>
@@ -121,7 +143,7 @@ export function PretzelSection() {
             min={0}
             max={100}
             value={displayVol}
-            disabled={offline || loading}
+            disabled={offline || loading || !volumeReadOk}
             onChange={(e) => {
               setLocalVolume(Number(e.target.value));
               setDragging(true);

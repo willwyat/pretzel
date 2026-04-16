@@ -6,8 +6,7 @@ const cron = require("node-cron");
 const PORT = 3001;
 const SPEAK_SCRIPT = "/home/william/pretzel/scripts/speak.sh";
 
-const REMINDER_SFX_START = join(__dirname, "pretzel-fx_reminder-start.mp3");
-const REMINDER_SFX_END = join(__dirname, "pretzel-fx_reminder-end.mp3");
+const REMINDER_BEEP_MP3 = join(__dirname, "beep.mp3");
 /** ALSA output for mpg123; default matches scripts/speak.sh `-a hw:2,0`. */
 const MPG123_DEVICE =
   typeof process.env.PRETZEL_MPG123_DEVICE === "string" &&
@@ -116,9 +115,25 @@ function normalizeSpeakText(s) {
     .trim();
 }
 
+/** Passed to `speak.sh` for scheduled reminders + speak-weather (gpt-4o-mini-tts + `instructions`). */
+const SPEAK_INSTRUCTIONS_REMINDERS =
+  "Personality/affect: a high-energy cheerleader helping with administrative tasks.\n\n" +
+  "Voice: Enthusiastic, and bubbly, with an uplifting and motivational quality.\n\n" +
+  "Tone: Encouraging and playful, making even simple tasks feel exciting and fun.\n\n" +
+  "Dialect: Casual and upbeat, using informal phrasing and pep talk-style expressions. Use a very strong New York Jewish accent.\n\n" +
+  "Pronunciation: Crisp and lively, with exaggerated emphasis on positive words to keep the energy high.\n\n" +
+  "Features: Uses motivational phrases, cheerful exclamations, and an energetic rhythm to create a sense of excitement and engagement.";
+
+function speakScriptArgs(text, instructions) {
+  return typeof instructions === "string" && instructions.trim() !== ""
+    ? [text, instructions]
+    : [text];
+}
+
 // ── speak() ────────────────────────────────────────────────────
-function speak(text) {
-  execFile(SPEAK_SCRIPT, [text], (err) => {
+/** @param {string} [instructions] — non-empty → `speak.sh` uses gpt-4o-mini-tts + OpenAI `instructions`. */
+function speak(text, instructions) {
+  execFile(SPEAK_SCRIPT, speakScriptArgs(text, instructions), (err) => {
     if (err) console.error("speak error:", err.message);
   });
 }
@@ -138,28 +153,30 @@ function playReminderSfx(mp3Path) {
   });
 }
 
-function speakAsync(text) {
+/** @param {string} [instructions] — see {@link speak}. */
+function speakAsync(text, instructions) {
   return new Promise((resolve) => {
-    execFile(SPEAK_SCRIPT, [text], (err) => {
+    execFile(SPEAK_SCRIPT, speakScriptArgs(text, instructions), (err) => {
       if (err) console.error("speak error:", err.message);
       resolve();
     });
   });
 }
 
-/** Start/end chimes around TTS for scheduled reminders and speak-weather. */
-async function speakWithReminderSfx(text) {
+/**
+ * Short beep before TTS for scheduled reminders and speak-weather.
+ * @param {string} [instructions] — defaults to {@link SPEAK_INSTRUCTIONS_REMINDERS}; pass `""` for neutral tts-1.
+ */
+async function speakWithReminderSfx(
+  text,
+  instructions = SPEAK_INSTRUCTIONS_REMINDERS,
+) {
   try {
-    await playReminderSfx(REMINDER_SFX_START);
+    await playReminderSfx(REMINDER_BEEP_MP3);
   } catch (e) {
-    console.error("reminder start sfx:", e.message);
+    console.error("reminder beep:", e.message);
   }
-  await speakAsync(text);
-  try {
-    await playReminderSfx(REMINDER_SFX_END);
-  } catch (e) {
-    console.error("reminder end sfx:", e.message);
-  }
+  await speakAsync(text, instructions);
 }
 
 // ── Weather fetch ──────────────────────────────────────────────
