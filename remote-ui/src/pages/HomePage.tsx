@@ -57,7 +57,6 @@ function dayQualifier(
 }
 
 export function HomePage() {
-  const [now, setNow] = useState(() => new Date());
   const [sunState, setSunState] = useState<
     | { status: "loading" }
     | { status: "error" }
@@ -85,21 +84,10 @@ export function HomePage() {
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setNow(new Date());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
     void loadSun();
     const id = setInterval(() => void loadSun(), SUN_POLL_MS);
     return () => clearInterval(id);
   }, [loadSun]);
-
-  const h = String(now.getHours()).padStart(2, "0");
-  const m = String(now.getMinutes()).padStart(2, "0");
-  const colonVisible = now.getSeconds() % 2 === 0;
 
   const sunTitle =
     sunState.status === "ok" && sunState.sun.mode === "sunset"
@@ -113,32 +101,15 @@ export function HomePage() {
       : null;
   const sunDay =
     sunState.status === "ok"
-      ? dayQualifier(
-          sunState.sun.iso,
-          sunState.timezone,
-          sunState.localDate,
-        )
+      ? dayQualifier(sunState.sun.iso, sunState.timezone, sunState.localDate)
       : null;
 
   return (
     <div className="py-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1
-            className="text-6xl font-bold tabular-nums text-[#222]"
-            aria-label={`${h}:${m}`}
-          >
-            <span aria-hidden="true">{h}</span>
-            <span
-              aria-hidden="true"
-              className={colonVisible ? "opacity-100" : "opacity-0"}
-            >
-              {`:`}
-            </span>
-            <span aria-hidden="true">{m}</span>
-          </h1>
           <div
-            className="mt-1 min-h-[2.75rem] text-sm text-[#444]"
+            className="min-h-[2.75rem] text-sm text-[#444]"
             aria-live="polite"
           >
             {sunState.status === "loading" ? (
