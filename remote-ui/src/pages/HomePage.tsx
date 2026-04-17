@@ -28,7 +28,7 @@ function isWeatherSunPayload(data: unknown): data is {
   return true;
 }
 
-function formatSunClock(iso: string, timeZone: string): string {
+function formatSunTime(iso: string, timeZone: string): string {
   return new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
@@ -97,7 +97,7 @@ export function HomePage() {
         : null;
   const sunTimeFormatted =
     sunState.status === "ok"
-      ? formatSunClock(sunState.sun.iso, sunState.timezone)
+      ? formatSunTime(sunState.sun.iso, sunState.timezone)
       : null;
   const sunDay =
     sunState.status === "ok"

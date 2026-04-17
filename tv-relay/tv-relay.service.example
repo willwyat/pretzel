@@ -19,7 +19,7 @@ Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
 # Optional: match repo root VERSION after deploy (see README).
-# Environment=PRETZEL_STACK_VERSION=1.5.6
+# Environment=PRETZEL_STACK_VERSION=1.5.7
 # After changing the registration manifest, re-pair: clear CLIENT_KEY below, add:
 #   Environment=TV_FORCE_PAIRING=1
 # then `sudo systemctl daemon-reload && sudo systemctl restart tv-relay`, accept the TV
