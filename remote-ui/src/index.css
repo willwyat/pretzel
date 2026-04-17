@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  @font-face {
+    font-family: Outfit;
+    src: url("/fonts/Outfit-VariableFont_wght.ttf") format("truetype");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+  }
+}
+
 .nav-button {
   color: #222;
   background-color: #f4f4f4;

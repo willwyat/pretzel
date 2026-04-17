@@ -309,6 +309,19 @@ function isPreDawnBeforeTodaySunrise(wx) {
   return mR > 0 && mS > 0 && mR < mS;
 }
 
+/** Which sun instant to show on the remote home UI (below the clock). */
+function sunSummaryForHomeUi(wx) {
+  const rise0 = wx.daily.sunrise[0];
+  const set0 = wx.daily.sunset[0];
+  if (isPreDawnBeforeTodaySunrise(wx)) {
+    return { mode: "sunrise", iso: nextSunriseIsoAfterNow(wx) };
+  }
+  if (minutesUntil(rise0) <= 0 && minutesUntil(set0) > 0) {
+    return { mode: "sunset", iso: set0 };
+  }
+  return { mode: "sunrise", iso: nextSunriseIsoAfterNow(wx) };
+}
+
 function speakWeatherSunriseDurationClause(wx) {
   const rise = nextSunriseIsoAfterNow(wx);
   return (
@@ -854,6 +867,7 @@ app.get("/pretzel/weather", async (req, res) => {
         sunset: wx.daily.sunset[0],
         precipitationProbabilityMax: wx.daily.precipitation_probability_max[0],
       },
+      sun: sunSummaryForHomeUi(wx),
     });
   } catch (e) {
     res.status(502).json({
