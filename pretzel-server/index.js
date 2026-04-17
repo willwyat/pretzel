@@ -297,15 +297,19 @@ function nextSunriseIsoAfterNow(wx) {
   return wx.daily.sunrise[wx.daily.sunrise.length - 1];
 }
 
-/** For speak-weather: sunset + duration, or next sunrise + duration after today's sunset. */
-function speakWeatherSunEventSentence(wx) {
-  const sunset0 = wx.daily.sunset[0];
-  if (minutesUntil(sunset0) > 0) {
-    return (
-      ` Sunset is ${fmtTime(sunset0)}, which is in about ` +
-      `${formatDurationHoursMinutesRounded(minutesUntil(sunset0))}.`
-    );
-  }
+/**
+ * After local midnight, before today's sunrise: both are still ahead, but sunrise is sooner
+ * than today's evening sunset (e.g. 3am — next sun event is dawn, not "tonight's sunset").
+ */
+function isPreDawnBeforeTodaySunrise(wx) {
+  const rise0 = wx.daily.sunrise[0];
+  const set0 = wx.daily.sunset[0];
+  const mR = minutesUntil(rise0);
+  const mS = minutesUntil(set0);
+  return mR > 0 && mS > 0 && mR < mS;
+}
+
+function speakWeatherSunriseDurationClause(wx) {
   const rise = nextSunriseIsoAfterNow(wx);
   return (
     ` Sunrise is ${fmtTime(rise)}, which is in about ` +
@@ -313,9 +317,31 @@ function speakWeatherSunEventSentence(wx) {
   );
 }
 
+/** For speak-weather: sunset + duration, or next sunrise + duration after today's sunset. */
+function speakWeatherSunEventSentence(wx) {
+  const sunset0 = wx.daily.sunset[0];
+  if (isPreDawnBeforeTodaySunrise(wx)) {
+    return speakWeatherSunriseDurationClause(wx);
+  }
+  if (minutesUntil(sunset0) > 0) {
+    return (
+      ` Sunset is ${fmtTime(sunset0)}, which is in about ` +
+      `${formatDurationHoursMinutesRounded(minutesUntil(sunset0))}.`
+    );
+  }
+  return speakWeatherSunriseDurationClause(wx);
+}
+
 /** 3pm reminder: sunset this evening, or post-sunset sunrise line. */
 function reminderAfternoonSunClause(wx) {
   const sunset0 = wx.daily.sunset[0];
+  if (isPreDawnBeforeTodaySunrise(wx)) {
+    const rise = nextSunriseIsoAfterNow(wx);
+    return (
+      `The next sunrise is at around ${fmtTime(rise)}, in about ` +
+      `${formatDurationHoursMinutesRounded(minutesUntil(rise))}.`
+    );
+  }
   if (minutesUntil(sunset0) > 0) {
     return `The sun will set at around ${fmtTime(sunset0)} this evening.`;
   }
@@ -343,6 +369,12 @@ function reminderSixPmSunClause(wx) {
     return `in about ${mins} minutes, at ${atStr}`;
   };
 
+  if (isPreDawnBeforeTodaySunrise(wx)) {
+    const rise = nextSunriseIsoAfterNow(wx);
+    const riseStr = fmtTime(rise);
+    const minsToRise = minutesUntil(rise);
+    return `The next sunrise is ${fmtCountdown(minsToRise, riseStr)}.`;
+  }
   if (minsLeftRaw > 0) {
     const sunsetStr = fmtTime(sunset);
     return `The sun will set ${fmtCountdown(minsLeftRaw, sunsetStr)}.`;
