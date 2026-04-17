@@ -4,6 +4,7 @@ import { PretzelSection } from "../components/PretzelSection";
 import { TvSection } from "../components/TvSection";
 import { useCallback, useEffect, useState } from "react";
 import { fetchJson } from "../lib/fetchJson";
+import type { HomeRoomTab } from "../types/homeRoom";
 
 const SUN_POLL_MS = 60_000;
 
@@ -56,7 +57,11 @@ function dayQualifier(
   return "tomorrow";
 }
 
-export function HomePage() {
+type HomePageProps = {
+  activeRoom: HomeRoomTab;
+};
+
+export function HomePage({ activeRoom }: HomePageProps) {
   const [sunState, setSunState] = useState<
     | { status: "loading" }
     | { status: "error" }
@@ -140,9 +145,14 @@ export function HomePage() {
       </div>
 
       <div className="flex flex-col gap-6">
-        <TvSection />
-        <PretzelSection />
-        <LightsSection />
+        {activeRoom === "bedroom" ? <TvSection /> : null}
+        {activeRoom === "pretzel" ? <PretzelSection /> : null}
+        {activeRoom === "lounge" ? (
+          <LightsSection room="lounge" heading="Lounge lights" />
+        ) : null}
+        {activeRoom === "bedroom" ? (
+          <LightsSection room="bedroom" heading="Bedroom lights" />
+        ) : null}
       </div>
     </div>
   );

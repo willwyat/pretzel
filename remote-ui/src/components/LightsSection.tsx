@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchJson } from "../lib/fetchJson";
 import { lifxStatePath } from "../lib/lifxPaths";
+import type { LifxRoom } from "../types/homeRoom";
 import type { Light } from "../types/lifx";
 import { LightCard } from "./LightCard";
 
@@ -8,7 +9,18 @@ function isLightArray(data: unknown): data is Light[] {
   return Array.isArray(data);
 }
 
-export function LightsSection() {
+function lightMatchesLifxRoom(light: Light, room: LifxRoom): boolean {
+  const g = light.group?.name?.trim().toLowerCase() ?? "";
+  const loc = light.location?.name?.trim().toLowerCase() ?? "";
+  return g === room || loc === room;
+}
+
+type LightsSectionProps = {
+  room: LifxRoom;
+  heading: string;
+};
+
+export function LightsSection({ room, heading }: LightsSectionProps) {
   const [lights, setLights] = useState<Light[]>([]);
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
@@ -126,14 +138,19 @@ export function LightsSection() {
     }
   }, []);
 
+  const lightsInRoom = useMemo(
+    () => lights.filter((l) => lightMatchesLifxRoom(l, room)),
+    [lights, room],
+  );
+
   const lightGroups = useMemo(() => {
-    return lights.reduce<Record<string, Light[]>>((acc, light) => {
+    return lightsInRoom.reduce<Record<string, Light[]>>((acc, light) => {
       const groupName = light.group?.name || "Ungrouped";
       if (!acc[groupName]) acc[groupName] = [];
       acc[groupName].push(light);
       return acc;
     }, {});
-  }, [lights]);
+  }, [lightsInRoom]);
 
   const statusDot =
     offline || error
@@ -158,9 +175,7 @@ export function LightsSection() {
             aria-hidden
           />
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-gray-100">
-              LIFX lights
-            </h2>
+            <h2 className="text-base font-semibold text-gray-100">{heading}</h2>
             <p className="text-xs text-gray-400">
               {loading && lights.length === 0
                 ? "Loading…"
@@ -170,7 +185,9 @@ export function LightsSection() {
                     ? "See error below"
                     : lights.length === 0
                       ? "No lights in account"
-                      : `${lights.length} light${lights.length === 1 ? "" : "s"} across ${Object.keys(lightGroups).length} group${Object.keys(lightGroups).length === 1 ? "" : "s"}`}
+                      : lightsInRoom.length === 0
+                        ? `No lights in group or location “${room}” (names are case-insensitive)`
+                        : `${lightsInRoom.length} light${lightsInRoom.length === 1 ? "" : "s"} in ${room}`}
             </p>
           </div>
         </div>
@@ -215,11 +232,25 @@ export function LightsSection() {
           ))}
         </div>
 
-        {!loading && lights.length === 0 && !error && !offline && (
-          <p className="py-8 text-center text-sm text-gray-500">
-            No lights found.
-          </p>
-        )}
+        {!loading &&
+          lights.length === 0 &&
+          !error &&
+          !offline && (
+            <p className="py-8 text-center text-sm text-gray-500">
+              No lights found.
+            </p>
+          )}
+        {!loading &&
+          lights.length > 0 &&
+          lightsInRoom.length === 0 &&
+          !error &&
+          !offline && (
+            <p className="py-8 text-center text-sm text-gray-500">
+              No lights assigned to this room. In the LIFX app, use group or
+              location names <span className="font-mono">Lounge</span> or{" "}
+              <span className="font-mono">Bedroom</span> (case-insensitive).
+            </p>
+          )}
       </div>
     </section>
   );
