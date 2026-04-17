@@ -1,7 +1,7 @@
 export function Navbar() {
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-[#ececec] via-[#ececec]/95 to-transparent pt-4 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      className="pretzel-nav-gradient fixed bottom-0 left-0 right-0 z-30 pt-4 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
       role="navigation"
       aria-label="Rooms"
     >

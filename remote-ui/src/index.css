@@ -3,6 +3,14 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* Light defaults. For dark mode later: set these on `html.dark`, `[data-theme="dark"]`, etc. */
+    --pretzel-fg-primary: #222;
+    --pretzel-surface-button: #f4f4f4;
+    /* Main app canvas (scroll column + nav fade anchor). */
+    --pretzel-surface-page: #ececec;
+  }
+
   @font-face {
     font-family: Outfit;
     src: url("/fonts/Outfit-VariableFont_wght.ttf") format("truetype");
@@ -12,9 +20,25 @@
   }
 }
 
+@layer components {
+  .pretzel-app-shell {
+    background-color: var(--pretzel-surface-page);
+  }
+
+  /* Bottom nav scrim: matches page surface so content reads cleanly over scroll. */
+  .pretzel-nav-gradient {
+    background-image: linear-gradient(
+      to top,
+      var(--pretzel-surface-page) 0%,
+      color-mix(in srgb, var(--pretzel-surface-page) 95%, transparent) 55%,
+      transparent 100%
+    );
+  }
+}
+
 .nav-button {
-  color: #222;
-  background-color: #f4f4f4;
+  color: var(--pretzel-fg-primary);
+  background-color: var(--pretzel-surface-button);
   box-shadow:
     inset 1px 1px 1px 0 rgb(255, 255, 255),
     inset -1px -1px 1px 0 rgba(0, 0, 0, 0.15),
