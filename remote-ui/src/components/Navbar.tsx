@@ -23,7 +23,9 @@ export function Navbar({ activeRoom, onActiveRoomChange }: NavbarProps) {
           onClick={() => onActiveRoomChange("lounge")}
         >
           <div className="h-8 w-8 bg-gray-600" />
-          <div className="text-base font-semibold uppercase">Lounge</div>
+          <div className="text-base font-semibold uppercase pretzel-nav-label">
+            Lounge
+          </div>
         </button>
         <button
           type="button"
@@ -39,7 +41,9 @@ export function Navbar({ activeRoom, onActiveRoomChange }: NavbarProps) {
               aria-hidden
             />
           </span>
-          <div className="text-base font-semibold uppercase">Bedroom</div>
+          <div className="text-base font-semibold uppercase pretzel-nav-label">
+            Bedroom
+          </div>
         </button>
         <button
           type="button"
@@ -48,7 +52,9 @@ export function Navbar({ activeRoom, onActiveRoomChange }: NavbarProps) {
           onClick={() => onActiveRoomChange("pretzel")}
         >
           <div className="h-8 w-8 bg-gray-600" />
-          <div className="text-base font-semibold uppercase">Pretzel</div>
+          <div className="text-base font-semibold uppercase pretzel-nav-label">
+            Pretzel
+          </div>
         </button>
       </div>
     </nav>

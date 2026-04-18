@@ -6,15 +6,15 @@
   :root {
     color-scheme: light;
 
-    --pretzel-fg-primary: #222;
+    --pretzel-fg-primary: #44403c;
     --pretzel-surface-button: #f4f4f4;
     --pretzel-surface-page: #ececec;
 
     --pretzel-fg-page-muted: #444;
-    --pretzel-fg-page-strong: #222;
+    --pretzel-fg-page-strong: #44403c;
     --pretzel-fg-page-accent: #333;
 
-    /* --pretzel-nav-ring: orange; */
+    --pretzel-nav-ring: #888;
 
     --pretzel-surface-panel: #ffffff;
     --pretzel-surface-panel-elevated: #f9fafb;
@@ -253,6 +253,12 @@
     color: var(--pretzel-control-fg);
     background-color: transparent;
     transition: background-color 0.15s ease;
+  }
+
+  .pretzel-nav-label {
+    text-shadow:
+      0.3px 0.3px 0.5px rgba(255, 255, 255, 0.1),
+      -0.4px -0.4px 0.5px rgba(0, 0, 0, 0.35);
   }
 
   .pretzel-btn-icon:hover:not(:disabled) {
