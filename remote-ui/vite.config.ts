@@ -39,6 +39,8 @@ export default defineConfig({
         short_name: "Pretzel",
         description:
           "Home remote for TV, Pi speaker, and LIFX on your LAN (same Wi‑Fi).",
+        // Web manifest has a single theme/background pair; keep light defaults.
+        // In-app colors follow system via CSS (see index.css + index.html theme-color).
         theme_color: "#ececec",
         background_color: "#ececec",
         display: "standalone",

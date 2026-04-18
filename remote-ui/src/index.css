@@ -4,11 +4,107 @@
 
 @layer base {
   :root {
-    /* Light defaults. For dark mode later: set these on `html.dark`, `[data-theme="dark"]`, etc. */
+    color-scheme: light;
+
     --pretzel-fg-primary: #222;
     --pretzel-surface-button: #f4f4f4;
-    /* Main app canvas (scroll column + nav fade anchor). */
     --pretzel-surface-page: #ececec;
+
+    --pretzel-fg-page-muted: #444;
+    --pretzel-fg-page-strong: #222;
+    --pretzel-fg-page-accent: #333;
+
+    /* --pretzel-nav-ring: orange; */
+
+    --pretzel-surface-panel: #ffffff;
+    --pretzel-surface-panel-elevated: #f9fafb;
+    --pretzel-surface-nested: #f3f4f6;
+    --pretzel-border-subtle: #d1d5db;
+    --pretzel-border-strong: #9ca3af;
+    --pretzel-divider: #e5e7eb;
+
+    --pretzel-fg-heading: #111827;
+    --pretzel-fg-muted: #4b5563;
+    --pretzel-fg-subtle: #6b7280;
+
+    --pretzel-control-border: #9ca3af;
+    --pretzel-control-fg: #374151;
+    --pretzel-control-bg-hover: #f3f4f6;
+    --pretzel-control-track: #e5e7eb;
+
+    --pretzel-emphasis-control-bg: #f3f4f6;
+    --pretzel-emphasis-control-border: #6b7280;
+    --pretzel-emphasis-control-fg: #111827;
+    --pretzel-emphasis-control-hover: #e5e7eb;
+
+    --pretzel-input-bg: #ffffff;
+    --pretzel-input-fg: #111827;
+    --pretzel-input-border: #9ca3af;
+    --pretzel-input-placeholder: #6b7280;
+
+    --pretzel-btn-secondary-bg: #f3f4f6;
+    --pretzel-btn-secondary-fg: #1f2937;
+    --pretzel-btn-secondary-border: #9ca3af;
+    --pretzel-btn-secondary-hover: #e5e7eb;
+
+    --pretzel-surface-card-on: #f9fafb;
+    --pretzel-surface-card-off: #f3f4f6;
+    --pretzel-border-card-on: #d1d5db;
+    --pretzel-border-card-off: #e5e7eb;
+    --pretzel-ring-offset-card: #ffffff;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+
+      --pretzel-fg-primary: #f5f5f5;
+      --pretzel-surface-button: #3a3a3a;
+      --pretzel-surface-page: #161616;
+
+      --pretzel-fg-page-muted: #a3a3a3;
+      --pretzel-fg-page-strong: #fafafa;
+      --pretzel-fg-page-accent: #d4d4d4;
+
+      --pretzel-nav-ring: #a3a3a3;
+
+      --pretzel-surface-panel: #262626;
+      --pretzel-surface-panel-elevated: #171717;
+      --pretzel-surface-nested: #1c1c1c;
+      --pretzel-border-subtle: #404040;
+      --pretzel-border-strong: #525252;
+      --pretzel-divider: #3f3f3f;
+
+      --pretzel-fg-heading: #f5f5f5;
+      --pretzel-fg-muted: #a3a3a3;
+      --pretzel-fg-subtle: #737373;
+
+      --pretzel-control-border: #525252;
+      --pretzel-control-fg: #d4d4d4;
+      --pretzel-control-bg-hover: #3a3a3a;
+      --pretzel-control-track: #404040;
+
+      --pretzel-emphasis-control-bg: #404040;
+      --pretzel-emphasis-control-border: #737373;
+      --pretzel-emphasis-control-fg: #fafafa;
+      --pretzel-emphasis-control-hover: #525252;
+
+      --pretzel-input-bg: #171717;
+      --pretzel-input-fg: #f5f5f5;
+      --pretzel-input-border: #525252;
+      --pretzel-input-placeholder: #737373;
+
+      --pretzel-btn-secondary-bg: #404040;
+      --pretzel-btn-secondary-fg: #e5e5e5;
+      --pretzel-btn-secondary-border: #525252;
+      --pretzel-btn-secondary-hover: #525252;
+
+      --pretzel-surface-card-on: #404040;
+      --pretzel-surface-card-off: #262626;
+      --pretzel-border-card-on: #525252;
+      --pretzel-border-card-off: #404040;
+      --pretzel-ring-offset-card: #262626;
+    }
   }
 
   @font-face {
@@ -25,7 +121,6 @@
     background-color: var(--pretzel-surface-page);
   }
 
-  /* Bottom nav scrim: matches page surface so content reads cleanly over scroll. */
   .pretzel-nav-gradient {
     background-image: linear-gradient(
       to top,
@@ -33,6 +128,349 @@
       color-mix(in srgb, var(--pretzel-surface-page) 95%, transparent) 55%,
       transparent 100%
     );
+  }
+
+  .pretzel-panel {
+    border-radius: 0.75rem;
+    border-width: 1px;
+    border-style: solid;
+    border-color: var(--pretzel-border-subtle);
+    background-color: var(--pretzel-surface-panel);
+  }
+
+  .pretzel-panel__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--pretzel-divider);
+  }
+
+  .pretzel-panel__header--simple {
+    border-bottom: 1px solid var(--pretzel-divider);
+    padding: 1rem;
+  }
+
+  .pretzel-panel__body {
+    padding: 1rem;
+  }
+
+  .pretzel-panel__block-bordered {
+    border-top: 1px solid var(--pretzel-divider);
+  }
+
+  .pretzel-panel__divider-t {
+    margin-top: 1rem;
+    border-top: 1px solid var(--pretzel-divider);
+    padding-top: 1rem;
+  }
+
+  .pretzel-text-panel-title {
+    font-size: 1rem;
+    line-height: 1.5rem;
+    font-weight: 600;
+    color: var(--pretzel-fg-heading);
+  }
+
+  .pretzel-text-panel-muted {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: var(--pretzel-fg-muted);
+  }
+
+  .pretzel-text-panel-subtle {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: var(--pretzel-fg-subtle);
+  }
+
+  .pretzel-text-panel-body {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--pretzel-fg-muted);
+  }
+
+  .pretzel-text-sun-block {
+    min-height: 2.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--pretzel-fg-page-muted);
+  }
+
+  .pretzel-text-sun-title {
+    font-weight: 600;
+    color: var(--pretzel-fg-page-strong);
+  }
+
+  .pretzel-text-sun-time {
+    font-variant-numeric: tabular-nums;
+    font-size: 1rem;
+    line-height: 1.5rem;
+    color: var(--pretzel-fg-page-accent);
+  }
+
+  .pretzel-btn-ghost {
+    flex-shrink: 0;
+    border-radius: 0.5rem;
+    border-width: 1px;
+    border-style: solid;
+    border-color: var(--pretzel-control-border);
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 500;
+    color: var(--pretzel-control-fg);
+    background-color: transparent;
+    transition: background-color 0.15s ease;
+  }
+
+  .pretzel-btn-ghost:hover:not(:disabled) {
+    background-color: var(--pretzel-control-bg-hover);
+  }
+
+  .pretzel-btn-ghost:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .pretzel-btn-ghost--sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .pretzel-btn-icon {
+    display: flex;
+    height: 2.25rem;
+    width: 2.25rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    border-width: 1px;
+    border-style: solid;
+    border-color: var(--pretzel-control-border);
+    color: var(--pretzel-control-fg);
+    background-color: transparent;
+    transition: background-color 0.15s ease;
+  }
+
+  .pretzel-btn-icon:hover:not(:disabled) {
+    background-color: var(--pretzel-control-bg-hover);
+  }
+
+  .pretzel-btn-icon:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  .pretzel-btn-icon-wide {
+    display: flex;
+    min-height: 2.25rem;
+    flex: 1 1 0%;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    border-width: 1px;
+    border-style: solid;
+    border-color: var(--pretzel-control-border);
+    padding: 0.375rem 0.5rem;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--pretzel-control-fg);
+    background-color: transparent;
+    transition: background-color 0.15s ease;
+  }
+
+  .pretzel-btn-icon-wide:hover:not(:disabled) {
+    background-color: var(--pretzel-control-bg-hover);
+  }
+
+  .pretzel-btn-icon-wide:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  .pretzel-btn-emphasis {
+    display: flex;
+    height: 2.25rem;
+    width: 2.25rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    border-width: 1px;
+    border-style: solid;
+    border-color: var(--pretzel-emphasis-control-border);
+    background-color: var(--pretzel-emphasis-control-bg);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--pretzel-emphasis-control-fg);
+    transition: background-color 0.15s ease;
+  }
+
+  .pretzel-btn-emphasis:hover:not(:disabled) {
+    background-color: var(--pretzel-emphasis-control-hover);
+  }
+
+  .pretzel-btn-emphasis:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  .pretzel-range {
+    height: 0.375rem;
+    min-width: 0;
+    flex: 1 1 0%;
+    cursor: pointer;
+    appearance: none;
+    border-radius: 9999px;
+    background-color: var(--pretzel-control-track);
+    accent-color: #3b82f6;
+  }
+
+  .pretzel-range:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .pretzel-range--amber {
+    accent-color: #f59e0b;
+  }
+
+  .pretzel-input {
+    width: 100%;
+    border-radius: 0.5rem;
+    border-width: 1px;
+    border-style: solid;
+    border-color: var(--pretzel-input-border);
+    background-color: var(--pretzel-input-bg);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--pretzel-input-fg);
+  }
+
+  .pretzel-input::placeholder {
+    color: var(--pretzel-input-placeholder);
+  }
+
+  .pretzel-input:focus {
+    border-color: #3b82f6;
+    outline: none;
+    box-shadow: 0 0 0 1px #3b82f6;
+  }
+
+  .pretzel-nested-card {
+    border-radius: 0.5rem;
+    border-width: 1px;
+    border-style: solid;
+    border-color: var(--pretzel-border-subtle);
+    background-color: color-mix(
+      in srgb,
+      var(--pretzel-surface-panel-elevated) 80%,
+      transparent
+    );
+    padding: 0.75rem;
+  }
+
+  .pretzel-btn-secondary {
+    border-radius: 0.5rem;
+    border-width: 1px;
+    border-style: solid;
+    border-color: var(--pretzel-btn-secondary-border);
+    background-color: var(--pretzel-btn-secondary-bg);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    color: var(--pretzel-btn-secondary-fg);
+    transition: background-color 0.15s ease;
+  }
+
+  .pretzel-btn-secondary:hover:not(:disabled) {
+    background-color: var(--pretzel-btn-secondary-hover);
+  }
+
+  .pretzel-btn-secondary:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .pretzel-nav-tab-active {
+    outline: 2px solid var(--pretzel-nav-ring);
+    outline-offset: 2px;
+  }
+
+  .pretzel-light-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    border-width: 1px;
+    border-style: solid;
+    transition:
+      border-color 0.15s ease,
+      background-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+
+  .pretzel-light-card--on {
+    border-color: var(--pretzel-border-card-on);
+    background-color: var(--pretzel-surface-card-on);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  }
+
+  .pretzel-light-card--off {
+    border-color: var(--pretzel-border-card-off);
+    background-color: var(--pretzel-surface-card-off);
+  }
+
+  .pretzel-text-group-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--pretzel-fg-subtle);
+  }
+
+  .pretzel-icon-muted {
+    color: var(--pretzel-fg-muted);
+  }
+
+  .pretzel-vol-pct {
+    width: 2rem;
+    text-align: right;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--pretzel-fg-muted);
+  }
+
+  .pretzel-remote-label {
+    margin-bottom: 0.5rem;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--pretzel-fg-subtle);
+  }
+
+  .pretzel-toggle-bulb-off {
+    background-color: var(--pretzel-control-track);
+    color: var(--pretzel-fg-muted);
+  }
+
+  .pretzel-text-card-name-on {
+    color: var(--pretzel-fg-heading);
+  }
+
+  .pretzel-text-card-name-off {
+    color: var(--pretzel-fg-subtle);
+  }
+
+  .pretzel-swatch-active {
+    box-shadow:
+      0 0 0 2px var(--pretzel-border-strong),
+      0 0 0 4px var(--pretzel-ring-offset-card);
   }
 }
 
@@ -61,4 +499,19 @@
     2.95px 2.95px 4.172px -2px #0000001a,
     2.5px 2.5px 3px -2.5px #00000026,
     -0.5px -0.5px 0 0 rgb(0 0 0/10%);
+}
+
+@media (prefers-color-scheme: dark) {
+  .nav-button {
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
+      inset 0 -1px 0 0 rgba(0, 0, 0, 0.35),
+      0 1px 2px rgba(0, 0, 0, 0.4);
+  }
+
+  .nav-button:active {
+    box-shadow:
+      inset 0 2px 4px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+  }
 }

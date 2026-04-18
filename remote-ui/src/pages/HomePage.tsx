@@ -113,21 +113,20 @@ export function HomePage({ activeRoom }: HomePageProps) {
     <div className="py-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div
-            className="min-h-[2.75rem] text-sm text-[#444]"
-            aria-live="polite"
-          >
+          <div className="pretzel-text-sun-block" aria-live="polite">
             {sunState.status === "loading" ? (
-              <span className="text-gray-500">Sun times…</span>
+              <span className="pretzel-text-panel-subtle">Sun times…</span>
             ) : sunState.status === "error" ? (
-              <span className="text-gray-500">Sun times unavailable</span>
+              <span className="pretzel-text-panel-subtle">
+                Sun times unavailable
+              </span>
             ) : (
               <>
-                <div className="font-semibold text-[#222]">{sunTitle}</div>
-                <div className="tabular-nums text-base text-[#333]">
+                <div className="pretzel-text-sun-title">{sunTitle}</div>
+                <div className="pretzel-text-sun-time">
                   {sunTimeFormatted}
                   {sunDay ? (
-                    <span className="ml-1.5 font-normal text-gray-500">
+                    <span className="ml-1.5 font-normal pretzel-text-panel-subtle">
                       {sunDay}
                     </span>
                   ) : null}
@@ -136,10 +135,7 @@ export function HomePage({ activeRoom }: HomePageProps) {
             )}
           </div>
         </div>
-        <Link
-          to="/settings"
-          className="flex-shrink-0 rounded-lg border border-gray-600 px-3 py-1.5 text-xs font-medium text-gray-300 transition hover:bg-gray-800"
-        >
+        <Link to="/settings" className="pretzel-btn-ghost flex-shrink-0">
           Settings
         </Link>
       </div>

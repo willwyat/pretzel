@@ -157,12 +157,6 @@ export function TvSection() {
   const remoteDisabled =
     relayOffline || !tvOn || loading || turningOff || turningOn;
 
-  const remoteBtnClass =
-    "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-gray-600 text-gray-300 transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40";
-
-  const remoteWideBtnClass =
-    "flex min-h-9 flex-1 items-center justify-center rounded-lg border border-gray-600 px-2 py-1.5 text-[11px] font-medium text-gray-200 transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40";
-
   const sendRemote = useCallback(
     (path: string) => {
       if (remoteDisabled) return;
@@ -267,8 +261,8 @@ export function TvSection() {
         : "bg-amber-500";
 
   return (
-    <section className="rounded-xl border border-gray-700 bg-gray-900">
-      <div className="flex items-start justify-between gap-3 border-b border-gray-700 p-4">
+    <section className="pretzel-panel">
+      <div className="pretzel-panel__header">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <span
             className={`mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full ${statusDotClass}`}
@@ -284,17 +278,17 @@ export function TvSection() {
             aria-hidden
           />
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-gray-100">LG TV</h2>
+            <h2 className="pretzel-text-panel-title">LG TV</h2>
             {loading ? (
-              <p className="text-xs text-gray-400">Loading…</p>
+              <p className="pretzel-text-panel-muted">Loading…</p>
             ) : relayOffline ? (
-              <p className="text-xs text-gray-500">TV relay offline</p>
+              <p className="pretzel-text-panel-subtle">TV relay offline</p>
             ) : !connected ? (
-              <p className="text-xs text-gray-500">TV not connected</p>
+              <p className="pretzel-text-panel-subtle">TV not connected</p>
             ) : !tvOn ? (
-              <p className="text-xs text-gray-500">TV standby</p>
+              <p className="pretzel-text-panel-subtle">TV standby</p>
             ) : (
-              <p className="text-xs text-gray-400">
+              <p className="pretzel-text-panel-muted">
                 {inputConnected ? "Source connected" : "No source"}
               </p>
             )}
@@ -304,17 +298,17 @@ export function TvSection() {
           <button
             type="button"
             onClick={() => void fetchAll()}
-            className="flex-shrink-0 rounded-lg border border-gray-600 px-3 py-1.5 text-xs font-medium text-gray-300 transition hover:bg-gray-800"
+            className="pretzel-btn-ghost"
           >
             Refresh
           </button>
         )}
       </div>
 
-      <div className="p-4">
+      <div className="pretzel-panel__body">
         <div className="flex items-center gap-2">
           <svg
-            className="h-3.5 w-3.5 flex-shrink-0 text-gray-400"
+            className="pretzel-icon-muted h-3.5 w-3.5 flex-shrink-0"
             fill="none"
             viewBox="0 0 24 24"
             strokeWidth={1.5}
@@ -345,16 +339,14 @@ export function TvSection() {
               setDragging(false);
               commitVolume(localVolume);
             }}
-            className="h-1.5 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-gray-700 accent-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            className="pretzel-range"
           />
-          <span className="w-8 text-right text-[11px] tabular-nums text-gray-400">
-            {pctLabel}%
-          </span>
+          <span className="pretzel-vol-pct">{pctLabel}%</span>
           <button
             type="button"
             disabled={controlsDisabled}
             onClick={toggleMute}
-            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-gray-600 text-gray-400 transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="pretzel-btn-icon h-8 w-8"
             title={muted ? "Unmute" : "Mute"}
           >
             {muted ? "🔇" : "🔈"}
@@ -362,10 +354,8 @@ export function TvSection() {
         </div>
 
         {tvOn && (
-          <div className="mt-4 border-t border-gray-700 pt-4">
-            <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-gray-500">
-              Remote
-            </p>
+          <div className="pretzel-panel__divider-t">
+            <p className="pretzel-remote-label">Remote</p>
             <div
               className="mx-auto flex w-fit flex-col items-center gap-1"
               aria-label="TV directional pad"
@@ -374,7 +364,7 @@ export function TvSection() {
                 type="button"
                 disabled={remoteDisabled}
                 title="Up"
-                className={remoteBtnClass}
+                className="pretzel-btn-icon"
                 onClick={() => sendRemote("/tv/up")}
               >
                 ▲
@@ -384,7 +374,7 @@ export function TvSection() {
                   type="button"
                   disabled={remoteDisabled}
                   title="Left"
-                  className={remoteBtnClass}
+                  className="pretzel-btn-icon"
                   onClick={() => sendRemote("/tv/left")}
                 >
                   ◀
@@ -393,7 +383,7 @@ export function TvSection() {
                   type="button"
                   disabled={remoteDisabled}
                   title="OK / Enter"
-                  className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-gray-500 bg-gray-800 text-[10px] font-semibold text-gray-100 transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="pretzel-btn-emphasis"
                   onClick={() => sendRemote("/tv/enter")}
                 >
                   OK
@@ -402,7 +392,7 @@ export function TvSection() {
                   type="button"
                   disabled={remoteDisabled}
                   title="Right"
-                  className={remoteBtnClass}
+                  className="pretzel-btn-icon"
                   onClick={() => sendRemote("/tv/right")}
                 >
                   ▶
@@ -412,7 +402,7 @@ export function TvSection() {
                 type="button"
                 disabled={remoteDisabled}
                 title="Down"
-                className={remoteBtnClass}
+                className="pretzel-btn-icon"
                 onClick={() => sendRemote("/tv/down")}
               >
                 ▼
@@ -423,7 +413,7 @@ export function TvSection() {
                 type="button"
                 disabled={remoteDisabled}
                 title="Back"
-                className={remoteWideBtnClass}
+                className="pretzel-btn-icon-wide"
                 onClick={() => sendRemote("/tv/back")}
               >
                 Back
@@ -432,7 +422,7 @@ export function TvSection() {
                 type="button"
                 disabled={remoteDisabled}
                 title="Home"
-                className={remoteWideBtnClass}
+                className="pretzel-btn-icon-wide"
                 onClick={() => sendRemote("/tv/home")}
               >
                 Home
@@ -441,7 +431,7 @@ export function TvSection() {
                 type="button"
                 disabled={remoteDisabled}
                 title="Quick settings"
-                className={remoteWideBtnClass}
+                className="pretzel-btn-icon-wide"
                 onClick={() => sendRemote("/tv/settings")}
               >
                 Settings
@@ -450,11 +440,11 @@ export function TvSection() {
           </div>
         )}
 
-        <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-gray-700 pt-4">
+        <div className="pretzel-panel__divider-t flex flex-wrap items-center justify-end gap-2">
           {!tvOn && (
             <>
               {turningOn ? (
-                <span className="text-xs text-gray-400">Waking TV…</span>
+                <span className="pretzel-text-panel-muted">Waking TV…</span>
               ) : (
                 <button
                   type="button"
@@ -471,16 +461,16 @@ export function TvSection() {
           {connected && (
             <>
               {turningOff ? (
-                <span className="text-xs text-gray-400">Turning off…</span>
+                <span className="pretzel-text-panel-muted">Turning off…</span>
               ) : (
                 <button
                   type="button"
                   disabled={relayOffline || loading || turningOff}
                   onClick={handlePowerOffClick}
-                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                  className={`pretzel-btn-ghost px-3 py-1.5 transition disabled:cursor-not-allowed disabled:opacity-50 ${
                     powerOffArmed
-                      ? "border-amber-600 bg-amber-950/50 text-amber-200"
-                      : "border-gray-600 text-gray-400 hover:bg-gray-800"
+                      ? "border-amber-600 bg-amber-950/50 text-amber-200 hover:bg-amber-950/60"
+                      : ""
                   }`}
                 >
                   {powerOffArmed ? "Confirm power off" : "Power off"}

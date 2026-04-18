@@ -1,13 +1,7 @@
 import type { HomeRoomTab } from "../types/homeRoom";
 
 const navBtnBase =
-  "min-w-24 flex flex-1 flex-col items-center rounded-lg py-2 nav-button transition-[box-shadow,ring]";
-
-function navBtnActive(active: boolean) {
-  return active
-    ? "ring-2 ring-[#888] ring-offset-2 ring-offset-[var(--pretzel-surface-page)]"
-    : "";
-}
+  "min-w-24 flex flex-1 flex-col items-center rounded-lg py-2 nav-button transition-[box-shadow,outline]";
 
 type NavbarProps = {
   activeRoom: HomeRoomTab;
@@ -24,7 +18,7 @@ export function Navbar({ activeRoom, onActiveRoomChange }: NavbarProps) {
       <div className="mx-auto flex max-w-lg justify-between gap-2 px-3">
         <button
           type="button"
-          className={`${navBtnBase} ${navBtnActive(activeRoom === "lounge")}`}
+          className={`${navBtnBase} ${activeRoom === "lounge" ? "pretzel-nav-tab-active" : ""}`.trim()}
           aria-pressed={activeRoom === "lounge"}
           onClick={() => onActiveRoomChange("lounge")}
         >
@@ -33,7 +27,7 @@ export function Navbar({ activeRoom, onActiveRoomChange }: NavbarProps) {
         </button>
         <button
           type="button"
-          className={`${navBtnBase} ${navBtnActive(activeRoom === "bedroom")}`}
+          className={`${navBtnBase} ${activeRoom === "bedroom" ? "pretzel-nav-tab-active" : ""}`.trim()}
           aria-pressed={activeRoom === "bedroom"}
           onClick={() => onActiveRoomChange("bedroom")}
         >
@@ -49,7 +43,7 @@ export function Navbar({ activeRoom, onActiveRoomChange }: NavbarProps) {
         </button>
         <button
           type="button"
-          className={`${navBtnBase} ${navBtnActive(activeRoom === "pretzel")}`}
+          className={`${navBtnBase} ${activeRoom === "pretzel" ? "pretzel-nav-tab-active" : ""}`.trim()}
           aria-pressed={activeRoom === "pretzel"}
           onClick={() => onActiveRoomChange("pretzel")}
         >

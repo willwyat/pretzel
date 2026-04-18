@@ -101,8 +101,8 @@ export function PretzelSection() {
   };
 
   return (
-    <section className="rounded-xl border border-gray-700 bg-gray-900">
-      <div className="flex items-start justify-between gap-3 border-b border-gray-700 p-4">
+    <section className="pretzel-panel">
+      <div className="pretzel-panel__header">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <span
             className={`mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full ${statusDotClass}`}
@@ -110,8 +110,8 @@ export function PretzelSection() {
             aria-hidden
           />
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-gray-100">Pi speaker</h2>
-            <p className="text-xs text-gray-400">
+            <h2 className="pretzel-text-panel-title">Pi speaker</h2>
+            <p className="pretzel-text-panel-muted">
               {loading
                 ? "Loading…"
                 : offline
@@ -126,16 +126,16 @@ export function PretzelSection() {
           <button
             type="button"
             onClick={() => void fetchVolume()}
-            className="flex-shrink-0 rounded-lg border border-gray-600 px-3 py-1.5 text-xs font-medium text-gray-300 transition hover:bg-gray-800"
+            className="pretzel-btn-ghost"
           >
             Refresh
           </button>
         )}
       </div>
 
-      <div className="border-t border-gray-700 p-4">
+      <div className="pretzel-panel__body">
         <div className="flex items-center gap-2">
-          <span className="text-sm opacity-70" aria-hidden>
+          <span className="pretzel-text-panel-muted text-sm opacity-70" aria-hidden>
             🔈
           </span>
           <input
@@ -156,18 +156,16 @@ export function PretzelSection() {
               setDragging(false);
               commitVolume(localVolume);
             }}
-            className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-gray-700 accent-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            className="pretzel-range w-full"
           />
-          <span className="w-8 text-right text-[11px] tabular-nums text-gray-400">
-            {displayVol}%
-          </span>
+          <span className="pretzel-vol-pct">{displayVol}%</span>
         </div>
       </div>
 
-      <div className="border-t border-gray-700 p-4">
+      <div className="pretzel-panel__body pretzel-panel__block-bordered">
         <label
           htmlFor="pretzel-speak-text"
-          className="mb-1.5 block text-xs font-medium text-gray-400"
+          className="pretzel-text-panel-muted mb-1.5 block text-xs font-medium"
         >
           Speak on Pretzel
         </label>
@@ -184,10 +182,10 @@ export function PretzelSection() {
               ? "Connect to Pretzel to send speech…"
               : "Type something for OpenAI TTS on the Pi…"
           }
-          className="mb-2 w-full resize-y rounded-lg border border-gray-600 bg-gray-950 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="pretzel-input mb-2 min-h-[4.5rem] resize-y disabled:cursor-not-allowed disabled:opacity-50"
         />
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] tabular-nums text-gray-500">
+          <span className="pretzel-text-panel-subtle text-[11px] tabular-nums">
             {speakText.length}/{PRETZEL_SPEAK_MAX_CHARS}
           </span>
           <div className="flex flex-shrink-0 items-center gap-2">
@@ -195,7 +193,7 @@ export function PretzelSection() {
               type="button"
               disabled={offline || weatherSending}
               onClick={handleWeatherSpeak}
-              className="rounded-lg border border-gray-600 bg-gray-800 px-3 py-1.5 text-xs font-medium text-gray-200 transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="pretzel-btn-secondary px-3 py-1.5 text-xs disabled:cursor-not-allowed"
             >
               {weatherSending ? "Sending…" : "Weather"}
             </button>
@@ -205,7 +203,7 @@ export function PretzelSection() {
                 offline || speakSending || speakText.trim().length === 0
               }
               onClick={handleSpeak}
-              className="rounded-lg border border-gray-600 bg-gray-800 px-3 py-1.5 text-xs font-medium text-gray-200 transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="pretzel-btn-secondary px-3 py-1.5 text-xs disabled:cursor-not-allowed"
             >
               {speakSending ? "Sending…" : "Speak"}
             </button>

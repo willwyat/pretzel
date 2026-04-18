@@ -160,8 +160,8 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
         : "bg-gray-500";
 
   return (
-    <section className="rounded-xl border border-gray-700 bg-gray-900">
-      <div className="flex items-start justify-between gap-3 border-b border-gray-700 p-4">
+    <section className="pretzel-panel">
+      <div className="pretzel-panel__header">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <span
             className={`mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full ${statusDot}`}
@@ -175,8 +175,8 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
             aria-hidden
           />
           <div className="min-w-0">
-            <h2 className="text-base font-semibold text-gray-100">{heading}</h2>
-            <p className="text-xs text-gray-400">
+            <h2 className="pretzel-text-panel-title">{heading}</h2>
+            <p className="pretzel-text-panel-muted">
               {loading && lights.length === 0
                 ? "Loading…"
                 : offline
@@ -197,14 +197,14 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
             onClick={() => {
               void fetchLights();
             }}
-            className="flex-shrink-0 rounded-lg border border-gray-600 px-3 py-1.5 text-xs font-medium text-gray-300 transition hover:bg-gray-800"
+            className="pretzel-btn-ghost"
           >
             Refresh
           </button>
         )}
       </div>
 
-      <div className="p-4">
+      <div className="pretzel-panel__body">
         {error && (
           <div className="mb-4 rounded-lg border border-rose-800 bg-rose-950/50 px-3 py-2 text-sm text-rose-200">
             {error}
@@ -214,9 +214,7 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
         <div className="space-y-6">
           {Object.entries(lightGroups).map(([groupName, groupLights]) => (
             <div key={groupName} className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                {groupName}
-              </h3>
+              <h3 className="pretzel-text-group-label">{groupName}</h3>
               <div className="grid gap-3">
                 {groupLights.map((light) => (
                   <LightCard
@@ -236,7 +234,7 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
           lights.length === 0 &&
           !error &&
           !offline && (
-            <p className="py-8 text-center text-sm text-gray-500">
+            <p className="py-8 text-center text-sm pretzel-text-panel-subtle">
               No lights found.
             </p>
           )}
@@ -245,7 +243,7 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
           lightsInRoom.length === 0 &&
           !error &&
           !offline && (
-            <p className="py-8 text-center text-sm text-gray-500">
+            <p className="py-8 text-center text-sm pretzel-text-panel-subtle">
               No lights assigned to this room. In the LIFX app, use group or
               location names <span className="font-mono">Lounge</span> or{" "}
               <span className="font-mono">Bedroom</span> (case-insensitive).

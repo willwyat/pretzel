@@ -200,34 +200,28 @@ export function SettingsSection() {
   const tv = statusBody?.services?.tvRelay;
 
   return (
-    <section className="rounded-xl border border-gray-700 bg-gray-900">
-      <div className="border-b border-gray-700 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-gray-100">Settings</h2>
-            <p className="mt-1 text-xs text-gray-500">
-              Operator tools (same Wi‑Fi). Passcode required.
-            </p>
-          </div>
-          {unlocked && (
-            <button
-              type="button"
-              onClick={lock}
-              className="flex-shrink-0 rounded-lg border border-gray-600 px-3 py-1.5 text-xs font-medium text-gray-300 transition hover:bg-gray-800"
-            >
-              Lock
-            </button>
-          )}
+    <section className="pretzel-panel">
+      <div className="pretzel-panel__header">
+        <div>
+          <h2 className="pretzel-text-panel-title">Settings</h2>
+          <p className="pretzel-text-panel-subtle mt-1">
+            Operator tools (same Wi‑Fi). Passcode required.
+          </p>
         </div>
+        {unlocked && (
+          <button type="button" onClick={lock} className="pretzel-btn-ghost">
+            Lock
+          </button>
+        )}
       </div>
 
-      <div className="p-4">
+      <div className="pretzel-panel__body">
         {!unlocked ? (
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <div className="min-w-0 flex-1">
               <label
                 htmlFor="settings-pass"
-                className="mb-1 block text-xs font-medium text-gray-400"
+                className="pretzel-text-panel-muted mb-1 block text-xs font-medium"
               >
                 Passcode
               </label>
@@ -243,7 +237,7 @@ export function SettingsSection() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") tryUnlock();
                 }}
-                className="w-full rounded-lg border border-gray-600 bg-gray-950 px-3 py-2 text-sm text-gray-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="pretzel-input"
               />
               {unlockError && (
                 <p className="mt-1 text-xs text-red-400">Incorrect passcode.</p>
@@ -259,12 +253,12 @@ export function SettingsSection() {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            <div className="rounded-lg border border-gray-600 bg-gray-950/80 p-3">
-              <p className="text-xs font-medium text-gray-400">
+            <div className="pretzel-nested-card">
+              <p className="pretzel-text-panel-muted text-xs font-medium">
                 Last service start (systemd)
               </p>
               {statusLoading && (
-                <p className="mt-2 text-sm text-gray-500">Loading status…</p>
+                <p className="pretzel-text-panel-body mt-2">Loading status…</p>
               )}
               {!statusLoading && statusBody && !statusBody.ok && (
                 <p className="mt-2 text-sm text-red-400">
@@ -272,9 +266,9 @@ export function SettingsSection() {
                 </p>
               )}
               {!statusLoading && statusBody?.ok && statusBody.services && (
-                <ul className="mt-2 space-y-2 text-sm text-gray-200">
+                <ul className="pretzel-text-panel-body mt-2 space-y-2">
                   <li>
-                    <span className="text-gray-500">pretzel-server:</span>{" "}
+                    <span className="pretzel-text-panel-subtle">pretzel-server:</span>{" "}
                     {formatWhen(
                       ps?.activeEnterTimestampIso ?? null,
                       ps?.activeEnterTimestamp ?? null,
@@ -284,7 +278,7 @@ export function SettingsSection() {
                     ) : null}
                   </li>
                   <li>
-                    <span className="text-gray-500">tv-relay:</span>{" "}
+                    <span className="pretzel-text-panel-subtle">tv-relay:</span>{" "}
                     {formatWhen(
                       tv?.activeEnterTimestampIso ?? null,
                       tv?.activeEnterTimestamp ?? null,
@@ -299,16 +293,16 @@ export function SettingsSection() {
                 type="button"
                 onClick={() => void loadStatus()}
                 disabled={statusLoading}
-                className="mt-2 rounded border border-gray-600 px-2 py-1 text-xs text-gray-300 hover:bg-gray-800 disabled:opacity-50"
+                className="pretzel-btn-ghost pretzel-btn-ghost--sm mt-2"
               >
                 Refresh status
               </button>
             </div>
 
             {lastPull && (
-              <p className="text-xs text-gray-400">
+              <p className="pretzel-text-panel-muted text-xs">
                 Last pull:{" "}
-                <span className="font-mono text-gray-200">
+                <span className="font-mono pretzel-text-panel-title">
                   {shortSha(lastPull.commit)}
                 </span>{" "}
                 at {formatWhen(lastPull.pulledAt, lastPull.pulledAt)}
@@ -316,7 +310,7 @@ export function SettingsSection() {
             )}
 
             {gitMessage && (
-              <p className="text-sm text-gray-300">{gitMessage}</p>
+              <p className="pretzel-text-panel-body">{gitMessage}</p>
             )}
 
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -324,7 +318,7 @@ export function SettingsSection() {
                 type="button"
                 disabled={gitBusy || restartBusy !== null}
                 onClick={() => void handleGitPull()}
-                className="rounded-lg border border-gray-600 bg-gray-800 px-3 py-2 text-sm font-medium text-gray-200 transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="pretzel-btn-secondary disabled:cursor-not-allowed"
               >
                 {gitBusy ? "Pulling…" : "Git pull"}
               </button>

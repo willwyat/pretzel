@@ -19,7 +19,7 @@ Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
 # Optional: match repo root VERSION after deploy (see README).
-# Environment=PRETZEL_STACK_VERSION=1.5.9
+# Environment=PRETZEL_STACK_VERSION=1.6.0
 # Optional: Settings page / curl admin — must match header from UI or client.
 # Environment=PRETZEL_SETTINGS_PASSCODE=change_me
 # Optional: git pull repo root (default: parent of this directory).

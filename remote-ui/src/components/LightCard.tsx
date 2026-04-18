@@ -95,10 +95,8 @@ export function LightCard({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-xl border transition-all ${
-        isOn
-          ? "border-gray-700 bg-gray-800 shadow-sm"
-          : "border-gray-800 bg-gray-900"
+      className={`pretzel-light-card relative overflow-hidden transition-all ${
+        isOn ? "pretzel-light-card--on" : "pretzel-light-card--off"
       }`}
     >
       <div className="flex items-start gap-3 p-4">
@@ -108,7 +106,7 @@ export function LightCard({
           className={`mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full transition ${
             isOn
               ? `${kelvinToTailwind(kelvin)} text-gray-900 shadow-inner`
-              : "bg-gray-700 text-gray-400"
+              : "pretzel-toggle-bulb-off"
           }`}
           title={isOn ? "Turn off" : "Turn on"}
         >
@@ -119,7 +117,7 @@ export function LightCard({
           <div className="flex items-center justify-between gap-2">
             <h3
               className={`truncate text-sm font-medium ${
-                isOn ? "text-gray-100" : "text-gray-500"
+                isOn ? "pretzel-text-card-name-on" : "pretzel-text-card-name-off"
               }`}
             >
               {light.label}
@@ -131,7 +129,7 @@ export function LightCard({
             )}
           </div>
 
-          <p className="text-xs text-gray-400">
+          <p className="pretzel-text-panel-muted text-xs">
             {light.product?.name || "LIFX Light"}
             {isOn && ` · ${kelvinLabel(kelvin)}`}
           </p>
@@ -139,7 +137,7 @@ export function LightCard({
           {isOn && (
             <div className="mt-3 flex items-center gap-2">
               <svg
-                className="h-3.5 w-3.5 flex-shrink-0 text-gray-400"
+                className="pretzel-icon-muted h-3.5 w-3.5 flex-shrink-0"
                 fill="none"
                 viewBox="0 0 24 24"
                 strokeWidth={1.5}
@@ -172,9 +170,9 @@ export function LightCard({
                   setDragging(false);
                   commitBrightness(localBrightness);
                 }}
-                className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-gray-700 accent-amber-500"
+                className="pretzel-range pretzel-range--amber w-full"
               />
-              <span className="w-8 text-right text-[11px] tabular-nums text-gray-400">
+              <span className="pretzel-vol-pct">
                 {Math.round(
                   (dragging ? localBrightness : (light.brightness ?? 0)) * 100,
                 )}
@@ -199,7 +197,7 @@ export function LightCard({
                     title={swatch.label}
                     onClick={() => onColor(light, swatch.color)}
                     className={`h-5 w-5 rounded-full transition-transform hover:scale-110 ${
-                      active ? "ring-2 ring-offset-1 ring-gray-500 ring-offset-gray-900" : ""
+                      active ? "pretzel-swatch-active" : ""
                     }`}
                     style={{ background: swatch.bg }}
                   />
