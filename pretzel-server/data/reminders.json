@@ -1,0 +1,60 @@
+{
+  "reminders": [
+    {
+      "id": "morning",
+      "time": "09:30",
+      "label": "Morning",
+      "enabled": true,
+      "template": "Good morning! Today is {{date}}. Time is now {{time}}. Today's weather is {{condition}}, with temperatures around {{tempC}} degrees celsius.{{rainNote}} Oh and also — it's mealtime for Sugar and Spice. Feed them everything nice!!!",
+      "includeChores": true
+    },
+    {
+      "id": "midday",
+      "time": "12:00",
+      "label": "Midday",
+      "enabled": true,
+      "template": "Good day! Time is now 12 o'clock at noon. Today's weather is {{condition}}. It's about {{tempC}} degrees out.{{rainNote}} Please drink more water.",
+      "includeChores": true
+    },
+    {
+      "id": "afternoon",
+      "time": "15:00",
+      "label": "Afternoon",
+      "enabled": true,
+      "template": "Good afternoon! Time is now 3 o'clock. {{sunClause}} It's {{tempC}} degrees out. Oh and also — mealtime for Sugar and Spice. Feed them everything nice!!!",
+      "includeChores": true
+    },
+    {
+      "id": "evening",
+      "time": "18:00",
+      "label": "Evening",
+      "enabled": true,
+      "template": "Good afternoon! Time is now 6 o'clock. {{sunClause}} It's {{tempC}} degrees out.{{rainNote}} {{chores}} Oh and also — it's mealtime for Sugar and Spice. Feed them everything nice!!!",
+      "includeChores": true
+    },
+    {
+      "id": "sunset",
+      "time": "sunset",
+      "label": "Sunset",
+      "enabled": true,
+      "template": "Good evening! Time is now {{time}}. The sun is setting now. Take a look outside for the amazing sunset view!",
+      "includeChores": false
+    },
+    {
+      "id": "winddown",
+      "time": "21:00",
+      "label": "Wind-down",
+      "enabled": true,
+      "template": "Good evening! Time is now 9 o'clock. Remember to take your supplements and feed the cats. And then wind down for bedtime in a couple of hours. Enjoy your night!",
+      "includeChores": true
+    },
+    {
+      "id": "midnight",
+      "time": "00:00",
+      "label": "Midnight",
+      "enabled": true,
+      "template": "Good evening! Time is now 12 o'clock. {{sunClause}} Let's wind down and prepare for sleep soon!",
+      "includeChores": false
+    }
+  ]
+}

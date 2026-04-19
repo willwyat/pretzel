@@ -1,3 +1,5 @@
 node_modules/
 .env
 *.log
+pretzel-server/data/chores-state.json
+pretzel-server/data/chores-state.bak.json

@@ -1,0 +1,215 @@
+{
+  "chores": [
+    {
+      "id": "feed-cats",
+      "name": "Feed the cats",
+      "durationMinutes": 10,
+      "schedule": [
+        {
+          "days": [
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday",
+            "saturday",
+            "sunday"
+          ],
+          "time": "09:30"
+        },
+        {
+          "days": [
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday",
+            "saturday",
+            "sunday"
+          ],
+          "time": "15:00"
+        },
+        {
+          "days": [
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday",
+            "saturday",
+            "sunday"
+          ],
+          "time": "18:00"
+        }
+      ],
+      "createdAt": "2026-04-19T23:21:00.807Z"
+    },
+    {
+      "id": "supplements",
+      "name": "Take supplements",
+      "durationMinutes": 3,
+      "schedule": [
+        {
+          "days": [
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday",
+            "saturday",
+            "sunday"
+          ],
+          "time": "21:00"
+        }
+      ],
+      "createdAt": "2026-04-19T23:21:00.813Z"
+    },
+    {
+      "id": "vacuum",
+      "name": "Vacuum floor",
+      "durationMinutes": 15,
+      "schedule": [
+        {
+          "days": [
+            "monday"
+          ],
+          "time": "09:30"
+        },
+        {
+          "days": [
+            "wednesday"
+          ],
+          "time": "09:30"
+        },
+        {
+          "days": [
+            "saturday"
+          ],
+          "time": "09:30"
+        }
+      ],
+      "createdAt": "2026-04-19T23:21:00.813Z"
+    },
+    {
+      "id": "laundry",
+      "name": "Do laundry",
+      "durationMinutes": 15,
+      "schedule": [
+        {
+          "days": [
+            "wednesday"
+          ],
+          "time": "09:30"
+        },
+        {
+          "days": [
+            "sunday"
+          ],
+          "time": "09:30"
+        }
+      ],
+      "createdAt": "2026-04-19T23:21:00.813Z"
+    },
+    {
+      "id": "bedsheets",
+      "name": "Change bedsheets",
+      "durationMinutes": 30,
+      "schedule": [
+        {
+          "days": [
+            "saturday"
+          ],
+          "time": "09:30"
+        }
+      ],
+      "createdAt": "2026-04-19T23:21:00.813Z"
+    },
+    {
+      "id": "kitchen-trash",
+      "name": "Take out kitchen trash",
+      "durationMinutes": 5,
+      "schedule": [
+        {
+          "days": [
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday",
+            "saturday",
+            "sunday"
+          ],
+          "time": "18:00"
+        }
+      ],
+      "createdAt": "2026-04-19T23:21:00.813Z"
+    },
+    {
+      "id": "groceries",
+      "name": "Get groceries",
+      "durationMinutes": 30,
+      "schedule": [
+        {
+          "days": [
+            "saturday"
+          ],
+          "time": "12:00"
+        }
+      ],
+      "createdAt": "2026-04-19T23:21:00.813Z"
+    },
+    {
+      "id": "cat-litter",
+      "name": "Clear cat litter",
+      "durationMinutes": 15,
+      "schedule": [
+        {
+          "days": [
+            "monday"
+          ],
+          "time": "09:30"
+        },
+        {
+          "days": [
+            "wednesday"
+          ],
+          "time": "09:30"
+        },
+        {
+          "days": [
+            "friday"
+          ],
+          "time": "09:30"
+        }
+      ],
+      "createdAt": "2026-04-19T23:21:00.813Z"
+    },
+    {
+      "id": "toilet-trash",
+      "name": "Take out toilet trash",
+      "durationMinutes": 5,
+      "schedule": [
+        {
+          "days": [
+            "tuesday"
+          ],
+          "time": "18:00"
+        },
+        {
+          "days": [
+            "friday"
+          ],
+          "time": "18:00"
+        }
+      ],
+      "createdAt": "2026-04-19T23:21:00.813Z"
+    },
+    {
+      "id": "drink-water",
+      "name": "Drink water",
+      "durationSeconds": 30,
+      "schedule": "every-reminder",
+      "createdAt": "2026-04-19T23:21:00.813Z"
+    }
+  ]
+}

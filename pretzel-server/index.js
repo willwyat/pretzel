@@ -1,9 +1,15 @@
 const express = require("express");
 const { execFile, spawn } = require("child_process");
+const { readFileSync, writeFileSync, renameSync } = require("fs");
 const { join } = require("path");
-const cron = require("node-cron");
+const weather = require("./lib/weather");
+const { ChoresManager } = require("./lib/chores");
+const { RemindersScheduler } = require("./lib/reminders");
 
-const PORT = 3001;
+const PORT =
+  Number(process.env.PORT) && Number.isFinite(Number(process.env.PORT))
+    ? Number(process.env.PORT)
+    : 3001;
 const SPEAK_SCRIPT = "/home/william/pretzel/scripts/speak.sh";
 
 const REMINDER_BEEP_MP3 = join(__dirname, "beep.mp3");
@@ -26,10 +32,7 @@ const PRETZEL_REPO_ROOT =
     ? process.env.PRETZEL_REPO_ROOT.trim()
     : join(__dirname, "..");
 
-// ── Weather config ─────────────────────────────────────────────
-const LAT = 40.71;
-const LON = -74.01;
-const TZ = "America/New_York";
+const dataDir = join(__dirname, "data");
 
 const envCard = process.env.PRETZEL_AMIXER_CARD;
 const envControl = process.env.PRETZEL_AMIXER_CONTROL;
@@ -191,260 +194,22 @@ async function speakWithReminderSfx(
   await speakAsync(text, instructions);
 }
 
-// ── Weather fetch ──────────────────────────────────────────────
-async function fetchWeather() {
-  const url =
-    `https://api.open-meteo.com/v1/forecast` +
-    `?latitude=${LAT}&longitude=${LON}` +
-    `&current=temperature_2m,weathercode` +
-    `&hourly=temperature_2m,precipitation_probability` +
-    `&daily=sunrise,sunset,precipitation_probability_max` +
-    `&temperature_unit=celsius` +
-    `&timezone=${encodeURIComponent(TZ)}` +
-    `&forecast_days=2`;
+const choresManager = new ChoresManager(dataDir);
+choresManager.reload();
 
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Weather fetch failed: ${res.status}`);
-  return res.json();
-}
+const scheduler = new RemindersScheduler({
+  dataDir,
+  tz: weather.TZ,
+  speakWithSfx: speakWithReminderSfx,
+  fetchWeather: weather.fetchWeather,
+  buildWeatherContext: weather.buildWeatherContext,
+  choresManager,
+});
 
-// WMO weather code → natural language
-function describeWeather(code) {
-  if (code === 0) return "clear and sunny";
-  if (code === 1) return "mostly clear";
-  if (code === 2) return "partly cloudy";
-  if (code === 3) return "overcast";
-  if ([45, 48].includes(code)) return "foggy";
-  if ([51, 53, 55].includes(code)) return "drizzly";
-  if ([61, 63, 65].includes(code)) return "rainy";
-  if ([71, 73, 75].includes(code)) return "snowy";
-  if ([80, 81, 82].includes(code)) return "showery";
-  if ([95, 96, 99].includes(code)) return "stormy";
-  return "mixed";
-}
-
-// "2026-04-14T19:34" → "7:34 PM"
-function fmtTime(iso) {
-  const d = new Date(iso);
-  return d.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: TZ,
-  });
-}
-
-// "2026-04-14T19:34" → { hour: 19, minute: 34 }
-function isoToHM(iso) {
-  const t = iso.includes("T") ? iso.split("T")[1] : iso;
-  const [h, m] = t.split(":").map(Number);
-  return { hour: h, minute: m };
-}
-
-/** Calendar date YYYY-MM-DD for `date` in TZ (matches Open-Meteo hourly date prefixes). */
-function ymdInTz(date, timeZone) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
-}
-
-function datePrefixFromHourlyIso(iso) {
-  return iso.split("T")[0];
-}
-
-function hourFromHourlyIso(iso) {
-  const afterT = iso.includes("T") ? iso.split("T")[1] : "0";
-  return parseInt(afterT.split(":")[0], 10);
-}
-
-// Get hourly temp for a given local hour on "today" in TZ
-function tempAtHour(hourly, targetHour) {
-  const todayYmd = ymdInTz(new Date(), TZ);
-  const idx = hourly.time.findIndex((t) => {
-    if (datePrefixFromHourlyIso(t) !== todayYmd) return false;
-    return hourFromHourlyIso(t) === targetHour;
-  });
-  return idx !== -1 ? Math.round(hourly.temperature_2m[idx]) : null;
-}
-
-// Minutes between now and a future ISO time string (may be negative)
-function minutesUntil(iso) {
-  const target = new Date(iso);
-  const now = new Date();
-  return Math.round((target - now) / 60000);
-}
-
-/** For TTS: total minutes rounded to nearest `step`, then "x hours and y minutes". */
-function formatDurationHoursMinutesRounded(totalMinutes, step = 5) {
-  const rounded = Math.max(0, Math.round(totalMinutes / step) * step);
-  const h = Math.floor(rounded / 60);
-  const m = rounded % 60;
-  if (h === 0 && m === 0) return "less than 5 minutes";
-  const hourPart = h > 0 ? `${h} ${h === 1 ? "hour" : "hours"}` : null;
-  const minPart = m > 0 ? `${m} ${m === 1 ? "minute" : "minutes"}` : null;
-  if (hourPart && minPart) return `${hourPart} and ${minPart}`;
-  return hourPart || minPart;
-}
-
-/** Next `wx.daily.sunrise` instant strictly after `now` (Open-Meteo daily order). */
-function nextSunriseIsoAfterNow(wx) {
-  for (const iso of wx.daily.sunrise) {
-    if (minutesUntil(iso) > 0) return iso;
-  }
-  return wx.daily.sunrise[wx.daily.sunrise.length - 1];
-}
-
-/**
- * After local midnight, before today's sunrise: both are still ahead, but sunrise is sooner
- * than today's evening sunset (e.g. 3am — next sun event is dawn, not "tonight's sunset").
- */
-function isPreDawnBeforeTodaySunrise(wx) {
-  const rise0 = wx.daily.sunrise[0];
-  const set0 = wx.daily.sunset[0];
-  const mR = minutesUntil(rise0);
-  const mS = minutesUntil(set0);
-  return mR > 0 && mS > 0 && mR < mS;
-}
-
-/** Which sun instant to show on the remote home UI (below the clock). */
-function sunSummaryForHomeUi(wx) {
-  const rise0 = wx.daily.sunrise[0];
-  const set0 = wx.daily.sunset[0];
-  if (isPreDawnBeforeTodaySunrise(wx)) {
-    return { mode: "sunrise", iso: nextSunriseIsoAfterNow(wx) };
-  }
-  if (minutesUntil(rise0) <= 0 && minutesUntil(set0) > 0) {
-    return { mode: "sunset", iso: set0 };
-  }
-  return { mode: "sunrise", iso: nextSunriseIsoAfterNow(wx) };
-}
-
-function speakWeatherSunriseDurationClause(wx) {
-  const rise = nextSunriseIsoAfterNow(wx);
-  return (
-    ` Sunrise is ${fmtTime(rise)}, which is in about ` +
-    `${formatDurationHoursMinutesRounded(minutesUntil(rise))}.`
-  );
-}
-
-/** For speak-weather: sunset + duration, or next sunrise + duration after today's sunset. */
-function speakWeatherSunEventSentence(wx) {
-  const sunset0 = wx.daily.sunset[0];
-  if (isPreDawnBeforeTodaySunrise(wx)) {
-    return speakWeatherSunriseDurationClause(wx);
-  }
-  if (minutesUntil(sunset0) > 0) {
-    return (
-      ` Sunset is ${fmtTime(sunset0)}, which is in about ` +
-      `${formatDurationHoursMinutesRounded(minutesUntil(sunset0))}.`
-    );
-  }
-  return speakWeatherSunriseDurationClause(wx);
-}
-
-/** 3pm reminder: sunset this evening, or post-sunset sunrise line. */
-function reminderAfternoonSunClause(wx) {
-  const sunset0 = wx.daily.sunset[0];
-  if (isPreDawnBeforeTodaySunrise(wx)) {
-    const rise = nextSunriseIsoAfterNow(wx);
-    return (
-      `The next sunrise is at around ${fmtTime(rise)}, in about ` +
-      `${formatDurationHoursMinutesRounded(minutesUntil(rise))}.`
-    );
-  }
-  if (minutesUntil(sunset0) > 0) {
-    return `The sun will set at around ${fmtTime(sunset0)} this evening.`;
-  }
-  const rise = nextSunriseIsoAfterNow(wx);
-  return (
-    `The sun has set. The next sunrise is at around ${fmtTime(rise)}, in about ` +
-    `${formatDurationHoursMinutesRounded(minutesUntil(rise))}.`
-  );
-}
-
-/** 6pm reminder: sunset countdown, or sunrise countdown if sunset already passed. */
-function reminderSixPmSunClause(wx) {
-  const sunset = wx.daily.sunset[0];
-  const minsLeftRaw = minutesUntil(sunset);
-  const fmtCountdown = (mins, atStr) => {
-    if (mins <= 0) return `around ${atStr}`;
-    const hoursLeft = Math.floor(mins / 60);
-    const minsRem = mins % 60;
-    if (hoursLeft > 0 && minsRem > 0) {
-      return `in about ${hoursLeft} hour${hoursLeft > 1 ? "s" : ""} and ${minsRem} minutes, at ${atStr}`;
-    }
-    if (hoursLeft > 0) {
-      return `in about ${hoursLeft} hour${hoursLeft > 1 ? "s" : ""}, at ${atStr}`;
-    }
-    return `in about ${mins} minutes, at ${atStr}`;
-  };
-
-  if (isPreDawnBeforeTodaySunrise(wx)) {
-    const rise = nextSunriseIsoAfterNow(wx);
-    const riseStr = fmtTime(rise);
-    const minsToRise = minutesUntil(rise);
-    return `The next sunrise is ${fmtCountdown(minsToRise, riseStr)}.`;
-  }
-  if (minsLeftRaw > 0) {
-    const sunsetStr = fmtTime(sunset);
-    return `The sun will set ${fmtCountdown(minsLeftRaw, sunsetStr)}.`;
-  }
-  const rise = nextSunriseIsoAfterNow(wx);
-  const riseStr = fmtTime(rise);
-  const minsToRise = minutesUntil(rise);
-  return `The sun has set. The next sunrise is ${fmtCountdown(minsToRise, riseStr)}.`;
-}
-
-// Today's full date string: "Tuesday, April 14th" (calendar day in TZ)
-function todayLabel() {
-  const d = new Date();
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: TZ,
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  }).formatToParts(d);
-  const day = parts.find((p) => p.type === "weekday").value;
-  const month = parts.find((p) => p.type === "month").value;
-  const date = parseInt(parts.find((p) => p.type === "day").value, 10);
-  const suffix =
-    date % 10 === 1 && date !== 11
-      ? "st"
-      : date % 10 === 2 && date !== 12
-        ? "nd"
-        : date % 10 === 3 && date !== 13
-          ? "rd"
-          : "th";
-  return `${day}, ${month} ${date}${suffix}`;
-}
-
-/**
- * One paragraph for TTS from Open-Meteo (always calls {@link fetchWeather} first).
- */
-async function buildSpeakWeatherUtterance() {
-  const wx = await fetchWeather();
-  const now = new Date();
-  const localTime = now.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: TZ,
-  });
-  const temp = Math.round(wx.current.temperature_2m);
-  const condition = describeWeather(wx.current.weathercode);
-  const precip = wx.daily.precipitation_probability_max[0];
-
-  let s =
-    `Here's the weather for ${todayLabel()} ${localTime}. ` +
-    `Currently ${temp} degrees celsius and ${condition}.`;
-  if (precip >= 40) {
-    s += ` There is a ${precip} percent chance of rain today.`;
-  }
-  s += speakWeatherSunEventSentence(wx);
-  return s;
+function atomicWriteJson(filePath, obj) {
+  const tmp = `${filePath}.tmp`;
+  writeFileSync(tmp, JSON.stringify(obj, null, 2), "utf8");
+  renameSync(tmp, filePath);
 }
 
 const speakHint =
@@ -463,221 +228,6 @@ async function extractSpeakTextFromPost(req) {
   }
   return text;
 }
-
-// ── Sunset reminder (single task, refreshed at 6 AM + on boot) ─
-let sunsetReminderTask = null;
-
-async function refreshSunsetReminder() {
-  const wx = await fetchWeather();
-  const sunset = wx.daily.sunset[0];
-  const { hour, minute } = isoToHM(sunset);
-  const sunsetTimeStr = fmtTime(sunset);
-
-  if (sunsetReminderTask) {
-    sunsetReminderTask.stop();
-    sunsetReminderTask = null;
-  }
-
-  console.log(
-    `Scheduling sunset reminder for ${hour}:${minute < 10 ? "0" + minute : minute}`,
-  );
-
-  sunsetReminderTask = cron.schedule(
-    `${minute} ${hour} * * *`,
-    async () => {
-      await speakWithReminderSfx(
-        `Good evening! Time is now ${sunsetTimeStr}. ` +
-          `The sun is setting now. Take a look outside for the amazing sunset view!`,
-      );
-    },
-    { timezone: TZ },
-  );
-}
-
-// ── Scheduled reminders ────────────────────────────────────────
-
-// 9:30 AM — morning greeting + weather + cats
-cron.schedule(
-  "30 9 * * *",
-  async () => {
-    try {
-      const wx = await fetchWeather();
-      const code = wx.current.weathercode;
-      const temp =
-        tempAtHour(wx.hourly, 9) ?? Math.round(wx.current.temperature_2m);
-      const precip = wx.daily.precipitation_probability_max[0];
-      const condition = describeWeather(code);
-      const rainNote =
-        precip >= 40
-          ? ` There's a ${precip} percent chance of rain today, so keep an umbrella handy.`
-          : "";
-
-      await speakWithReminderSfx(
-        `Good morning! Today is ${todayLabel()}. Time is now 9:30 AM. ` +
-          `Today's weather is ${condition}, with temperatures around ${temp} degrees celsius.${rainNote} ` +
-          `Oh and also — it's mealtime for Sugar and Spice. Feed them everything nice!!!`,
-      );
-    } catch (e) {
-      console.error("9:30 reminder error:", e.message);
-      await speakWithReminderSfx(
-        "Good morning! Time is now 9:30 AM. Oh and also — it's mealtime for Sugar and Spice. Feed them everything nice!!!",
-      );
-    }
-  },
-  { timezone: TZ },
-);
-
-// 12:00 PM — midday + weather + water
-cron.schedule(
-  "0 12 * * *",
-  async () => {
-    try {
-      const wx = await fetchWeather();
-      const code = wx.current.weathercode;
-      const temp =
-        tempAtHour(wx.hourly, 12) ?? Math.round(wx.current.temperature_2m);
-      const precip = wx.daily.precipitation_probability_max[0];
-      const condition = describeWeather(code);
-      const rainNote =
-        precip >= 40
-          ? ` There's a ${precip} percent chance of rain this afternoon.`
-          : " Low chance of rain today.";
-
-      await speakWithReminderSfx(
-        `Good day! Time is now 12 o'clock at noon. ` +
-          `Today's weather is ${condition}. It's about ${temp} degrees out.${rainNote} ` +
-          `Please drink more water.`,
-      );
-    } catch (e) {
-      console.error("12pm reminder error:", e.message);
-      await speakWithReminderSfx(
-        "Good day! Time is now 12 o'clock at noon. Please drink more water.",
-      );
-    }
-  },
-  { timezone: TZ },
-);
-
-// 3:00 PM — afternoon + sunset preview + cats
-cron.schedule(
-  "0 15 * * *",
-  async () => {
-    try {
-      const wx = await fetchWeather();
-      const temp =
-        tempAtHour(wx.hourly, 15) ?? Math.round(wx.current.temperature_2m);
-
-      await speakWithReminderSfx(
-        `Good afternoon! Time is now 3 o'clock. ${reminderAfternoonSunClause(wx)} ` +
-          `It's ${temp} degrees out. ` +
-          `Oh and also — mealtime for Sugar and Spice. Feed them everything nice!!!`,
-      );
-    } catch (e) {
-      console.error("3pm reminder error:", e.message);
-      await speakWithReminderSfx(
-        "Good afternoon! Time is now 3 o'clock. Oh and also — mealtime for Sugar and Spice. Feed them everything nice!!!",
-      );
-    }
-  },
-  { timezone: TZ },
-);
-
-// 6:00 PM — evening + sunset countdown + rain warning + cats
-cron.schedule(
-  "0 18 * * *",
-  async () => {
-    try {
-      const wx = await fetchWeather();
-      const temp =
-        tempAtHour(wx.hourly, 18) ?? Math.round(wx.current.temperature_2m);
-
-      const todayYmd = ymdInTz(new Date(), TZ);
-      const upcomingPrecip = [18, 19, 20, 21, 22].map((h) => {
-        const idx = wx.hourly.time.findIndex((t) => {
-          if (datePrefixFromHourlyIso(t) !== todayYmd) return false;
-          return hourFromHourlyIso(t) === h;
-        });
-        return idx !== -1 ? wx.hourly.precipitation_probability[idx] : 0;
-      });
-      const maxPrecip = Math.max(...upcomingPrecip);
-      const rainNote =
-        maxPrecip >= 40
-          ? ` And there might be showers later tonight, around ${maxPrecip} percent chance.`
-          : "";
-
-      await speakWithReminderSfx(
-        `Good afternoon! Time is now 6 o'clock. ` +
-          `${reminderSixPmSunClause(wx)} ` +
-          `It's ${temp} degrees out.${rainNote} ` +
-          `Oh and also — it's mealtime for Sugar and Spice. Feed them everything nice!!!`,
-      );
-    } catch (e) {
-      console.error("6pm reminder error:", e.message);
-      await speakWithReminderSfx(
-        "Good afternoon! Time is now 6 o'clock. Oh and also — it's mealtime for Sugar and Spice. Feed them everything nice!!!",
-      );
-    }
-  },
-  { timezone: TZ },
-);
-
-// Sunset reminder — reschedule each morning at 6 AM
-cron.schedule(
-  "0 6 * * *",
-  async () => {
-    try {
-      await refreshSunsetReminder();
-    } catch (e) {
-      console.error("Sunset scheduler error:", e.message);
-    }
-  },
-  { timezone: TZ },
-);
-
-// 9:00 PM — wind down + supplements + cats
-cron.schedule(
-  "0 21 * * *",
-  async () => {
-    await speakWithReminderSfx(
-      `Good evening! Time is now 9 o'clock. ` +
-        `Remember to take your supplements and feed the cats. ` +
-        `And then wind down for bedtime in a couple of hours. ` +
-        `Enjoy your night!`,
-    );
-  },
-  { timezone: TZ },
-);
-
-// 12:00 AM — midnight + tomorrow's sunrise
-cron.schedule(
-  "0 0 * * *",
-  async () => {
-    try {
-      const wx = await fetchWeather();
-      const sunriseIso = nextSunriseIsoAfterNow(wx);
-      const tomorrowSunrise = fmtTime(sunriseIso);
-      const sunriseMs = new Date(sunriseIso).getTime();
-      const now = Date.now();
-      let deltaMin = Math.round((sunriseMs - now) / 60000);
-      if (deltaMin < 0) deltaMin = 0;
-      const hInt = Math.floor(deltaMin / 60);
-      const mInt = deltaMin % 60;
-
-      await speakWithReminderSfx(
-        `Good evening! Time is now 12 o'clock. ` +
-          `Tomorrow, the sun will rise at around ${tomorrowSunrise}. ` +
-          `That's in ${hInt} hours${mInt > 0 ? ` and ${mInt} minutes` : ""}. ` +
-          `Let's wind down and prepare for sleep soon!`,
-      );
-    } catch (e) {
-      console.error("Midnight reminder error:", e.message);
-      await speakWithReminderSfx(
-        "Good evening! Time is now 12 o'clock. Let's wind down and prepare for sleep soon!",
-      );
-    }
-  },
-  { timezone: TZ },
-);
 
 // ── LIFX Cloud API proxy ─────────────────────────────────────
 const lifxUrlEnv = process.env.LIFX_API_URL;
@@ -831,11 +381,12 @@ app.post("/lifx/lights/:selector/state/delta", async (req, res) => {
 
 app.get("/pretzel/weather", async (req, res) => {
   const now = new Date();
+  const TZ = weather.TZ;
   const time = {
     timezone: TZ,
     utc: now.toISOString(),
     epochMs: now.getTime(),
-    localDate: ymdInTz(now, TZ),
+    localDate: weather.ymdInTz(now, TZ),
     localTime: now.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
@@ -850,16 +401,16 @@ app.get("/pretzel/weather", async (req, res) => {
   };
 
   try {
-    const wx = await fetchWeather();
+    const wx = await weather.fetchWeather();
     const code = wx.current.weathercode;
     res.json({
       ok: true,
       time,
-      location: { latitude: LAT, longitude: LON },
+      location: { latitude: weather.LAT, longitude: weather.LON },
       current: {
         temperatureC: Math.round(wx.current.temperature_2m),
         weathercode: code,
-        condition: describeWeather(code),
+        condition: weather.describeWeather(code),
         reportedTime: wx.current.time,
       },
       today: {
@@ -867,7 +418,7 @@ app.get("/pretzel/weather", async (req, res) => {
         sunset: wx.daily.sunset[0],
         precipitationProbabilityMax: wx.daily.precipitation_probability_max[0],
       },
-      sun: sunSummaryForHomeUi(wx),
+      sun: weather.sunSummaryForHomeUi(wx, now),
     });
   } catch (e) {
     res.status(502).json({
@@ -880,7 +431,7 @@ app.get("/pretzel/weather", async (req, res) => {
 
 async function speakWeatherRoute(req, res) {
   try {
-    const text = await buildSpeakWeatherUtterance();
+    const text = await weather.buildSpeakWeatherUtterance();
     void speakWithReminderSfx(text);
     res.json({ ok: true, spoken: text });
   } catch (e) {
@@ -982,6 +533,43 @@ app.post("/pretzel/volume", (req, res) => {
 
 app.get("/pretzel/status", (req, res) => {
   res.json({ ok: true, host: "pretzel" });
+});
+
+app.get("/pretzel/chores", (req, res) => {
+  try {
+    res.json({ ok: true, chores: choresManager.listWithStatus() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post("/pretzel/chores/:id/complete", (req, res) => {
+  const { id } = req.params;
+  const r = choresManager.complete(id);
+  if (!r.ok) {
+    return res.status(404).json({ ok: false, error: "Unknown chore" });
+  }
+  res.json(r);
+});
+
+app.post("/pretzel/chores/:id/uncomplete", (req, res) => {
+  const { id } = req.params;
+  const r = choresManager.uncomplete(id);
+  if (!r.ok) {
+    return res.status(404).json({ ok: false, error: "Unknown chore" });
+  }
+  res.json(r);
+});
+
+app.get("/pretzel/reminders", (req, res) => {
+  try {
+    const raw = JSON.parse(
+      readFileSync(join(dataDir, "reminders.json"), "utf8"),
+    );
+    res.json({ ok: true, ...raw });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // ── Operator admin (LAN + header secret; not strong auth) ───────
@@ -1093,9 +681,62 @@ app.post(
   },
 );
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Pretzel server listening on ${PORT}`);
-  refreshSunsetReminder().catch((e) =>
-    console.error("Initial sunset scheduler error:", e.message),
-  );
+app.put("/pretzel/reminders/:id", assertSettingsPass, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pathRem = join(dataDir, "reminders.json");
+    const raw = JSON.parse(readFileSync(pathRem, "utf8"));
+    const idx = (raw.reminders || []).findIndex((r) => r.id === id);
+    if (idx === -1) {
+      return res.status(404).json({ ok: false, error: "Unknown reminder" });
+    }
+    const allow = [
+      "enabled",
+      "time",
+      "label",
+      "template",
+      "includeChores",
+    ];
+    for (const k of allow) {
+      if (req.body[k] !== undefined) raw.reminders[idx][k] = req.body[k];
+    }
+    atomicWriteJson(pathRem, raw);
+    await scheduler.reload();
+    res.json({ ok: true, reminder: raw.reminders[idx] });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
+
+app.post(
+  "/pretzel/admin/reload-reminders",
+  assertSettingsPass,
+  async (req, res) => {
+    try {
+      await scheduler.reload();
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  },
+);
+
+app.post("/pretzel/admin/reload-chores", assertSettingsPass, (req, res) => {
+  try {
+    choresManager.reload();
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+(async () => {
+  try {
+    await scheduler.reload();
+  } catch (e) {
+    console.error("Reminder scheduler init error:", e.message);
+  }
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Pretzel server listening on ${PORT}`);
+  });
+})();

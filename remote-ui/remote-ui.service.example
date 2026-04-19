@@ -31,7 +31,7 @@ Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
 # Optional: match repo root VERSION after deploy (see README).
-# Environment=PRETZEL_STACK_VERSION=1.6.2
+# Environment=PRETZEL_STACK_VERSION=1.7.0
 # Environment=REMOTE_UI_PORT=8080
 # Environment=TV_RELAY_URL=http://127.0.0.1:3000
 # Environment=PRETZEL_SERVER_URL=http://127.0.0.1:3001

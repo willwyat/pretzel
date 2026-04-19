@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { LightsSection } from "../components/LightsSection";
+import { ChoresSection } from "../components/ChoresSection";
 import { PretzelSection } from "../components/PretzelSection";
 import { TvSection } from "../components/TvSection";
 import { useCallback, useEffect, useState } from "react";
@@ -142,7 +143,12 @@ export function HomePage({ activeRoom }: HomePageProps) {
 
       <div className="flex flex-col gap-6">
         {activeRoom === "bedroom" ? <TvSection /> : null}
-        {activeRoom === "pretzel" ? <PretzelSection /> : null}
+        {activeRoom === "pretzel" ? (
+          <>
+            <PretzelSection />
+            <ChoresSection />
+          </>
+        ) : null}
         {activeRoom === "lounge" ? (
           <LightsSection room="lounge" heading="Lounge lights" />
         ) : null}
