@@ -117,6 +117,20 @@
 }
 
 @layer components {
+  /**
+   * App-wide: avoid accidental text selection on touch / remote UI.
+   * Form fields stay selectable for passcodes and future text inputs.
+   */
+  .pretzel-no-select {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .pretzel-no-select :where(input, textarea) {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
   .pretzel-app-shell {
     background-color: var(--pretzel-surface-page);
   }
