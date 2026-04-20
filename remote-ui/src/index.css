@@ -474,6 +474,127 @@
     color: var(--pretzel-fg-subtle);
   }
 
+  /** LG-style circular D-pad: triangular wedges + center OK */
+  .pretzel-tv-dpad {
+    position: relative;
+    width: 11rem;
+    height: 11rem;
+    flex-shrink: 0;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 9999px;
+    background-color: #1e293b;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
+      0 2px 10px rgba(0, 0, 0, 0.25);
+  }
+
+  .pretzel-tv-dpad__wedge {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: #f8fafc;
+    background-color: #64748b;
+    transition: background-color 0.12s ease, filter 0.12s ease;
+    clip-path: polygon(50% 50%, 14% 4%, 86% 4%);
+  }
+
+  .pretzel-tv-dpad__wedge:hover:not(:disabled) {
+    background-color: #708196;
+    filter: brightness(1.05);
+  }
+
+  .pretzel-tv-dpad__wedge:active:not(:disabled) {
+    filter: brightness(0.92);
+  }
+
+  .pretzel-tv-dpad__wedge:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  .pretzel-tv-dpad__wedge--up {
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 0.55rem;
+  }
+
+  .pretzel-tv-dpad__wedge--down {
+    clip-path: polygon(50% 50%, 14% 96%, 86% 96%);
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 0.55rem;
+  }
+
+  .pretzel-tv-dpad__wedge--left {
+    clip-path: polygon(50% 50%, 4% 14%, 4% 86%);
+    align-items: center;
+    justify-content: flex-start;
+    padding-left: 0.55rem;
+  }
+
+  .pretzel-tv-dpad__wedge--right {
+    clip-path: polygon(50% 50%, 96% 14%, 96% 86%);
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 0.55rem;
+  }
+
+  .pretzel-tv-dpad__ok {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: 10;
+    display: flex;
+    height: 38%;
+    width: 38%;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border-width: 1px;
+    border-style: solid;
+    border-color: rgba(15, 23, 42, 0.45);
+    background-color: #94a3b8;
+    padding: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    color: #f8fafc;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      0 1px 2px rgba(0, 0, 0, 0.2);
+    transform: translate(-50%, -50%);
+    transition: background-color 0.12s ease, filter 0.12s ease;
+  }
+
+  .pretzel-tv-dpad__ok:hover:not(:disabled) {
+    background-color: #a8b8cb;
+    filter: brightness(1.03);
+  }
+
+  .pretzel-tv-dpad__ok:active:not(:disabled) {
+    filter: brightness(0.94);
+  }
+
+  .pretzel-tv-dpad__ok:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  .pretzel-tv-dpad__ok:focus-visible,
+  .pretzel-tv-dpad__wedge:focus-visible {
+    outline: 2px solid var(--pretzel-border-strong);
+    outline-offset: 2px;
+  }
+
   .pretzel-toggle-bulb-off {
     background-color: var(--pretzel-control-track);
     color: var(--pretzel-fg-muted);

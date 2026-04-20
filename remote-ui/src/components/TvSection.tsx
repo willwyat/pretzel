@@ -17,6 +17,27 @@ interface TvVolumeBody {
   };
 }
 
+function DpadChevron({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width={26}
+      height={26}
+      viewBox="0 0 24 24"
+      aria-hidden
+    >
+      <path
+        d="M6 14 12 8l6 6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function TvSection() {
   const [relayOffline, setRelayOffline] = useState(false);
   /** Main control WebSocket to TV (can stay open in LG standby). */
@@ -356,56 +377,51 @@ export function TvSection() {
         {tvOn && (
           <div className="pretzel-panel__divider-t">
             <p className="pretzel-remote-label">Remote</p>
-            <div
-              className="mx-auto flex w-fit flex-col items-center gap-1"
-              aria-label="TV directional pad"
-            >
+            <div className="pretzel-tv-dpad" aria-label="TV directional pad">
               <button
                 type="button"
                 disabled={remoteDisabled}
                 title="Up"
-                className="pretzel-btn-icon"
+                className="pretzel-tv-dpad__wedge pretzel-tv-dpad__wedge--up"
                 onClick={() => sendRemote("/tv/up")}
               >
-                ▲
+                <DpadChevron className="shrink-0" />
               </button>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  disabled={remoteDisabled}
-                  title="Left"
-                  className="pretzel-btn-icon"
-                  onClick={() => sendRemote("/tv/left")}
-                >
-                  ◀
-                </button>
-                <button
-                  type="button"
-                  disabled={remoteDisabled}
-                  title="OK / Enter"
-                  className="pretzel-btn-emphasis"
-                  onClick={() => sendRemote("/tv/enter")}
-                >
-                  OK
-                </button>
-                <button
-                  type="button"
-                  disabled={remoteDisabled}
-                  title="Right"
-                  className="pretzel-btn-icon"
-                  onClick={() => sendRemote("/tv/right")}
-                >
-                  ▶
-                </button>
-              </div>
+              <button
+                type="button"
+                disabled={remoteDisabled}
+                title="Left"
+                className="pretzel-tv-dpad__wedge pretzel-tv-dpad__wedge--left"
+                onClick={() => sendRemote("/tv/left")}
+              >
+                <DpadChevron className="shrink-0 -rotate-90" />
+              </button>
+              <button
+                type="button"
+                disabled={remoteDisabled}
+                title="Right"
+                className="pretzel-tv-dpad__wedge pretzel-tv-dpad__wedge--right"
+                onClick={() => sendRemote("/tv/right")}
+              >
+                <DpadChevron className="shrink-0 rotate-90" />
+              </button>
               <button
                 type="button"
                 disabled={remoteDisabled}
                 title="Down"
-                className="pretzel-btn-icon"
+                className="pretzel-tv-dpad__wedge pretzel-tv-dpad__wedge--down"
                 onClick={() => sendRemote("/tv/down")}
               >
-                ▼
+                <DpadChevron className="shrink-0 rotate-180" />
+              </button>
+              <button
+                type="button"
+                disabled={remoteDisabled}
+                title="OK / Enter"
+                className="pretzel-tv-dpad__ok"
+                onClick={() => sendRemote("/tv/enter")}
+              >
+                OK
               </button>
             </div>
             <div className="mt-3 flex gap-2">
