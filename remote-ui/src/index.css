@@ -27,7 +27,7 @@
     --pretzel-fg-muted: #4b5563;
     --pretzel-fg-subtle: #6b7280;
 
-    --pretzel-control-border: #9ca3af;
+    --pretzel-control-border: #c5c9d0;
     --pretzel-control-fg: #374151;
     --pretzel-control-bg-hover: #f3f4f6;
     --pretzel-control-track: #e5e7eb;
@@ -52,6 +52,15 @@
     --pretzel-border-card-on: #d1d5db;
     --pretzel-border-card-off: #e5e7eb;
     --pretzel-ring-offset-card: #ffffff;
+    --pretzel-control-bg-image: linear-gradient(
+      to top,
+      #d8d9db 0%,
+      #fff 80%,
+      #fdfdfd 100%
+    );
+    --pretzel-control-box-shadow:
+      0 4px 3px 1px #fcfcfc, 0 6px 8px #d6d7d9, 0 -2px 3px #cecfd1,
+      0 -6px 4px #fefefe, inset 0 0 3px 0 #cecfd1;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -282,10 +291,16 @@
     border-style: solid;
     border-color: var(--pretzel-control-border);
     color: var(--pretzel-control-fg);
-    background-color: var(--pretzel-surface-button);
+    /* background-color: var(--pretzel-surface-button); */
+    background-image: linear-gradient(
+      to top,
+      #d8d9db 0%,
+      #fff 80%,
+      #fdfdfd 100%
+    );
     transition: background-color 0.15s ease;
     border-radius: 0.5rem;
-    box-shadow:
+    /* box-shadow:
       inset 1px 1px 1px 0 rgb(255, 255, 255, 0.5),
       inset -1px -1px 1px 0 rgba(0, 0, 0, 0.15),
       0.444584px 0.444584px 0.628737px -1px rgba(0, 0, 0, 0.26),
@@ -293,7 +308,9 @@
       2.6583px 2.6583px 3.75941px -2.25px rgba(0, 0, 0, 0.23),
       5.90083px 5.90083px 8.34503px -3px rgba(0, 0, 0, 0.192),
       10px 10px 21.2132px -3.75px rgba(0, 0, 0, 0.056),
-      -0.5px -0.5px 0 0 rgb(0 0 0/5%);
+      -0.5px -0.5px 0 0 rgb(0 0 0/5%); */
+    border: 1px solid var(--pretzel-control-border);
+    box-shadow: var(--pretzel-control-box-shadow);
   }
 
   .pretzel-nav-label {
@@ -308,7 +325,7 @@
 
   .pretzel-btn-icon:disabled {
     cursor: not-allowed;
-    opacity: 0.4;
+    /* opacity: 0.4; */
   }
 
   .pretzel-btn-icon-wide {
@@ -514,15 +531,14 @@
     margin-right: auto;
     border-radius: 50%;
     overflow: hidden;
-    box-shadow:
-      inset 1px 1px 1px rgba(255, 255, 255, 0.5),
-      inset -1px -1px 1px #00000026,
-      0.444584px 0.444584px 0.628737px -1px #00000042,
-      1.21072px 1.21072px 1.71222px -1.5px #0000003f,
-      2.6583px 2.6583px 3.75941px -2.25px #0000003b,
-      5.90083px 5.90083px 8.34503px -3px #00000031,
-      10px 10px 21.2132px -3.75px #0000000e,
-      -0.5px -0.5px #0000000d;
+    border: 1px solid var(--pretzel-control-border);
+    background-image: linear-gradient(
+      to top,
+      #d8d9db 0%,
+      #fff 80%,
+      #fdfdfd 100%
+    );
+    box-shadow: var(--pretzel-control-box-shadow);
   }
 
   .pretzel-tv-dpad__wedge {
@@ -534,7 +550,8 @@
     padding: 0;
     margin: 0;
     color: var(--pretzel-fg-primary);
-    background-color: var(--pretzel-control-track);
+    background-image: var(--pretzel-control-bg-image);
+    box-shadow: var(--pretzel-control-box-shadow);
     transition:
       background-color 0.12s ease,
       filter 0.12s ease;
@@ -551,7 +568,7 @@
 
   .pretzel-tv-dpad__wedge:disabled {
     cursor: not-allowed;
-    opacity: 0.45;
+    /* opacity: 0.45; */
   }
 
   .pretzel-tv-dpad__wedge--up {
@@ -606,9 +623,12 @@
     line-height: 1;
     letter-spacing: 0.02em;
     color: var(--pretzel-fg-primary);
-    box-shadow:
+    /* box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.2),
-      0 1px 2px rgba(0, 0, 0, 0.2);
+      0 1px 2px rgba(0, 0, 0, 0.2); */
+    border: 1px solid var(--pretzel-control-border);
+    background-image: var(--pretzel-control-bg-image);
+    box-shadow: var(--pretzel-control-box-shadow);
     transform: translate(-50%, -50%);
     transition:
       background-color 0.12s ease,
@@ -626,7 +646,7 @@
 
   .pretzel-tv-dpad__ok:disabled {
     cursor: not-allowed;
-    opacity: 0.45;
+    /* opacity: 0.45; */
   }
 
   .pretzel-tv-dpad__ok:focus-visible,
