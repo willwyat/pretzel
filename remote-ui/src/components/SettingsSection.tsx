@@ -14,6 +14,8 @@ type AdminStatusBody = {
   services?: {
     pretzelServer: ServiceStamp;
     tvRelay: ServiceStamp;
+    /** Present after pretzel-server exposes `systemctl` for remote-ui.service */
+    remoteUi?: ServiceStamp;
   };
   error?: string;
 };
@@ -198,6 +200,7 @@ export function SettingsSection() {
 
   const ps = statusBody?.services?.pretzelServer;
   const tv = statusBody?.services?.tvRelay;
+  const ui = statusBody?.services?.remoteUi;
 
   return (
     <section className="pretzel-panel">
@@ -285,6 +288,16 @@ export function SettingsSection() {
                     )}
                     {tv?.error ? (
                       <span className="text-amber-400"> ({tv.error})</span>
+                    ) : null}
+                  </li>
+                  <li>
+                    <span className="pretzel-text-panel-subtle">remote-ui:</span>{" "}
+                    {formatWhen(
+                      ui?.activeEnterTimestampIso ?? null,
+                      ui?.activeEnterTimestamp ?? null,
+                    )}
+                    {ui?.error ? (
+                      <span className="text-amber-400"> ({ui.error})</span>
                     ) : null}
                   </li>
                 </ul>

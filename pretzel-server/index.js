@@ -614,9 +614,10 @@ app.get("/pretzel/admin/status", assertSettingsPass, async (req, res) => {
       "pretzel-server.service",
     );
     const tvRelay = await systemctlActiveEnterTimestamp("tv-relay.service");
+    const remoteUi = await systemctlActiveEnterTimestamp("remote-ui.service");
     res.json({
       ok: true,
-      services: { pretzelServer, tvRelay },
+      services: { pretzelServer, tvRelay, remoteUi },
     });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
