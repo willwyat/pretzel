@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchJson } from "../lib/fetchJson";
 import { lifxStatePath } from "../lib/lifxPaths";
 import type { LifxRoom } from "../types/homeRoom";
@@ -25,10 +25,15 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Avoid stale closure in fetchLights (useCallback []); used for initial vs refetch loading UX */
+  const lightsCountRef = useRef(0);
+  lightsCountRef.current = lights.length;
 
   const fetchLights = useCallback(async () => {
     setError(null);
-    setLoading(true);
+    if (lightsCountRef.current === 0) {
+      setLoading(true);
+    }
     try {
       const res = await fetchJson("/lifx/lights/all");
       if (!res.ok) {
@@ -152,10 +157,11 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
     }, {});
   }, [lightsInRoom]);
 
+  const showInitialLoad = loading && lights.length === 0;
   const statusDot =
     offline || error
       ? "bg-red-500"
-      : !loading
+      : !showInitialLoad
         ? "bg-emerald-500"
         : "bg-gray-500";
 
@@ -170,7 +176,9 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
                 ? "Could not reach Pi"
                 : error
                   ? "LIFX or configuration issue"
-                  : "Connected"
+                  : showInitialLoad
+                    ? "Loading…"
+                    : "Connected"
             }
             aria-hidden
           />
