@@ -145,11 +145,11 @@
   }
 
   .pretzel-panel {
-    border-radius: 0.75rem;
-    border-width: 1px;
-    border-style: solid;
-    border-color: var(--pretzel-border-subtle);
-    background-color: var(--pretzel-surface-panel);
+    /* border-radius: 0.75rem; */
+    /* border-width: 1px; */
+    /* border-style: solid; */
+    /* border-color: var(--pretzel-border-subtle); */
+    /* background-color: var(--pretzel-surface-panel); */
   }
 
   .pretzel-panel__header {
@@ -168,6 +168,10 @@
 
   .pretzel-panel__body {
     padding: 1rem;
+    /* display: flex; */
+    /* flex-direction: row; */
+    width: 100%;
+    /* justify-content: center; */
   }
 
   .pretzel-panel__block-bordered {
@@ -247,6 +251,26 @@
     font-size: 0.75rem;
   }
 
+  .pretzel-btn-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-radius: 0.5rem;
+    box-shadow:
+      inset 1px 1px 1px 0 rgb(255, 255, 255),
+      inset -1px -1px 1px 0 rgba(0, 0, 0, 0.15),
+      0.444584px 0.444584px 0.628737px -1px rgba(0, 0, 0, 0.26),
+      1.21072px 1.21072px 1.71222px -1.5px rgba(0, 0, 0, 0.247),
+      2.6583px 2.6583px 3.75941px -2.25px rgba(0, 0, 0, 0.23),
+      5.90083px 5.90083px 8.34503px -3px rgba(0, 0, 0, 0.192),
+      10px 10px 21.2132px -3.75px rgba(0, 0, 0, 0.056),
+      -0.5px -0.5px 0 0 rgb(0 0 0/5%);
+  }
+
+  .pretzel-btn-group-item {
+    /* margin-bottom: 1.5rem; */
+  }
+
   .pretzel-btn-icon {
     display: flex;
     height: 2.25rem;
@@ -254,13 +278,22 @@
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    border-radius: 0.5rem;
-    border-width: 1px;
+    /* border-width: 1px; */
     border-style: solid;
     border-color: var(--pretzel-control-border);
     color: var(--pretzel-control-fg);
-    background-color: transparent;
+    background-color: var(--pretzel-surface-button);
     transition: background-color 0.15s ease;
+    border-radius: 0.5rem;
+    box-shadow:
+      inset 1px 1px 1px 0 rgb(255, 255, 255, 0.5),
+      inset -1px -1px 1px 0 rgba(0, 0, 0, 0.15),
+      0.444584px 0.444584px 0.628737px -1px rgba(0, 0, 0, 0.26),
+      1.21072px 1.21072px 1.71222px -1.5px rgba(0, 0, 0, 0.247),
+      2.6583px 2.6583px 3.75941px -2.25px rgba(0, 0, 0, 0.23),
+      5.90083px 5.90083px 8.34503px -3px rgba(0, 0, 0, 0.192),
+      10px 10px 21.2132px -3.75px rgba(0, 0, 0, 0.056),
+      -0.5px -0.5px 0 0 rgb(0 0 0/5%);
   }
 
   .pretzel-nav-label {
@@ -380,11 +413,11 @@
     border-width: 1px;
     border-style: solid;
     border-color: var(--pretzel-border-subtle);
-    background-color: color-mix(
+    /* background-color: color-mix(
       in srgb,
       var(--pretzel-surface-panel-elevated) 80%,
       transparent
-    );
+    ); */
     padding: 0.75rem;
   }
 
@@ -474,17 +507,22 @@
    */
   .pretzel-tv-dpad {
     position: relative;
-    width: 11rem;
-    height: 11rem;
+    width: 12rem;
+    height: 12rem;
     flex-shrink: 0;
     margin-left: auto;
     margin-right: auto;
     border-radius: 50%;
     overflow: hidden;
-    background-color: #1e293b;
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.07),
-      0 2px 10px rgba(0, 0, 0, 0.25);
+      inset 1px 1px 1px rgba(255, 255, 255, 0.5),
+      inset -1px -1px 1px #00000026,
+      0.444584px 0.444584px 0.628737px -1px #00000042,
+      1.21072px 1.21072px 1.71222px -1.5px #0000003f,
+      2.6583px 2.6583px 3.75941px -2.25px #0000003b,
+      5.90083px 5.90083px 8.34503px -3px #00000031,
+      10px 10px 21.2132px -3.75px #0000000e,
+      -0.5px -0.5px #0000000d;
   }
 
   .pretzel-tv-dpad__wedge {
@@ -495,15 +533,15 @@
     border: none;
     padding: 0;
     margin: 0;
-    color: #f8fafc;
-    background-color: #64748b;
+    color: var(--pretzel-fg-primary);
+    background-color: var(--pretzel-control-track);
     transition:
       background-color 0.12s ease,
       filter 0.12s ease;
   }
 
   .pretzel-tv-dpad__wedge:hover:not(:disabled) {
-    background-color: #708196;
+    background-color: var(--pretzel-control-bg-hover);
     filter: brightness(1.05);
   }
 
@@ -561,13 +599,13 @@
     border-width: 1px;
     border-style: solid;
     border-color: rgba(15, 23, 42, 0.45);
-    background-color: #94a3b8;
+    background-color: var(--pretzel-control-track);
     padding: 0;
-    font-size: 0.95rem;
+    font-size: 1.5rem;
     font-weight: 700;
     line-height: 1;
     letter-spacing: 0.02em;
-    color: #f8fafc;
+    color: var(--pretzel-fg-primary);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.2),
       0 1px 2px rgba(0, 0, 0, 0.2);

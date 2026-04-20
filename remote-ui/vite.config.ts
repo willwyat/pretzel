@@ -1,6 +1,10 @@
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** Dev-only: /settings has no static file; rewrite to / so Vite serves index.html (SPA). */
 function settingsSpaFallback(): Plugin {
@@ -21,96 +25,108 @@ function settingsSpaFallback(): Plugin {
   };
 }
 
-export default defineConfig({
-  plugins: [
-    react(),
-    settingsSpaFallback(),
-    VitePWA({
-      registerType: "autoUpdate",
-      includeAssets: [
-        "pwa-192.png",
-        "pwa-512.png",
-        "apple-touch-icon.png",
-        "fonts/*.ttf",
-        "icons/*.svg",
-      ],
-      manifest: {
-        name: "Pretzel remote",
-        short_name: "Pretzel",
-        description:
-          "Home remote for TV, Pi speaker, and LIFX on your LAN (same Wi‑Fi).",
-        // Web manifest has a single theme/background pair; keep light defaults.
-        // In-app colors follow system via CSS (see index.css + index.html theme-color).
-        theme_color: "#ececec",
-        background_color: "#ececec",
-        display: "standalone",
-        start_url: "/",
-        scope: "/",
-        icons: [
-          {
-            src: "pwa-192.png",
-            sizes: "192x192",
-            type: "image/png",
-            purpose: "any",
-          },
-          {
-            src: "pwa-512.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "any",
-          },
-          {
-            src: "pwa-512.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "maskable",
-          },
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, __dirname, "");
+  const remoteUiDevMode =
+    env.DEV_MODE === "true" ||
+    env.DEV_MODE === "1" ||
+    env.VITE_DEV_MODE === "true" ||
+    env.VITE_DEV_MODE === "1";
+
+  return {
+    define: {
+      __REMOTE_UI_DEV_MODE__: JSON.stringify(remoteUiDevMode),
+    },
+    plugins: [
+      react(),
+      settingsSpaFallback(),
+      VitePWA({
+        registerType: "autoUpdate",
+        includeAssets: [
+          "pwa-192.png",
+          "pwa-512.png",
+          "apple-touch-icon.png",
+          "fonts/*.ttf",
+          "icons/*.svg",
         ],
-      },
-      workbox: {
-        navigateFallback: "/index.html",
-        navigateFallbackDenylist: [
-          /^\/tv\//,
-          /^\/pretzel\//,
-          /^\/lifx\//,
-        ],
-        globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2,ttf}"],
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) =>
-              /^\/(tv|pretzel|lifx)(\/|$)/.test(url.pathname),
-            handler: "NetworkOnly",
-          },
-        ],
-      },
-    }),
-  ],
-  build: {
-    outDir: "dist",
-    emptyDir: true,
-  },
-  server: {
-    port: 5173,
-    proxy: {
-      "/tv": {
-        target: "http://127.0.0.1:3000",
-        changeOrigin: true,
-        rewrite: (p) => "/tv" + p,
-      },
-      "/pretzel/admin": {
-        target: "http://127.0.0.1:3001",
-        changeOrigin: true,
-      },
-      "/pretzel": {
-        target: "http://127.0.0.1:3001",
-        changeOrigin: true,
-        rewrite: (p) => "/pretzel" + p,
-      },
-      "/lifx": {
-        target: "http://127.0.0.1:3001",
-        changeOrigin: true,
-        rewrite: (p) => "/lifx" + p,
+        manifest: {
+          name: "Pretzel remote",
+          short_name: "Pretzel",
+          description:
+            "Home remote for TV, Pi speaker, and LIFX on your LAN (same Wi‑Fi).",
+          // Web manifest has a single theme/background pair; keep light defaults.
+          // In-app colors follow system via CSS (see index.css + index.html theme-color).
+          theme_color: "#ececec",
+          background_color: "#ececec",
+          display: "standalone",
+          start_url: "/",
+          scope: "/",
+          icons: [
+            {
+              src: "pwa-192.png",
+              sizes: "192x192",
+              type: "image/png",
+              purpose: "any",
+            },
+            {
+              src: "pwa-512.png",
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "any",
+            },
+            {
+              src: "pwa-512.png",
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "maskable",
+            },
+          ],
+        },
+        workbox: {
+          navigateFallback: "/index.html",
+          navigateFallbackDenylist: [
+            /^\/tv\//,
+            /^\/pretzel\//,
+            /^\/lifx\//,
+          ],
+          globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2,ttf}"],
+          runtimeCaching: [
+            {
+              urlPattern: ({ url }) =>
+                /^\/(tv|pretzel|lifx)(\/|$)/.test(url.pathname),
+              handler: "NetworkOnly",
+            },
+          ],
+        },
+      }),
+    ],
+    build: {
+      outDir: "dist",
+      emptyDir: true,
+    },
+    server: {
+      port: 5173,
+      proxy: {
+        "/tv": {
+          target: "http://127.0.0.1:3000",
+          changeOrigin: true,
+          rewrite: (p) => "/tv" + p,
+        },
+        "/pretzel/admin": {
+          target: "http://127.0.0.1:3001",
+          changeOrigin: true,
+        },
+        "/pretzel": {
+          target: "http://127.0.0.1:3001",
+          changeOrigin: true,
+          rewrite: (p) => "/pretzel" + p,
+        },
+        "/lifx": {
+          target: "http://127.0.0.1:3001",
+          changeOrigin: true,
+          rewrite: (p) => "/lifx" + p,
+        },
       },
     },
-  },
+  };
 });

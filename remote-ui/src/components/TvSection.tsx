@@ -170,9 +170,19 @@ export function TvSection() {
   const tvOn =
     connected && (typeof screenTvOn === "boolean" ? screenTvOn : true);
 
-  const controlsDisabled = relayOffline || !tvOn || loading || turningOff;
+  /** Styling-only: show D-pad chrome from `remote-ui/.env` (`DEV_MODE=true`); never send TV actions. */
+  const remoteUiDevMode = __REMOTE_UI_DEV_MODE__;
+  const showTvRemoteChrome = tvOn || remoteUiDevMode;
+
+  const controlsDisabled =
+    relayOffline || !tvOn || loading || turningOff || remoteUiDevMode;
   const remoteDisabled =
-    relayOffline || !tvOn || loading || turningOff || turningOn;
+    relayOffline ||
+    !tvOn ||
+    loading ||
+    turningOff ||
+    turningOn ||
+    remoteUiDevMode;
 
   const sendRemote = useCallback(
     (path: string) => {
@@ -300,6 +310,11 @@ export function TvSection() {
           />
           <div className="min-w-0">
             <h2 className="pretzel-text-panel-title">LG TV</h2>
+            {remoteUiDevMode && (
+              <p className="pretzel-text-panel-subtle">
+                Remote layout preview (DEV_MODE) — TV controls disabled
+              </p>
+            )}
             {loading ? (
               <p className="pretzel-text-panel-muted">Loading…</p>
             ) : relayOffline ? (
@@ -330,6 +345,7 @@ export function TvSection() {
         {!loading && (
           <>
             <div className="flex flex-wrap items-start justify-center gap-8">
+              {/* Volume controls */}
               <div
                 className="flex flex-col items-center gap-1.5"
                 aria-label="TV volume"
@@ -338,24 +354,21 @@ export function TvSection() {
                   type="button"
                   disabled={controlsDisabled || pctLabel >= 100}
                   title="Volume up 1%"
-                  className="pretzel-btn-icon flex h-10 w-10 items-center justify-center text-lg font-semibold leading-none"
+                  className="pretzel-btn-icon flex h-14 min-w-32 items-center justify-center text-xl font-semibold leading-none"
                   onClick={() => bumpVolumeByPercent(1)}
                 >
                   +
                 </button>
-                <div className="flex min-h-[2.25rem] flex-col items-center justify-center py-0.5">
+                <div className="h-12 flex flex-col items-center justify-center py-0.5">
                   <span className="pretzel-text-panel-title text-xl font-semibold tabular-nums">
                     {pctLabel}
-                  </span>
-                  <span className="pretzel-text-panel-muted text-[10px] font-medium uppercase tracking-wide">
-                    %
                   </span>
                 </div>
                 <button
                   type="button"
                   disabled={controlsDisabled || pctLabel <= 0}
                   title="Volume down 1%"
-                  className="pretzel-btn-icon flex h-10 w-10 items-center justify-center text-lg font-semibold leading-none"
+                  className="pretzel-btn-icon flex h-14 min-w-32 items-center justify-center text-xl font-semibold leading-none"
                   onClick={() => bumpVolumeByPercent(-1)}
                 >
                   −
@@ -364,100 +377,103 @@ export function TvSection() {
                   type="button"
                   disabled={controlsDisabled}
                   onClick={toggleMute}
-                  className="pretzel-btn-icon mt-1 h-9 w-9"
+                  className="pretzel-btn-icon mt-1 h-14 min-w-32"
                   title={muted ? "Unmute" : "Mute"}
                 >
                   {muted ? "🔇" : "🔈"}
                 </button>
               </div>
-              {tvOn ? (
-                <div
-                  className="pretzel-tv-dpad"
-                  aria-label="TV directional pad"
-                >
-                  <button
-                    type="button"
-                    disabled={remoteDisabled}
-                    title="Up"
-                    className="pretzel-tv-dpad__wedge pretzel-tv-dpad__wedge--up"
-                    onClick={() => sendRemote("/tv/up")}
+              {/* Navigation controls */}
+              <div className="flex-1">
+                {showTvRemoteChrome ? (
+                  <div
+                    className="pretzel-tv-dpad"
+                    aria-label="TV directional pad"
                   >
-                    <DpadChevron className="shrink-0" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={remoteDisabled}
-                    title="Right"
-                    className="pretzel-tv-dpad__wedge pretzel-tv-dpad__wedge--right"
-                    onClick={() => sendRemote("/tv/right")}
-                  >
-                    <DpadChevron className="shrink-0 rotate-90" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={remoteDisabled}
-                    title="Down"
-                    className="pretzel-tv-dpad__wedge pretzel-tv-dpad__wedge--down"
-                    onClick={() => sendRemote("/tv/down")}
-                  >
-                    <DpadChevron className="shrink-0 rotate-180" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={remoteDisabled}
-                    title="Left"
-                    className="pretzel-tv-dpad__wedge pretzel-tv-dpad__wedge--left"
-                    onClick={() => sendRemote("/tv/left")}
-                  >
-                    <DpadChevron className="shrink-0 -rotate-90" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={remoteDisabled}
-                    title="OK / Enter"
-                    className="pretzel-tv-dpad__ok"
-                    onClick={() => sendRemote("/tv/enter")}
-                  >
-                    OK
-                  </button>
-                </div>
-              ) : null}
-            </div>
-            {tvOn && (
-              <div className="mt-3 flex flex-wrap justify-center gap-2">
-                <button
-                  type="button"
-                  disabled={remoteDisabled}
-                  title="Back"
-                  className="pretzel-btn-icon-wide"
-                  onClick={() => sendRemote("/tv/back")}
-                >
-                  Back
-                </button>
-                <button
-                  type="button"
-                  disabled={remoteDisabled}
-                  title="Home"
-                  className="pretzel-btn-icon-wide"
-                  onClick={() => sendRemote("/tv/home")}
-                >
-                  Home
-                </button>
-                <button
-                  type="button"
-                  disabled={remoteDisabled}
-                  title="Quick settings"
-                  className="pretzel-btn-icon-wide"
-                  onClick={() => sendRemote("/tv/settings")}
-                >
-                  Settings
-                </button>
+                    <button
+                      type="button"
+                      disabled={remoteDisabled}
+                      title="Up"
+                      className="pretzel-tv-dpad__wedge pretzel-tv-dpad__wedge--up"
+                      onClick={() => sendRemote("/tv/up")}
+                    >
+                      <DpadChevron className="shrink-0" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={remoteDisabled}
+                      title="Right"
+                      className="pretzel-tv-dpad__wedge pretzel-tv-dpad__wedge--right"
+                      onClick={() => sendRemote("/tv/right")}
+                    >
+                      <DpadChevron className="shrink-0 rotate-90" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={remoteDisabled}
+                      title="Down"
+                      className="pretzel-tv-dpad__wedge pretzel-tv-dpad__wedge--down"
+                      onClick={() => sendRemote("/tv/down")}
+                    >
+                      <DpadChevron className="shrink-0 rotate-180" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={remoteDisabled}
+                      title="Left"
+                      className="pretzel-tv-dpad__wedge pretzel-tv-dpad__wedge--left"
+                      onClick={() => sendRemote("/tv/left")}
+                    >
+                      <DpadChevron className="shrink-0 -rotate-90" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={remoteDisabled}
+                      title="OK / Enter"
+                      className="pretzel-tv-dpad__ok"
+                      onClick={() => sendRemote("/tv/enter")}
+                    >
+                      ⏯
+                    </button>
+                  </div>
+                ) : null}
+                {showTvRemoteChrome && (
+                  <div className="mt-3 flex flex-wrap justify-center gap-2">
+                    <button
+                      type="button"
+                      disabled={remoteDisabled}
+                      title="Back"
+                      className="pretzel-btn-icon-wide"
+                      onClick={() => sendRemote("/tv/back")}
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      disabled={remoteDisabled}
+                      title="Home"
+                      className="pretzel-btn-icon-wide"
+                      onClick={() => sendRemote("/tv/home")}
+                    >
+                      Home
+                    </button>
+                    <button
+                      type="button"
+                      disabled={remoteDisabled}
+                      title="Quick settings"
+                      className="pretzel-btn-icon-wide"
+                      onClick={() => sendRemote("/tv/settings")}
+                    >
+                      Settings
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </>
         )}
 
-        <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-solid border-[var(--pretzel-divider)] pt-4">
+        <div className="hidden mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-solid border-[var(--pretzel-divider)] pt-4">
           {!tvOn && (
             <>
               {turningOn ? (
@@ -465,7 +481,9 @@ export function TvSection() {
               ) : (
                 <button
                   type="button"
-                  disabled={relayOffline || loading || turningOn}
+                  disabled={
+                    relayOffline || loading || turningOn || remoteUiDevMode
+                  }
                   onClick={handlePowerOnClick}
                   title="Wake-on-LAN and/or network turn-on (configure TV_WOL_MAC on the Pi)"
                   className="rounded-lg border border-blue-700 bg-blue-900/40 px-3 py-1.5 text-xs font-medium text-blue-100 transition hover:bg-blue-900/60 disabled:cursor-not-allowed disabled:opacity-50"
@@ -482,7 +500,9 @@ export function TvSection() {
               ) : (
                 <button
                   type="button"
-                  disabled={relayOffline || loading || turningOff}
+                  disabled={
+                    relayOffline || loading || turningOff || remoteUiDevMode
+                  }
                   onClick={handlePowerOffClick}
                   className={`pretzel-btn-ghost px-3 py-1.5 transition disabled:cursor-not-allowed disabled:opacity-50 ${
                     powerOffArmed
