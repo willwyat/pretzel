@@ -457,7 +457,7 @@ export function TvSection() {
           </>
         )}
 
-        <div className="pretzel-panel__divider-t flex flex-wrap items-center justify-end gap-2">
+        <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-solid border-[var(--pretzel-divider)] pt-4">
           {!tvOn && (
             <>
               {turningOn ? (

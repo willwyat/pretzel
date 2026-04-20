@@ -73,7 +73,7 @@ Longer comments and pairing notes for tv-relay are in [tv-relay/tv-relay.service
 Example unit files include an optional env var (commented) you can enable on the Pi:
 
 ```ini
-# Environment=PRETZEL_STACK_VERSION=1.7.10
+# Environment=PRETZEL_STACK_VERSION=1.7.11
 ```
 
 Set the value to match [VERSION](VERSION) after each deploy. Inspect what systemd passed to a unit:

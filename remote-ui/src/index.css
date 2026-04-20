@@ -174,12 +174,6 @@
     border-top: 1px solid var(--pretzel-divider);
   }
 
-  .pretzel-panel__divider-t {
-    margin-top: 1rem;
-    border-top: 1px solid var(--pretzel-divider);
-    padding-top: 1rem;
-  }
-
   .pretzel-text-panel-title {
     font-size: 1rem;
     line-height: 1.5rem;
