@@ -390,15 +390,6 @@ export function TvSection() {
               <button
                 type="button"
                 disabled={remoteDisabled}
-                title="Left"
-                className="pretzel-tv-dpad__wedge pretzel-tv-dpad__wedge--left"
-                onClick={() => sendRemote("/tv/left")}
-              >
-                <DpadChevron className="shrink-0 -rotate-90" />
-              </button>
-              <button
-                type="button"
-                disabled={remoteDisabled}
                 title="Right"
                 className="pretzel-tv-dpad__wedge pretzel-tv-dpad__wedge--right"
                 onClick={() => sendRemote("/tv/right")}
@@ -413,6 +404,15 @@ export function TvSection() {
                 onClick={() => sendRemote("/tv/down")}
               >
                 <DpadChevron className="shrink-0 rotate-180" />
+              </button>
+              <button
+                type="button"
+                disabled={remoteDisabled}
+                title="Left"
+                className="pretzel-tv-dpad__wedge pretzel-tv-dpad__wedge--left"
+                onClick={() => sendRemote("/tv/left")}
+              >
+                <DpadChevron className="shrink-0 -rotate-90" />
               </button>
               <button
                 type="button"

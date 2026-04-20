@@ -474,7 +474,10 @@
     color: var(--pretzel-fg-subtle);
   }
 
-  /** LG-style circular D-pad: triangular wedges + center OK */
+  /**
+   * LG-style circular D-pad: 11rem (176px) circle, four 90° wedge hit targets
+   * with ~2% inset clip-paths so diagonal gaps show the outer #1e293b ring.
+   */
   .pretzel-tv-dpad {
     position: relative;
     width: 11rem;
@@ -482,7 +485,8 @@
     flex-shrink: 0;
     margin-left: auto;
     margin-right: auto;
-    border-radius: 9999px;
+    overflow: hidden;
+    border-radius: 50%;
     background-color: #1e293b;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.07),
@@ -500,7 +504,6 @@
     color: #f8fafc;
     background-color: #64748b;
     transition: background-color 0.12s ease, filter 0.12s ease;
-    clip-path: polygon(50% 50%, 14% 4%, 86% 4%);
   }
 
   .pretzel-tv-dpad__wedge:hover:not(:disabled) {
@@ -518,30 +521,31 @@
   }
 
   .pretzel-tv-dpad__wedge--up {
+    clip-path: polygon(50% 50%, 2% 2%, 98% 2%);
     align-items: flex-start;
     justify-content: center;
     padding-top: 0.55rem;
   }
 
+  .pretzel-tv-dpad__wedge--right {
+    clip-path: polygon(50% 50%, 98% 2%, 98% 98%);
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 0.55rem;
+  }
+
   .pretzel-tv-dpad__wedge--down {
-    clip-path: polygon(50% 50%, 14% 96%, 86% 96%);
+    clip-path: polygon(50% 50%, 98% 98%, 2% 98%);
     align-items: flex-end;
     justify-content: center;
     padding-bottom: 0.55rem;
   }
 
   .pretzel-tv-dpad__wedge--left {
-    clip-path: polygon(50% 50%, 4% 14%, 4% 86%);
+    clip-path: polygon(50% 50%, 2% 98%, 2% 2%);
     align-items: center;
     justify-content: flex-start;
     padding-left: 0.55rem;
-  }
-
-  .pretzel-tv-dpad__wedge--right {
-    clip-path: polygon(50% 50%, 96% 14%, 96% 86%);
-    align-items: center;
-    justify-content: flex-end;
-    padding-right: 0.55rem;
   }
 
   .pretzel-tv-dpad__ok {
@@ -557,7 +561,7 @@
     cursor: pointer;
     align-items: center;
     justify-content: center;
-    border-radius: 9999px;
+    border-radius: 50%;
     border-width: 1px;
     border-style: solid;
     border-color: rgba(15, 23, 42, 0.45);
