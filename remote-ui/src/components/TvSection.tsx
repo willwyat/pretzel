@@ -48,8 +48,6 @@ export function TvSection() {
   const [volume, setVolume] = useState(0);
   const [maxVolume, setMaxVolume] = useState(100);
   const [muted, setMuted] = useState(false);
-  const [localVolume, setLocalVolume] = useState(0);
-  const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(true);
   const [powerOffArmed, setPowerOffArmed] = useState(false);
   const [turningOff, setTurningOff] = useState(false);
@@ -106,7 +104,6 @@ export function TvSection() {
           const vs = volJson.volumeStatus;
           if (vs && typeof vs.volume === "number") {
             setVolume(vs.volume);
-            setLocalVolume(vs.volume);
             setMuted(!!vs.muteStatus);
             if (typeof vs.maxVolume === "number" && vs.maxVolume > 0) {
               setMaxVolume(vs.maxVolume);
@@ -190,7 +187,6 @@ export function TvSection() {
     (val: number) => {
       const clamped = Math.max(0, Math.min(maxVolume, Math.round(val)));
       setVolume(clamped);
-      setLocalVolume(clamped);
       void fetchJson("/tv/volume", {
         method: "POST",
         body: JSON.stringify({ volume: clamped }),
@@ -201,6 +197,17 @@ export function TvSection() {
       }).catch(() => {});
     },
     [maxVolume],
+  );
+
+  const bumpVolumeByPercent = useCallback(
+    (delta: number) => {
+      if (controlsDisabled || maxVolume <= 0) return;
+      const currentPct = (volume / maxVolume) * 100;
+      const nextPct = Math.max(0, Math.min(100, currentPct + delta));
+      const nextVol = Math.round((nextPct / 100) * maxVolume);
+      commitVolume(nextVol);
+    },
+    [controlsDisabled, maxVolume, volume, commitVolume],
   );
 
   const toggleMute = () => {
@@ -268,8 +275,7 @@ export function TvSection() {
       });
   };
 
-  const displayVol = dragging ? localVolume : volume;
-  const safeVol = Math.min(Math.max(0, displayVol), maxVolume);
+  const safeVol = Math.min(Math.max(0, volume), maxVolume);
   const pctLabel =
     maxVolume > 0 ? Math.round((safeVol / maxVolume) * 100) : safeVol;
 
@@ -327,57 +333,52 @@ export function TvSection() {
       </div>
 
       <div className="pretzel-panel__body">
-        <div className="flex items-center gap-2">
-          <svg
-            className="pretzel-icon-muted h-3.5 w-3.5 flex-shrink-0"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.5}
-            stroke="currentColor"
-            aria-hidden
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z"
-            />
-          </svg>
-          <input
-            type="range"
-            min={0}
-            max={maxVolume}
-            value={safeVol}
-            disabled={controlsDisabled}
-            onChange={(e) => {
-              setLocalVolume(Number(e.target.value));
-              setDragging(true);
-            }}
-            onMouseUp={() => {
-              setDragging(false);
-              commitVolume(localVolume);
-            }}
-            onTouchEnd={() => {
-              setDragging(false);
-              commitVolume(localVolume);
-            }}
-            className="pretzel-range"
-          />
-          <span className="pretzel-vol-pct">{pctLabel}%</span>
-          <button
-            type="button"
-            disabled={controlsDisabled}
-            onClick={toggleMute}
-            className="pretzel-btn-icon h-8 w-8"
-            title={muted ? "Unmute" : "Mute"}
-          >
-            {muted ? "🔇" : "🔈"}
-          </button>
-        </div>
-
-        {tvOn && (
+        {!loading && (
           <div className="pretzel-panel__divider-t">
             <p className="pretzel-remote-label">Remote</p>
-            <div className="pretzel-tv-dpad" aria-label="TV directional pad">
+            <div className="flex flex-wrap items-start justify-center gap-8">
+              <div
+                className="flex flex-col items-center gap-1.5"
+                aria-label="TV volume"
+              >
+                <button
+                  type="button"
+                  disabled={controlsDisabled || pctLabel >= 100}
+                  title="Volume up 1%"
+                  className="pretzel-btn-icon flex h-10 w-10 items-center justify-center text-lg font-semibold leading-none"
+                  onClick={() => bumpVolumeByPercent(1)}
+                >
+                  +
+                </button>
+                <div className="flex min-h-[2.25rem] flex-col items-center justify-center py-0.5">
+                  <span className="pretzel-text-panel-title text-xl font-semibold tabular-nums">
+                    {pctLabel}
+                  </span>
+                  <span className="pretzel-text-panel-muted text-[10px] font-medium uppercase tracking-wide">
+                    %
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  disabled={controlsDisabled || pctLabel <= 0}
+                  title="Volume down 1%"
+                  className="pretzel-btn-icon flex h-10 w-10 items-center justify-center text-lg font-semibold leading-none"
+                  onClick={() => bumpVolumeByPercent(-1)}
+                >
+                  −
+                </button>
+                <button
+                  type="button"
+                  disabled={controlsDisabled}
+                  onClick={toggleMute}
+                  className="pretzel-btn-icon mt-1 h-9 w-9"
+                  title={muted ? "Unmute" : "Mute"}
+                >
+                  {muted ? "🔇" : "🔈"}
+                </button>
+              </div>
+              {tvOn ? (
+                <div className="pretzel-tv-dpad" aria-label="TV directional pad">
               <button
                 type="button"
                 disabled={remoteDisabled}
@@ -423,36 +424,40 @@ export function TvSection() {
               >
                 OK
               </button>
+                </div>
+              ) : null}
             </div>
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                disabled={remoteDisabled}
-                title="Back"
-                className="pretzel-btn-icon-wide"
-                onClick={() => sendRemote("/tv/back")}
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                disabled={remoteDisabled}
-                title="Home"
-                className="pretzel-btn-icon-wide"
-                onClick={() => sendRemote("/tv/home")}
-              >
-                Home
-              </button>
-              <button
-                type="button"
-                disabled={remoteDisabled}
-                title="Quick settings"
-                className="pretzel-btn-icon-wide"
-                onClick={() => sendRemote("/tv/settings")}
-              >
-                Settings
-              </button>
-            </div>
+            {tvOn && (
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
+                <button
+                  type="button"
+                  disabled={remoteDisabled}
+                  title="Back"
+                  className="pretzel-btn-icon-wide"
+                  onClick={() => sendRemote("/tv/back")}
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  disabled={remoteDisabled}
+                  title="Home"
+                  className="pretzel-btn-icon-wide"
+                  onClick={() => sendRemote("/tv/home")}
+                >
+                  Home
+                </button>
+                <button
+                  type="button"
+                  disabled={remoteDisabled}
+                  title="Quick settings"
+                  className="pretzel-btn-icon-wide"
+                  onClick={() => sendRemote("/tv/settings")}
+                >
+                  Settings
+                </button>
+              </div>
+            )}
           </div>
         )}
 
