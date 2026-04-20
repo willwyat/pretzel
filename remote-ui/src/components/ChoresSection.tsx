@@ -106,19 +106,21 @@ export function ChoresSection() {
   const loadChores = useCallback(async () => {
     setLoading(true);
     try {
-      const statusRes = await fetchJson("/pretzel/status");
+      const [statusRes, choresRes] = await Promise.all([
+        fetchJson("/pretzel/status"),
+        fetchJson("/pretzel/chores"),
+      ]);
       if (!statusRes.ok) {
         setOffline(true);
         setChores([]);
         return;
       }
       setOffline(false);
-      const res = await fetchJson("/pretzel/chores");
-      if (!res.ok || !isChoresResponse(res.data)) {
+      if (!choresRes.ok || !isChoresResponse(choresRes.data)) {
         setChores([]);
         return;
       }
-      setChores(res.data.chores);
+      setChores(choresRes.data.chores);
     } catch {
       setOffline(true);
       setChores([]);
