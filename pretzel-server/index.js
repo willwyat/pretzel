@@ -5,6 +5,7 @@ const { join } = require("path");
 const weather = require("./lib/weather");
 const { ChoresManager } = require("./lib/chores");
 const { RemindersScheduler } = require("./lib/reminders");
+const { LightAutomationScheduler } = require("./lib/light-automation");
 
 const PORT =
   Number(process.env.PORT) && Number.isFinite(Number(process.env.PORT))
@@ -262,6 +263,14 @@ const LIFX_STATE_KEYS = [
   "infrared",
   "fast",
 ];
+
+const lightAutomation = new LightAutomationScheduler({
+  tz: weather.TZ,
+  fetchWeather: weather.fetchWeather,
+  lifxApiBase: LIFX_API_BASE,
+  getLifxToken: () => process.env.LIFX_API_TOKEN ?? "",
+  dataDir,
+});
 
 function lifxPickStateBody(body) {
   if (!body || typeof body !== "object" || Array.isArray(body)) return {};
@@ -736,6 +745,11 @@ app.post("/pretzel/admin/reload-chores", assertSettingsPass, (req, res) => {
     await scheduler.reload();
   } catch (e) {
     console.error("Reminder scheduler init error:", e.message);
+  }
+  try {
+    await lightAutomation.reload();
+  } catch (e) {
+    console.error("Light automation init error:", e.message);
   }
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Pretzel server listening on ${PORT}`);
