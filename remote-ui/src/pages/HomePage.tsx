@@ -116,9 +116,9 @@ export function HomePage({ activeRoom }: HomePageProps) {
         <div className="min-w-0">
           <div className="pretzel-text-sun-block" aria-live="polite">
             {sunState.status === "loading" ? (
-              <span className="pretzel-text-panel-subtle">Sun times…</span>
+              <span className="pretzel-text-sun-title">Sun times…</span>
             ) : sunState.status === "error" ? (
-              <span className="pretzel-text-panel-subtle">
+              <span className="pretzel-text-sun-title">
                 Sun times unavailable
               </span>
             ) : (
@@ -127,7 +127,7 @@ export function HomePage({ activeRoom }: HomePageProps) {
                 <div className="pretzel-text-sun-time">
                   {sunTimeFormatted}
                   {sunDay ? (
-                    <span className="ml-1.5 font-normal pretzel-text-panel-subtle">
+                    <span className="pretzel-text-sun-day">
                       {sunDay}
                     </span>
                   ) : null}
@@ -141,7 +141,7 @@ export function HomePage({ activeRoom }: HomePageProps) {
         </Link>
       </div>
 
-      <div className="flex flex-col gap-6">
+      <div className="mt-4 flex flex-col gap-6">
         {activeRoom === "bedroom" ? <TvSection /> : null}
         {activeRoom === "pretzel" ? (
           <>

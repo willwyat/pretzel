@@ -1,7 +1,14 @@
 const express = require("express");
 const { execFile, spawn } = require("child_process");
-const { readFileSync, writeFileSync, renameSync } = require("fs");
-const { join } = require("path");
+const {
+  readFileSync,
+  writeFileSync,
+  renameSync,
+  existsSync,
+  rmSync,
+  statSync,
+} = require("fs");
+const { join, dirname } = require("path");
 const weather = require("./lib/weather");
 const { ChoresManager } = require("./lib/chores");
 const { RemindersScheduler } = require("./lib/reminders");
@@ -681,6 +688,169 @@ app.post(
     }
   },
 );
+
+/**
+ * remote-ui serves the page and proxies /pretzel/* to us, so restarting it
+ * drops the connection carrying this request: respond first, then restart.
+ */
+function restartRemoteUiDetached() {
+  const child = spawn("sudo", ["systemctl", "restart", "remote-ui.service"], {
+    detached: true,
+    stdio: "ignore",
+  });
+  child.on("error", (e) =>
+    console.error("remote-ui restart spawn error:", e.message),
+  );
+  child.unref();
+}
+
+app.post("/pretzel/admin/restart/remote-ui", assertSettingsPass, (req, res) => {
+  res.json({
+    ok: true,
+    message:
+      "Restart initiated; the page will reconnect when remote-ui is back.",
+  });
+  res.on("finish", restartRemoteUiDetached);
+});
+
+// ── remote-ui rebuild (background job; poll GET for progress) ───
+const REMOTE_UI_DIR = join(PRETZEL_REPO_ROOT, "remote-ui");
+const REBUILD_STEP_TIMEOUT_MS = 10 * 60_000;
+const REBUILD_LOG_LINES = 40;
+
+/** systemd's PATH may not include the Node that runs us (e.g. nvm). */
+const NODE_BIN_DIR = dirname(process.execPath);
+const NPM_CLI = join(NODE_BIN_DIR, "..", "lib", "node_modules", "npm", "bin", "npm-cli.js");
+
+let remoteUiRebuild = {
+  state: "idle",
+  step: null,
+  startedAt: null,
+  finishedAt: null,
+  error: null,
+  logTail: [],
+};
+
+function appendRebuildLog(chunk) {
+  const lines = String(chunk).split(/\r?\n/).filter((l) => l.trim() !== "");
+  const tail = remoteUiRebuild.logTail.concat(lines);
+  remoteUiRebuild.logTail = tail.slice(-REBUILD_LOG_LINES);
+}
+
+function runRebuildStep(file, args) {
+  return new Promise((resolve, reject) => {
+    appendRebuildLog(`$ ${[file, ...args].join(" ")}`);
+    const child = spawn(file, args, {
+      cwd: REMOTE_UI_DIR,
+      env: {
+        ...process.env,
+        PATH: `${NODE_BIN_DIR}:${process.env.PATH || ""}`,
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    const timer = setTimeout(() => {
+      child.kill("SIGTERM");
+    }, REBUILD_STEP_TIMEOUT_MS);
+    child.stdout.on("data", appendRebuildLog);
+    child.stderr.on("data", appendRebuildLog);
+    child.on("error", (e) => {
+      clearTimeout(timer);
+      reject(e);
+    });
+    child.on("close", (code, signal) => {
+      clearTimeout(timer);
+      if (code === 0) resolve();
+      else
+        reject(
+          new Error(
+            signal
+              ? `${file} killed (${signal})`
+              : `${file} exited with code ${code}`,
+          ),
+        );
+    });
+  });
+}
+
+function npmCiNeeded() {
+  try {
+    const lock = statSync(join(REMOTE_UI_DIR, "package-lock.json")).mtimeMs;
+    const installed = statSync(
+      join(REMOTE_UI_DIR, "node_modules", ".package-lock.json"),
+    ).mtimeMs;
+    return lock > installed;
+  } catch {
+    return true;
+  }
+}
+
+async function rebuildRemoteUi() {
+  const setStep = (step) => {
+    remoteUiRebuild.step = step;
+  };
+  const node = process.execPath;
+  const nextDir = join(REMOTE_UI_DIR, "dist-next");
+  const distDir = join(REMOTE_UI_DIR, "dist");
+  const prevDir = join(REMOTE_UI_DIR, "dist-prev");
+  try {
+    if (npmCiNeeded()) {
+      setStep("npm ci");
+      if (existsSync(NPM_CLI)) await runRebuildStep(node, [NPM_CLI, "ci"]);
+      else await runRebuildStep("npm", ["ci"]);
+    }
+    setStep("typecheck");
+    await runRebuildStep(node, [
+      join(REMOTE_UI_DIR, "node_modules", "typescript", "bin", "tsc"),
+      "--noEmit",
+    ]);
+    setStep("vite build");
+    await runRebuildStep(node, [
+      join(REMOTE_UI_DIR, "node_modules", "vite", "bin", "vite.js"),
+      "build",
+      "--outDir",
+      "dist-next",
+      "--emptyOutDir",
+    ]);
+    setStep("swap dist");
+    rmSync(prevDir, { recursive: true, force: true });
+    if (existsSync(distDir)) renameSync(distDir, prevDir);
+    renameSync(nextDir, distDir);
+    rmSync(prevDir, { recursive: true, force: true });
+    // This job isn't tied to an HTTP request, so wait for the restart and
+    // report sudo/systemctl failures instead of firing and forgetting.
+    setStep("restart");
+    await runRebuildStep("sudo", ["-n", "systemctl", "restart", "remote-ui.service"]);
+    remoteUiRebuild.state = "done";
+  } catch (e) {
+    remoteUiRebuild.state = "failed";
+    remoteUiRebuild.error = e.message;
+    console.error("remote-ui rebuild failed:", e.message);
+  } finally {
+    remoteUiRebuild.finishedAt = new Date().toISOString();
+  }
+}
+
+app.get("/pretzel/admin/rebuild/remote-ui", assertSettingsPass, (req, res) => {
+  res.json({ ok: true, ...remoteUiRebuild });
+});
+
+app.post("/pretzel/admin/rebuild/remote-ui", assertSettingsPass, (req, res) => {
+  if (remoteUiRebuild.state === "running") {
+    return res
+      .status(409)
+      .json({ ...remoteUiRebuild, ok: false, error: "Rebuild already running" });
+  }
+  remoteUiRebuild = {
+    state: "running",
+    step: "starting",
+    startedAt: new Date().toISOString(),
+    finishedAt: null,
+    error: null,
+    logTail: [],
+  };
+  void rebuildRemoteUi();
+  res.status(202).json({ ok: true, ...remoteUiRebuild });
+});
 
 app.put("/pretzel/reminders/:id", assertSettingsPass, async (req, res) => {
   try {

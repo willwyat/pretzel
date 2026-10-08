@@ -144,10 +144,10 @@ export function ChoresSection() {
   );
 
   const statusDotClass = offline
-    ? "bg-red-500"
+    ? "pretzel-led--off"
     : loading
-      ? "bg-amber-500"
-      : "bg-emerald-500";
+      ? "pretzel-led--warn"
+      : "pretzel-led--ok";
   const statusTitle = offline
     ? "Pretzel server offline"
     : loading
@@ -343,19 +343,19 @@ export function ChoresSection() {
       : 0;
 
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-neutral-950 text-neutral-100">
+      <div className="pretzel-vfd-screen fixed inset-0 z-50 flex flex-col">
         <div className="flex flex-1 flex-col px-4 pb-8 pt-[max(1rem,env(safe-area-inset-top))]">
           <div className="mb-6 text-center">
-            <div className="pretzel-text-panel-muted mb-1 text-xs font-medium uppercase tracking-wider">
+            <div className="pretzel-vfd-label mb-2">
               End time
             </div>
             <div className="flex items-center justify-center gap-2">
-              <span className="text-4xl font-semibold tabular-nums">
+              <span className="pretzel-readout pretzel-readout--xl">
                 {sprintEndTimeLabel}
               </span>
               {wakeHeld ? (
                 <span
-                  className="pretzel-text-panel-muted text-lg"
+                  className="pretzel-vfd-label text-lg"
                   title="Screen wake lock on"
                   aria-hidden
                 >
@@ -365,7 +365,7 @@ export function ChoresSection() {
             </div>
             <button
               type="button"
-              className="pretzel-btn-ghost pretzel-btn-ghost--sm mx-auto mt-3 border-neutral-600 text-neutral-200"
+              className="pretzel-btn-ghost mx-auto mt-4"
               onClick={togglePause}
             >
               {paused ? "Resume" : "Pause"}
@@ -379,17 +379,17 @@ export function ChoresSection() {
               return (
                 <div
                   key={c.id}
-                  className={`relative overflow-hidden rounded-xl border px-3 py-3 ${
+                  className={`pretzel-vfd-row ${
                     isActive
-                      ? "border-indigo-500/50 bg-indigo-950/80"
+                      ? "pretzel-vfd-row--active"
                       : done
-                        ? "border-neutral-800 bg-neutral-900/40 opacity-50"
-                        : "border-neutral-800 bg-neutral-900/60"
+                        ? "pretzel-vfd-row--done"
+                        : ""
                   }`}
                 >
                   {isActive ? (
                     <div
-                      className="pointer-events-none absolute inset-y-0 left-0 bg-[#4338ca]/35 transition-[width] duration-1000 ease-linear"
+                      className="pretzel-vfd-bar pointer-events-none absolute inset-y-0 left-0 transition-[width] duration-1000 ease-linear"
                       style={{ width: `${barPct}%` }}
                     />
                   ) : null}
@@ -416,11 +416,11 @@ export function ChoresSection() {
                           void uncompleteChore(c.id);
                         }
                       }}
-                      className="h-5 w-5 shrink-0 rounded border-neutral-600"
+                      className="h-5 w-5 shrink-0"
                     />
                     <span className="min-w-0 flex-1 font-medium">{c.name}</span>
                     {isActive ? (
-                      <span className="shrink-0 tabular-nums text-sm text-neutral-300">
+                      <span className="pretzel-readout shrink-0 text-sm">
                         {Math.max(
                           0,
                           Math.ceil((activeDur - inChoreMs) / 1000),
@@ -428,7 +428,7 @@ export function ChoresSection() {
                         s
                       </span>
                     ) : (
-                      <span className="pretzel-text-panel-muted shrink-0 text-sm">
+                      <span className="pretzel-vfd-label shrink-0">
                         {formatDurationLabel(choreDurationSeconds(c))}
                       </span>
                     )}
@@ -441,7 +441,7 @@ export function ChoresSection() {
           <div className="mt-6 flex justify-center">
             <button
               type="button"
-              className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-neutral-600 bg-neutral-900 text-neutral-200"
+              className="pretzel-btn-icon pretzel-key--danger h-16 w-16 rounded-full"
               title="Stop sprint"
               onClick={stopSprint}
             >
@@ -471,7 +471,7 @@ export function ChoresSection() {
               return (
                 <li
                   key={id}
-                  className="flex items-center gap-2 rounded-lg border border-[var(--pretzel-border-subtle)] bg-[var(--pretzel-surface-panel-elevated)] px-2 py-2"
+                  className="pretzel-well pretzel-well--row flex items-center gap-2"
                 >
                   <input
                     type="checkbox"
@@ -519,7 +519,7 @@ export function ChoresSection() {
             </button>
             <button
               type="button"
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              className="pretzel-btn-secondary pretzel-key--accent px-5"
               onClick={startSprint}
             >
               Start
@@ -535,7 +535,7 @@ export function ChoresSection() {
       <div className="pretzel-panel__header">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <span
-            className={`mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full ${statusDotClass}`}
+            className={`pretzel-led mt-1.5 ${statusDotClass}`}
             title={statusTitle}
             aria-hidden
           />
@@ -562,7 +562,7 @@ export function ChoresSection() {
         {pendingChores.length > 0 ? (
           <button
             type="button"
-            className="w-full rounded-lg bg-indigo-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-600"
+            className="pretzel-btn-secondary pretzel-key--accent w-full"
             onClick={enterSprintSetup}
           >
             Start sprint
@@ -579,10 +579,10 @@ export function ChoresSection() {
             .map((c) => (
               <li
                 key={c.id}
-                className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${
+                className={`flex items-center gap-3 ${
                   c.pending
-                    ? "border-[var(--pretzel-border-subtle)] bg-[var(--pretzel-surface-panel-elevated)]"
-                    : "border-transparent opacity-60"
+                    ? "pretzel-well pretzel-well--row"
+                    : "px-3 py-2 opacity-60"
                 }`}
               >
                 <input
@@ -598,7 +598,7 @@ export function ChoresSection() {
                   <div className="flex items-center gap-2">
                     <span className="truncate font-medium">{c.name}</span>
                     {c.missed > 1 ? (
-                      <span className="shrink-0 rounded bg-rose-900/40 px-1.5 py-0.5 text-xs text-rose-200">
+                      <span className="pretzel-tag--alert">
                         Overdue ×{c.missed}
                       </span>
                     ) : null}
@@ -636,7 +636,7 @@ export function ChoresSection() {
                     <span className="truncate">{c.name}</span>
                     <button
                       type="button"
-                      className="shrink-0 text-xs text-rose-300 underline"
+                      className="pretzel-text-alert shrink-0 text-xs underline"
                       onClick={() => void uncompleteChore(c.id)}
                     >
                       Undo

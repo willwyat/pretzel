@@ -160,17 +160,17 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
   const showInitialLoad = loading && lights.length === 0;
   const statusDot =
     offline || error
-      ? "bg-red-500"
+      ? "pretzel-led--off"
       : !showInitialLoad
-        ? "bg-emerald-500"
-        : "bg-gray-500";
+        ? "pretzel-led--ok"
+        : "";
 
   return (
     <section className="pretzel-panel">
       <div className="pretzel-panel__header">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <span
-            className={`mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full ${statusDot}`}
+            className={`pretzel-led mt-1.5 ${statusDot}`}
             title={
               offline
                 ? "Could not reach Pi"
@@ -214,7 +214,7 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
 
       <div className="pretzel-panel__body">
         {error && (
-          <div className="mb-4 rounded-lg border border-rose-800 bg-rose-950/50 px-3 py-2 text-sm text-rose-200">
+          <div className="pretzel-well pretzel-text-alert mb-4 text-sm">
             {error}
           </div>
         )}

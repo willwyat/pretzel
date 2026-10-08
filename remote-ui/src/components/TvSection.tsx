@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchJson } from "../lib/fetchJson";
+import { VuMeter } from "./VuMeter";
 
 interface TvStatusBody {
   connected?: boolean;
@@ -284,19 +285,19 @@ export function TvSection() {
     maxVolume > 0 ? Math.round((safeVol / maxVolume) * 100) : safeVol;
 
   const statusDotClass = relayOffline
-    ? "bg-red-500"
+    ? "pretzel-led--off"
     : !connected
-      ? "bg-red-500"
+      ? "pretzel-led--off"
       : tvOn
-        ? "bg-emerald-500"
-        : "bg-amber-500";
+        ? "pretzel-led--ok"
+        : "pretzel-led--warn";
 
   return (
     <section className="pretzel-panel">
       <div className="pretzel-panel__header">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <span
-            className={`mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full ${statusDotClass}`}
+            className={`pretzel-led mt-1.5 ${statusDotClass}`}
             title={
               relayOffline
                 ? "Relay offline"
@@ -359,10 +360,13 @@ export function TvSection() {
                 >
                   +
                 </button>
-                <div className="h-12 flex flex-col items-center justify-center py-0.5">
-                  <span className="pretzel-text-panel-title text-xl font-semibold tabular-nums">
-                    {pctLabel}
+                <div className="flex w-full min-w-32 flex-col items-center justify-center gap-2 py-0.5">
+                  <span className="pretzel-readout pretzel-readout--lg min-w-[4.5rem] text-center">
+                    {pctLabel}%
                   </span>
+                  <div className="w-full">
+                    <VuMeter value={connected ? pctLabel : 0} />
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -486,7 +490,7 @@ export function TvSection() {
                   }
                   onClick={handlePowerOnClick}
                   title="Wake-on-LAN and/or network turn-on (configure TV_WOL_MAC on the Pi)"
-                  className="rounded-lg border border-blue-700 bg-blue-900/40 px-3 py-1.5 text-xs font-medium text-blue-100 transition hover:bg-blue-900/60 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="pretzel-btn-ghost pretzel-key--accent"
                 >
                   Power on
                 </button>
@@ -504,10 +508,8 @@ export function TvSection() {
                     relayOffline || loading || turningOff || remoteUiDevMode
                   }
                   onClick={handlePowerOffClick}
-                  className={`pretzel-btn-ghost px-3 py-1.5 transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                    powerOffArmed
-                      ? "border-amber-600 bg-amber-950/50 text-amber-200 hover:bg-amber-950/60"
-                      : ""
+                  className={`pretzel-btn-ghost ${
+                    powerOffArmed ? "pretzel-key--danger" : ""
                   }`}
                 >
                   {powerOffArmed ? "Confirm power off" : "Power off"}
