@@ -17,14 +17,22 @@ Ports for pretzel-server and tv-relay are set in their `index.js` files unless y
 
 ## Operator settings (remote UI)
 
-Operator UI is at **`/settings`** on **8080** (e.g. `http://pretzel.local:8080/settings`). After passcode unlock it runs **git pull** in `PRETZEL_REPO_ROOT`, restarts **pretzel-server** / **tv-relay**, and shows **systemd** last start times (`ActiveEnterTimestamp`). All of that goes to pretzel-server over **`/pretzel/admin/*`** with header **`X-Pretzel-Settings-Passcode`** (must match **`PRETZEL_SETTINGS_PASSCODE`** on the Pi; default matches the bundled UI passcode — rotate the env var for real deployments).
+Operator UI is at **`/settings`** on **8080** (e.g. `http://pretzel.local:8080/settings`). After passcode unlock it runs **git pull** in `PRETZEL_REPO_ROOT`, restarts **pretzel-server** / **tv-relay** / **remote-ui**, rebuilds **remote-ui**, and shows **systemd** last start times (`ActiveEnterTimestamp`). All of that goes to pretzel-server over **`/pretzel/admin/*`** with header **`X-Pretzel-Settings-Passcode`** (must match **`PRETZEL_SETTINGS_PASSCODE`** on the Pi; default matches the bundled UI passcode — rotate the env var for real deployments).
 
 - **`PRETZEL_REPO_ROOT`:** directory passed to `git -C` (default: parent of `pretzel-server`, i.e. the monorepo root on disk).
 - **Restart pretzel-server:** the HTTP response returns first; the browser connection then drops when the service restarts. Reload the page to refresh “last restarted” for that unit.
-- **sudo:** the service user needs passwordless **`systemctl restart pretzel-server.service`** and **`tv-relay.service`**. If **`systemctl show … ActiveEnterTimestamp`** fails without elevated rights, allow those read-only `show` commands too. Example (replace `william` with your `User=`):
+- **Restart remote-ui:** same as pretzel-server — remote-ui carries the request, so the response returns first and the page then waits for a new start time and offers **Reload page**.
+- **Rebuild remote-ui:** runs in the background on pretzel-server (in `$PRETZEL_REPO_ROOT/remote-ui`): `npm ci` (only when `package-lock.json` is newer than the last install), `tsc --noEmit`, `vite build` into `dist-next/`, swaps it into `dist/`, then restarts remote-ui. A failed build leaves the old `dist/` serving and shows the log tail on the page. Typical flow after a UI change: **Git pull** → **Rebuild remote-ui**. The pretzel-server user needs write access to `remote-ui/` (normally it owns the checkout). Progress: `GET /pretzel/admin/rebuild/remote-ui`.
+- **sudo:** the service user needs passwordless **`systemctl restart`** for **`pretzel-server.service`**, **`tv-relay.service`** and **`remote-ui.service`**. If **`systemctl show … ActiveEnterTimestamp`** fails without elevated rights, allow those read-only `show` commands too. Example (replace `william` with your `User=`):
 
 ```
-william ALL=(root) NOPASSWD: /bin/systemctl restart pretzel-server.service, /bin/systemctl restart tv-relay.service, /bin/systemctl show pretzel-server.service, /bin/systemctl show tv-relay.service
+william ALL=(root) NOPASSWD: /bin/systemctl restart pretzel-server.service, /bin/systemctl restart tv-relay.service, /bin/systemctl restart remote-ui.service, /bin/systemctl show pretzel-server.service, /bin/systemctl show tv-relay.service, /bin/systemctl show remote-ui.service
+```
+
+**First deploy of the rebuild button:** the button lives in the UI it rebuilds, so bootstrap once: add the sudoers line above, tap **Git pull** then **Restart pretzel-server** in the old UI, then trigger the first rebuild by hand:
+
+```bash
+curl -sS -X POST -H "X-Pretzel-Settings-Passcode: YOUR_SECRET" http://pretzel.local:8080/pretzel/admin/rebuild/remote-ui
 ```
 
 Example status check:

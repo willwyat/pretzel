@@ -20,6 +20,20 @@ type AdminStatusBody = {
   error?: string;
 };
 
+type RebuildStatus = {
+  state: "idle" | "running" | "done" | "failed";
+  step: string | null;
+  error: string | null;
+  logTail?: string[];
+};
+
+const POLL_MS = 2_000;
+const RESTART_WAIT_MS = 60_000;
+/** npm ci + vite build on the Pi can take several minutes. */
+const REBUILD_WAIT_MS = 20 * 60_000;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 function formatWhen(iso: string | null, raw: string | null) {
   if (iso) {
     try {
@@ -74,7 +88,11 @@ export function SettingsSection() {
     pulledAt: string;
   } | null>(null);
 
-  const [restartBusy, setRestartBusy] = useState<"pretzel" | "tv" | null>(null);
+  const [restartBusy, setRestartBusy] = useState<
+    "pretzel" | "tv" | "ui" | "rebuild" | null
+  >(null);
+  const [rebuildLog, setRebuildLog] = useState<string[] | null>(null);
+  const [reloadReady, setReloadReady] = useState(false);
 
   useEffect(() => {
     try {
@@ -193,6 +211,110 @@ export function SettingsSection() {
       }
     } catch {
       setGitMessage("Network error");
+    } finally {
+      setRestartBusy(null);
+    }
+  };
+
+  /** Wait for remote-ui's systemd start time to move past `before`; network errors are expected mid-restart. */
+  const waitForRemoteUiRestart = async (before: string | null) => {
+    const deadline = Date.now() + RESTART_WAIT_MS;
+    while (Date.now() < deadline) {
+      await sleep(POLL_MS);
+      try {
+        const res = await adminFetchJson("/pretzel/admin/status");
+        const body = res.data as AdminStatusBody;
+        const now = body.services?.remoteUi?.activeEnterTimestampIso ?? null;
+        if (res.ok && body.ok && now && now !== before) {
+          setStatusBody(body);
+          return true;
+        }
+      } catch {
+        /* remote-ui restarting */
+      }
+    }
+    return false;
+  };
+
+  const finishRemoteUiRestart = async (before: string | null) => {
+    setGitMessage("Waiting for remote-ui to come back…");
+    const back = await waitForRemoteUiRestart(before);
+    setGitMessage(
+      back
+        ? "remote-ui restarted. Reload to use the new version."
+        : "remote-ui did not report a new start time. Check journalctl -u remote-ui.",
+    );
+    setReloadReady(back);
+  };
+
+  const handleRestartUi = async () => {
+    setRestartBusy("ui");
+    setGitMessage(null);
+    setRebuildLog(null);
+    setReloadReady(false);
+    const before = ui?.activeEnterTimestampIso ?? null;
+    try {
+      const res = await adminFetchJson("/pretzel/admin/restart/remote-ui", {
+        method: "POST",
+      });
+      const d = res.data as { error?: string };
+      if (!res.ok) {
+        setGitMessage(d.error || `Restart failed (${res.status})`);
+        return;
+      }
+    } catch {
+      /* connection may drop as remote-ui goes down */
+    }
+    try {
+      await finishRemoteUiRestart(before);
+    } finally {
+      setRestartBusy(null);
+    }
+  };
+
+  const handleRebuildUi = async () => {
+    setRestartBusy("rebuild");
+    setGitMessage(null);
+    setRebuildLog(null);
+    setReloadReady(false);
+    const before = ui?.activeEnterTimestampIso ?? null;
+    try {
+      const start = await adminFetchJson("/pretzel/admin/rebuild/remote-ui", {
+        method: "POST",
+      });
+      const s = start.data as RebuildStatus & { error?: string };
+      if (!start.ok && start.status !== 409) {
+        setGitMessage(s.error || `Rebuild failed to start (${start.status})`);
+        return;
+      }
+      let job: RebuildStatus | null = null;
+      const deadline = Date.now() + REBUILD_WAIT_MS;
+      while (Date.now() < deadline) {
+        try {
+          const res = await adminFetchJson("/pretzel/admin/rebuild/remote-ui");
+          if (res.ok) {
+            job = res.data as RebuildStatus;
+            if (job.state !== "running") break;
+            setGitMessage(`Rebuilding remote-ui: ${job.step ?? "…"}`);
+          }
+        } catch {
+          /* proxy blip; keep polling */
+        }
+        await sleep(POLL_MS);
+      }
+      if (job?.state === "failed") {
+        setGitMessage(`Rebuild failed at ${job.step}: ${job.error ?? "unknown error"}`);
+        setRebuildLog(job.logTail ?? []);
+        return;
+      }
+      if (job?.state !== "done") {
+        // Restart already happened if the last poll was lost to it.
+        if (job?.step !== "restart") {
+          setGitMessage("Rebuild is taking too long; check status again later.");
+          return;
+        }
+      }
+      await finishRemoteUiRestart(before);
     } finally {
       setRestartBusy(null);
     }
@@ -323,7 +445,30 @@ export function SettingsSection() {
             )}
 
             {gitMessage && (
-              <p className="pretzel-text-panel-body">{gitMessage}</p>
+              <p className="pretzel-text-panel-body" aria-live="polite">
+                {gitMessage}
+              </p>
+            )}
+
+            {reloadReady && (
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="pretzel-btn-secondary pretzel-key--accent"
+              >
+                Reload page
+              </button>
+            )}
+
+            {rebuildLog && rebuildLog.length > 0 && (
+              <details className="pretzel-nested-card">
+                <summary className="pretzel-text-panel-muted cursor-pointer text-xs font-medium">
+                  Build log (last {rebuildLog.length} lines)
+                </summary>
+                <pre className="pretzel-readout mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words text-[11px] leading-snug">
+                  {rebuildLog.join("\n")}
+                </pre>
+              </details>
             )}
 
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -338,8 +483,16 @@ export function SettingsSection() {
               <button
                 type="button"
                 disabled={restartBusy !== null || gitBusy}
+                onClick={() => void handleRebuildUi()}
+                className="pretzel-btn-secondary pretzel-key--accent"
+              >
+                {restartBusy === "rebuild" ? "Rebuilding…" : "Rebuild remote-ui"}
+              </button>
+              <button
+                type="button"
+                disabled={restartBusy !== null || gitBusy}
                 onClick={() => void handleRestartPretzel()}
-                className="rounded-lg border border-amber-700/60 bg-amber-950/40 px-3 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-950/60 disabled:cursor-not-allowed disabled:opacity-50"
+                className="pretzel-btn-secondary pretzel-key--danger"
               >
                 {restartBusy === "pretzel" ? "Restarting…" : "Restart pretzel-server"}
               </button>
@@ -347,9 +500,17 @@ export function SettingsSection() {
                 type="button"
                 disabled={restartBusy !== null || gitBusy}
                 onClick={() => void handleRestartTv()}
-                className="rounded-lg border border-amber-700/60 bg-amber-950/40 px-3 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-950/60 disabled:cursor-not-allowed disabled:opacity-50"
+                className="pretzel-btn-secondary pretzel-key--danger"
               >
                 {restartBusy === "tv" ? "Restarting…" : "Restart tv-relay"}
+              </button>
+              <button
+                type="button"
+                disabled={restartBusy !== null || gitBusy}
+                onClick={() => void handleRestartUi()}
+                className="pretzel-btn-secondary pretzel-key--danger"
+              >
+                {restartBusy === "ui" ? "Restarting…" : "Restart remote-ui"}
               </button>
             </div>
           </div>
