@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchJson } from "../lib/fetchJson";
+import { VuMeter } from "./VuMeter";
 
 interface TvStatusBody {
   connected?: boolean;
@@ -359,10 +360,13 @@ export function TvSection() {
                 >
                   +
                 </button>
-                <div className="flex h-12 flex-col items-center justify-center py-0.5">
+                <div className="flex w-full min-w-32 flex-col items-center justify-center gap-2 py-0.5">
                   <span className="pretzel-readout pretzel-readout--lg min-w-[4.5rem] text-center">
-                    {pctLabel}
+                    {pctLabel}%
                   </span>
+                  <div className="w-full">
+                    <VuMeter value={connected ? pctLabel : 0} />
+                  </div>
                 </div>
                 <button
                   type="button"
