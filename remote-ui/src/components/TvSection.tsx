@@ -53,6 +53,7 @@ export function TvSection() {
   const [powerOffArmed, setPowerOffArmed] = useState(false);
   const [turningOff, setTurningOff] = useState(false);
   const [turningOn, setTurningOn] = useState(false);
+  const [powerError, setPowerError] = useState<string | null>(null);
   const armedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const syncPollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -266,19 +267,51 @@ export function TvSection() {
   const handlePowerOnClick = () => {
     if (relayOffline || loading || turningOn || tvOn) return;
     clearSyncPoll();
+    setPowerError(null);
     setTurningOn(true);
     void fetchJson("/tv/power/on", { method: "POST" })
       .then(async (r) => {
         setTurningOn(false);
+        if (!r.ok) {
+          const err = (r.data as { error?: unknown }).error;
+          setPowerError(
+            typeof err === "string" && err
+              ? err
+              : `Power on failed (${r.status})`,
+          );
+        }
         const snap = await fetchAll();
         if (!r.ok || !snap.relayReachable || snap.tvOn) return;
         startSyncPoll((s) => s.tvOn || !s.relayReachable, 120_000, 2_500);
       })
       .catch(async () => {
         setTurningOn(false);
+        setPowerError("Could not reach the TV relay");
         await fetchAll();
       });
   };
+
+  useEffect(() => {
+    if (tvOn) setPowerError(null);
+  }, [tvOn]);
+
+  const powerKeyDisabled =
+    relayOffline || loading || turningOn || turningOff || remoteUiDevMode;
+  const powerLabel = turningOn
+    ? "Waking…"
+    : turningOff
+      ? "Off…"
+      : powerOffArmed
+        ? "Confirm off"
+        : "Power";
+  const powerLedClass =
+    relayOffline || loading || remoteUiDevMode
+      ? ""
+      : tvOn
+        ? "pretzel-power-led--on"
+        : turningOn
+          ? "pretzel-power-led--standby"
+          : "pretzel-power-led--standby pretzel-power-led--pulse";
 
   const safeVol = Math.min(Math.max(0, volume), maxVolume);
   const pctLabel =
@@ -331,16 +364,39 @@ export function TvSection() {
             )}
           </div>
         </div>
-        {!loading && (
+        <div className="flex flex-shrink-0 items-center gap-2">
           <button
             type="button"
-            onClick={() => void fetchAll()}
-            className="pretzel-btn-ghost"
+            disabled={powerKeyDisabled}
+            onClick={tvOn ? handlePowerOffClick : handlePowerOnClick}
+            title={
+              tvOn
+                ? powerOffArmed
+                  ? "Tap again to turn the TV off"
+                  : "Turn TV off"
+                : "Turn TV on (Wake-on-LAN / network)"
+            }
+            className={`pretzel-btn-ghost gap-1.5 ${powerOffArmed ? "pretzel-key--danger" : ""}`}
           >
-            Refresh
+            <span className={`pretzel-power-led ${powerLedClass}`} aria-hidden />
+            {powerLabel}
           </button>
-        )}
+          {!loading && (
+            <button
+              type="button"
+              onClick={() => void fetchAll()}
+              className="pretzel-btn-ghost"
+            >
+              Refresh
+            </button>
+          )}
+        </div>
       </div>
+      {powerError && (
+        <p className="pretzel-text-alert px-5 pt-3 text-xs" role="alert">
+          {powerError}
+        </p>
+      )}
 
       <div className="pretzel-panel__body">
         {!loading && (
@@ -365,7 +421,7 @@ export function TvSection() {
                     {pctLabel}%
                   </span>
                   <div className="w-full">
-                    <VuMeter value={connected ? pctLabel : 0} />
+                    <VuMeter value={tvOn ? pctLabel : 0} />
                   </div>
                 </div>
                 <button
@@ -440,7 +496,17 @@ export function TvSection() {
                       ⏯
                     </button>
                   </div>
-                ) : null}
+                ) : (
+                  <div className="pretzel-well flex h-48 items-center justify-center text-center">
+                    <p className="pretzel-text-panel-muted text-sm">
+                      {relayOffline
+                        ? "TV relay offline"
+                        : turningOn
+                          ? "Waking TV…"
+                          : "TV is off — press POWER"}
+                    </p>
+                  </div>
+                )}
                 {showTvRemoteChrome && (
                   <div className="mt-3 flex flex-wrap justify-center gap-2">
                     <button
@@ -476,48 +542,6 @@ export function TvSection() {
             </div>
           </>
         )}
-
-        <div className="hidden mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-solid border-[var(--pretzel-divider)] pt-4">
-          {!tvOn && (
-            <>
-              {turningOn ? (
-                <span className="pretzel-text-panel-muted">Waking TV…</span>
-              ) : (
-                <button
-                  type="button"
-                  disabled={
-                    relayOffline || loading || turningOn || remoteUiDevMode
-                  }
-                  onClick={handlePowerOnClick}
-                  title="Wake-on-LAN and/or network turn-on (configure TV_WOL_MAC on the Pi)"
-                  className="pretzel-btn-ghost pretzel-key--accent"
-                >
-                  Power on
-                </button>
-              )}
-            </>
-          )}
-          {connected && (
-            <>
-              {turningOff ? (
-                <span className="pretzel-text-panel-muted">Turning off…</span>
-              ) : (
-                <button
-                  type="button"
-                  disabled={
-                    relayOffline || loading || turningOff || remoteUiDevMode
-                  }
-                  onClick={handlePowerOffClick}
-                  className={`pretzel-btn-ghost ${
-                    powerOffArmed ? "pretzel-key--danger" : ""
-                  }`}
-                >
-                  {powerOffArmed ? "Confirm power off" : "Power off"}
-                </button>
-              )}
-            </>
-          )}
-        </div>
       </div>
     </section>
   );

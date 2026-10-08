@@ -92,6 +92,9 @@ export function LightCard({
   );
 
   const kelvin = light.color?.kelvin ?? 4000;
+  const brightnessPct = Math.round(
+    (dragging ? localBrightness : (light.brightness ?? 0)) * 100,
+  );
 
   return (
     <div
@@ -135,61 +138,6 @@ export function LightCard({
           </p>
 
           {isOn && (
-            <div className="mt-3 flex items-center gap-2">
-              <svg
-                className="pretzel-icon-muted h-3.5 w-3.5 flex-shrink-0"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-                aria-hidden
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"
-                />
-              </svg>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={Math.round(
-                  (dragging ? localBrightness : (light.brightness ?? 0)) * 100,
-                )}
-                onChange={(e) => {
-                  const val = Number(e.target.value) / 100;
-                  setLocalBrightness(val);
-                  setDragging(true);
-                }}
-                onMouseUp={() => {
-                  setDragging(false);
-                  commitBrightness(localBrightness);
-                }}
-                onTouchEnd={() => {
-                  setDragging(false);
-                  commitBrightness(localBrightness);
-                }}
-                className="pretzel-range pretzel-range--amber w-full"
-                style={
-                  {
-                    "--fill": `${Math.round(
-                      (dragging ? localBrightness : (light.brightness ?? 0)) *
-                        100,
-                    )}%`,
-                  } as CSSProperties
-                }
-              />
-              <span className="pretzel-vol-pct">
-                {Math.round(
-                  (dragging ? localBrightness : (light.brightness ?? 0)) * 100,
-                )}
-                %
-              </span>
-            </div>
-          )}
-
-          {isOn && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {(light.product?.capabilities?.has_color
                 ? COLOR_SWATCHES
@@ -214,6 +162,39 @@ export function LightCard({
             </div>
           )}
         </div>
+
+        {isOn && (
+          <div className="flex w-12 flex-shrink-0 flex-col items-center gap-2">
+            <span className="pretzel-vol-pct pretzel-vol-pct--center">
+              {brightnessPct}%
+            </span>
+            <div className="pretzel-range-vertical">
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={brightnessPct}
+                aria-label={`${light.label} brightness`}
+                onChange={(e) => {
+                  const val = Number(e.target.value) / 100;
+                  setLocalBrightness(val);
+                  setDragging(true);
+                }}
+                onMouseUp={() => {
+                  setDragging(false);
+                  commitBrightness(localBrightness);
+                }}
+                onTouchEnd={() => {
+                  setDragging(false);
+                  commitBrightness(localBrightness);
+                }}
+                className="pretzel-range pretzel-range--amber"
+                style={{ "--fill": `${brightnessPct}%` } as CSSProperties}
+              />
+            </div>
+            <span className="pretzel-text-group-label">Brt</span>
+          </div>
+        )}
       </div>
     </div>
   );

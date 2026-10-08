@@ -3,80 +3,89 @@
 @tailwind utilities;
 
 /**
- * Warm retro hi-fi: walnut cabinet, cream bakelite faceplates and keys,
- * amber backlit readouts, pilot LEDs. Every material is a token so the dark
- * variant (ebony cabinet, black anodized faceplates, charcoal keys) is a
- * token swap, not a second stylesheet.
+ * Korg Polysix / Mono-Poly: matte black panels in a walnut case, white
+ * silkscreen with orange "racing stripe" section rules, dark plastic keys,
+ * red LED readouts. Every material is a token; the dark variant mostly
+ * darkens the case. The piano-key room nav keeps its own ivory tokens
+ * (--pretzel-nav-key-*) so panel restyles never touch it.
  */
 @layer base {
   :root {
     color-scheme: light;
 
-    /* Cabinet (page) */
+    /* Case (page) */
     --pretzel-wood-top: #7a4d2c;
     --pretzel-wood-bottom: #57361f;
     --pretzel-wood-grain: rgba(30, 14, 4, 0.16);
     --pretzel-wood-sheen: rgba(255, 214, 160, 0.16);
     --pretzel-fg-page-strong: #f6ead2;
     --pretzel-fg-page-muted: #dcc7a4;
-    --pretzel-fg-page-accent: #f6ead2;
 
-    /* Faceplate (panels) */
-    --pretzel-plate-top: #f3ead6;
-    --pretzel-plate-bottom: #e4d7bb;
-    --pretzel-plate-edge: #b8a47f;
-    --pretzel-plate-highlight: rgba(255, 255, 255, 0.75);
-    --pretzel-screw-head: #d8ccb4;
-    --pretzel-screw-rim: #8c7a5c;
+    /* Black panel */
+    --pretzel-plate-top: #262626;
+    --pretzel-plate-bottom: #1b1b1b;
+    --pretzel-plate-edge: #0a0a0a;
+    --pretzel-plate-highlight: rgba(255, 255, 255, 0.07);
 
-    --pretzel-fg-heading: #3a2816;
-    --pretzel-fg-muted: #66513a;
-    --pretzel-fg-subtle: #7a6550;
-    --pretzel-emboss: 0 1px 0 rgba(255, 255, 255, 0.7);
-    --pretzel-divider: rgba(80, 56, 28, 0.22);
-    --pretzel-divider-highlight: rgba(255, 255, 255, 0.6);
+    /* Korg stripe + silkscreen */
+    --pretzel-korg-orange: #f0812a;
+    --pretzel-korg-orange-deep: #c9621a;
+    --pretzel-fg-heading: #f2efe6;
+    --pretzel-fg-muted: #b4aea2;
+    --pretzel-fg-subtle: #8c877d;
+    --pretzel-divider: rgba(0, 0, 0, 0.7);
+    --pretzel-divider-highlight: rgba(255, 255, 255, 0.05);
 
     /* Recessed wells (nested cards, inputs, list rows) */
-    --pretzel-well-bg: rgba(90, 62, 30, 0.07);
-    --pretzel-well-shadow: inset 0 2px 4px rgba(60, 38, 14, 0.18),
-      0 1px 0 rgba(255, 255, 255, 0.65);
-    --pretzel-input-bg: #fbf6ea;
-    --pretzel-input-fg: #2f2112;
-    --pretzel-input-placeholder: #9a856a;
+    --pretzel-well-bg: #121212;
+    --pretzel-well-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.7),
+      0 1px 0 rgba(255, 255, 255, 0.06);
+    --pretzel-input-bg: #0f0f0f;
+    --pretzel-input-fg: #f2efe6;
+    --pretzel-input-placeholder: #77726a;
 
-    /* Bakelite keys */
-    --pretzel-key-top: #fdf8ee;
-    --pretzel-key-bottom: #e3d6bb;
-    --pretzel-key-edge: #a8946f;
-    --pretzel-key-side: #b5a17c;
-    --pretzel-key-fg: #3a2816;
-    --pretzel-key-highlight: rgba(255, 255, 255, 0.9);
+    /* Panel keys: dark plastic caps */
+    --pretzel-key-top: #3c3c3c;
+    --pretzel-key-bottom: #272727;
+    --pretzel-key-edge: #050505;
+    --pretzel-key-side: #0c0c0c;
+    --pretzel-key-fg: #f2efe6;
+    --pretzel-key-highlight: rgba(255, 255, 255, 0.14);
 
-    /* Amber + red key caps (same in both themes) */
-    --pretzel-amber-top: #f7bd63;
-    --pretzel-amber-bottom: #d98a2b;
-    --pretzel-amber-edge: #9b5d16;
-    --pretzel-amber-side: #a8661b;
-    --pretzel-amber-fg: #3a1f05;
-    --pretzel-red-top: #d4604b;
-    --pretzel-red-bottom: #a33a2a;
-    --pretzel-red-edge: #6e2117;
-    --pretzel-red-side: #7a271b;
-    --pretzel-red-fg: #fff3e6;
+    /* Orange + red caps */
+    --pretzel-amber-top: #f69a4c;
+    --pretzel-amber-bottom: #e0701c;
+    --pretzel-amber-edge: #6b300a;
+    --pretzel-amber-side: #8a3e0d;
+    --pretzel-amber-fg: #1a0d03;
+    --pretzel-red-top: #d4483a;
+    --pretzel-red-bottom: #9f2a1f;
+    --pretzel-red-edge: #4a110b;
+    --pretzel-red-side: #5e1710;
+    --pretzel-red-fg: #fff1ea;
 
-    /* Readout glass */
-    --pretzel-readout-bg: #1b120b;
-    --pretzel-readout-fg: #ffb347;
-    --pretzel-readout-glow: rgba(255, 150, 40, 0.55);
+    /* Red LED readouts */
+    --pretzel-readout-bg: #140707;
+    --pretzel-readout-fg: #ff4433;
+    --pretzel-readout-glow: rgba(255, 50, 30, 0.6);
 
     /* Fader slot */
-    --pretzel-slot: #1c130c;
+    --pretzel-slot: #050505;
 
-    --pretzel-alert-fg: #a3301f;
-    --pretzel-warn-fg: #9a5a0c;
+    --pretzel-alert-fg: #ff7a66;
+    --pretzel-warn-fg: #f6a75c;
+
+    /* Piano-key nav (ivory keys; unchanged from the hi-fi iteration) */
+    --pretzel-nav-key-top: #fdf8ee;
+    --pretzel-nav-key-bottom: #e3d6bb;
+    --pretzel-nav-key-edge: #a8946f;
+    --pretzel-nav-key-side: #b5a17c;
+    --pretzel-nav-key-fg: #3a2816;
+    --pretzel-nav-key-highlight: rgba(255, 255, 255, 0.9);
+    --pretzel-nav-emboss: 0 1px 0 rgba(255, 255, 255, 0.7);
 
     /* Legacy names still referenced from JSX via var() */
-    --pretzel-border-subtle: rgba(80, 56, 28, 0.2);
+    --pretzel-border-subtle: rgba(0, 0, 0, 0.6);
     --pretzel-surface-panel-elevated: var(--pretzel-well-bg);
   }
 
@@ -90,42 +99,17 @@
       --pretzel-wood-sheen: rgba(255, 190, 120, 0.06);
       --pretzel-fg-page-strong: #ead9b5;
       --pretzel-fg-page-muted: #b39d78;
-      --pretzel-fg-page-accent: #ead9b5;
 
-      --pretzel-plate-top: #2b2622;
-      --pretzel-plate-bottom: #1d1916;
-      --pretzel-plate-edge: #0b0907;
-      --pretzel-plate-highlight: rgba(255, 240, 210, 0.08);
-      --pretzel-screw-head: #6f665a;
-      --pretzel-screw-rim: #0f0c0a;
+      --pretzel-plate-top: #1d1d1d;
+      --pretzel-plate-bottom: #131313;
 
-      --pretzel-fg-heading: #ecdcb8;
-      --pretzel-fg-muted: #bfae8c;
-      --pretzel-fg-subtle: #9a8a6c;
-      --pretzel-emboss: 0 -1px 0 rgba(0, 0, 0, 0.7);
-      --pretzel-divider: rgba(0, 0, 0, 0.55);
-      --pretzel-divider-highlight: rgba(255, 240, 210, 0.06);
-
-      --pretzel-well-bg: rgba(0, 0, 0, 0.25);
-      --pretzel-well-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.6),
-        0 1px 0 rgba(255, 240, 210, 0.06);
-      --pretzel-input-bg: #15110e;
-      --pretzel-input-fg: #ecdcb8;
-      --pretzel-input-placeholder: #7d6f58;
-
-      --pretzel-key-top: #3d3630;
-      --pretzel-key-bottom: #27221e;
-      --pretzel-key-edge: #0d0a08;
-      --pretzel-key-side: #120e0b;
-      --pretzel-key-fg: #ecdcb8;
-      --pretzel-key-highlight: rgba(255, 240, 210, 0.14);
-
-      --pretzel-slot: #0a0705;
-
-      --pretzel-alert-fg: #ff8a73;
-      --pretzel-warn-fg: #f2b55c;
-
-      --pretzel-border-subtle: rgba(0, 0, 0, 0.5);
+      --pretzel-nav-key-top: #3d3630;
+      --pretzel-nav-key-bottom: #27221e;
+      --pretzel-nav-key-edge: #0d0a08;
+      --pretzel-nav-key-side: #120e0b;
+      --pretzel-nav-key-fg: #ecdcb8;
+      --pretzel-nav-key-highlight: rgba(255, 240, 210, 0.14);
+      --pretzel-nav-emboss: 0 -1px 0 rgba(0, 0, 0, 0.7);
     }
   }
 
@@ -169,7 +153,7 @@
   }
 
   input[type="checkbox"] {
-    accent-color: var(--pretzel-amber-bottom);
+    accent-color: var(--pretzel-korg-orange);
   }
 }
 
@@ -196,8 +180,8 @@
   .pretzel-page-title {
     font-size: 1.25rem;
     line-height: 1.75rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
+    font-weight: 800;
+    letter-spacing: 0.06em;
     color: var(--pretzel-fg-page-strong);
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
   }
@@ -205,25 +189,25 @@
   .pretzel-page-subtitle {
     margin-top: 0.25rem;
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.16em;
     color: var(--pretzel-fg-page-muted);
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
   }
 
-  /* ── Faceplate panels with corner screws ──────────────────────── */
+  /* ── Black panels ─────────────────────────────────────────────── */
   .pretzel-panel {
-    --screw: var(--pretzel-screw-head) 0 2.5px,
-      var(--pretzel-screw-rim) 3px 3.75px, transparent 4.25px;
-    border-radius: 0.875rem;
+    overflow: hidden;
+    border-radius: 0.5rem;
     border: 1px solid var(--pretzel-plate-edge);
     background-color: var(--pretzel-plate-bottom);
     background-image:
-      radial-gradient(circle at 9px 9px, var(--screw)),
-      radial-gradient(circle at calc(100% - 9px) 9px, var(--screw)),
-      radial-gradient(circle at 9px calc(100% - 9px), var(--screw)),
-      radial-gradient(circle at calc(100% - 9px) calc(100% - 9px), var(--screw)),
+      repeating-linear-gradient(
+        0deg,
+        rgba(255, 255, 255, 0.012) 0 1px,
+        transparent 1px 3px
+      ),
       linear-gradient(
         180deg,
         var(--pretzel-plate-top),
@@ -231,20 +215,30 @@
       );
     box-shadow:
       inset 0 1px 0 var(--pretzel-plate-highlight),
-      inset 0 -2px 3px rgba(0, 0, 0, 0.12),
-      0 2px 0 rgba(0, 0, 0, 0.25),
-      0 10px 22px -6px rgba(0, 0, 0, 0.55);
+      inset 0 -1px 0 rgba(0, 0, 0, 0.6),
+      0 2px 0 rgba(0, 0, 0, 0.35),
+      0 10px 22px -6px rgba(0, 0, 0, 0.6);
   }
 
+  /* Section header with Polysix racing stripes: orange rule + white pinstripe. */
   .pretzel-panel__header,
   .pretzel-panel__header--simple {
+    position: relative;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 0.75rem;
-    padding: 1rem 1.25rem;
-    border-bottom: 1px solid var(--pretzel-divider);
-    box-shadow: 0 1px 0 var(--pretzel-divider-highlight);
+    padding: 1rem 1.25rem 1.125rem;
+    background-image:
+      linear-gradient(var(--pretzel-korg-orange), var(--pretzel-korg-orange)),
+      linear-gradient(var(--pretzel-fg-heading), var(--pretzel-fg-heading));
+    background-size:
+      100% 3px,
+      100% 1px;
+    background-position:
+      0 calc(100% - 3px),
+      0 100%;
+    background-repeat: no-repeat;
   }
 
   .pretzel-panel__body {
@@ -253,19 +247,17 @@
   }
 
   .pretzel-panel__block-bordered {
-    border-top: 1px solid var(--pretzel-divider);
-    box-shadow: inset 0 1px 0 var(--pretzel-divider-highlight);
+    border-top: 1px solid var(--pretzel-fg-subtle);
   }
 
-  /* Engraved type on faceplates */
+  /* Silkscreen type: printed, not embossed */
   .pretzel-text-panel-title {
     font-size: 0.9375rem;
     line-height: 1.5rem;
-    font-weight: 700;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.16em;
     color: var(--pretzel-fg-heading);
-    text-shadow: var(--pretzel-emboss);
   }
 
   .pretzel-text-panel-muted {
@@ -288,11 +280,10 @@
 
   .pretzel-text-group-label {
     font-size: 0.6875rem;
-    font-weight: 700;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.14em;
-    color: var(--pretzel-fg-subtle);
-    text-shadow: var(--pretzel-emboss);
+    letter-spacing: 0.16em;
+    color: var(--pretzel-fg-muted);
   }
 
   .pretzel-text-alert {
@@ -303,7 +294,7 @@
     color: var(--pretzel-warn-fg);
   }
 
-  /* Sun block on the cabinet */
+  /* Sun block on the case */
   .pretzel-text-sun-block {
     min-height: 2.75rem;
     font-size: 0.875rem;
@@ -314,9 +305,9 @@
   .pretzel-text-sun-title {
     margin-bottom: 0.25rem;
     font-size: 0.6875rem;
-    font-weight: 700;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.18em;
     color: var(--pretzel-fg-page-strong);
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
   }
@@ -329,14 +320,15 @@
     opacity: 0.75;
   }
 
-  /* ── Amber readout window ─────────────────────────────────────── */
+  /* ── Red LED readout ──────────────────────────────────────────── */
   .pretzel-readout,
   .pretzel-text-sun-time,
   .pretzel-vol-pct {
     display: inline-block;
-    border-radius: 0.3125rem;
+    border-radius: 0.25rem;
     padding: 0.125rem 0.4375rem;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
     color: var(--pretzel-readout-fg);
     text-shadow:
@@ -345,23 +337,19 @@
     background-color: var(--pretzel-readout-bg);
     background-image: linear-gradient(
       170deg,
-      rgba(255, 255, 255, 0.07) 0%,
+      rgba(255, 255, 255, 0.06) 0%,
       transparent 40%
     );
     box-shadow:
-      inset 0 2px 5px rgba(0, 0, 0, 0.85),
-      inset 0 0 0 1px rgba(0, 0, 0, 0.6),
-      0 1px 0 var(--pretzel-divider-highlight);
+      inset 0 2px 5px rgba(0, 0, 0, 0.9),
+      inset 0 0 0 1px rgba(0, 0, 0, 0.7),
+      0 1px 0 rgba(255, 255, 255, 0.06);
   }
 
   .pretzel-text-sun-time {
     font-size: 1.125rem;
     line-height: 1.75rem;
     padding: 0.125rem 0.625rem;
-    box-shadow:
-      inset 0 2px 5px rgba(0, 0, 0, 0.85),
-      inset 0 0 0 1px rgba(0, 0, 0, 0.6),
-      0 1px 0 rgba(255, 220, 170, 0.18);
   }
 
   .pretzel-vol-pct {
@@ -371,61 +359,101 @@
     font-size: 0.75rem;
   }
 
+  .pretzel-vol-pct--center {
+    min-width: 3rem;
+    padding: 0.125rem 0.25rem;
+    text-align: center;
+    font-size: 0.6875rem;
+  }
+
   .pretzel-readout--lg {
     padding: 0.25rem 0.875rem;
     font-size: 1.5rem;
     line-height: 2rem;
-    font-weight: 600;
   }
 
   .pretzel-readout--xl {
     padding: 0.5rem 1.25rem;
     font-size: 2.5rem;
     line-height: 1;
-    font-weight: 600;
   }
 
-  /* ── Pilot LEDs ───────────────────────────────────────────────── */
+  /* ── Pilot LEDs: domed lens in a chrome bezel ─────────────────── */
   .pretzel-led {
-    --led-core: #8c8273;
-    --led-mid: #5f574c;
+    --led-core: #4a4440;
+    --led-mid: #2a2522;
     --led-glow: transparent;
     display: inline-block;
-    width: 0.6875rem;
-    height: 0.6875rem;
+    width: 0.625rem;
+    height: 0.625rem;
     flex-shrink: 0;
     border-radius: 9999px;
     background: radial-gradient(
       circle at 35% 30%,
-      rgba(255, 255, 255, 0.85) 0 12%,
-      var(--led-core) 30%,
+      rgba(255, 255, 255, 0.8) 0 12%,
+      var(--led-core) 32%,
       var(--led-mid) 100%
     );
     box-shadow:
-      0 0 0 2px rgba(0, 0, 0, 0.35),
-      0 1px 0 2.5px var(--pretzel-divider-highlight),
-      0 0 9px 1px var(--led-glow);
+      0 0 0 1.5px #0a0a0a,
+      0 0 0 2.5px #9a9a9a,
+      0 0 0 3px #3a3a3a,
+      0 0 9px 2px var(--led-glow);
   }
 
   .pretzel-led--ok {
     --led-core: #5ee06f;
     --led-mid: #1d7d2f;
-    --led-glow: rgba(90, 230, 110, 0.7);
+    --led-glow: rgba(90, 230, 110, 0.6);
   }
 
   .pretzel-led--warn {
-    --led-core: #ffbf4d;
-    --led-mid: #b86b0c;
-    --led-glow: rgba(255, 170, 50, 0.7);
+    --led-core: #ffa64d;
+    --led-mid: #b85a0c;
+    --led-glow: rgba(255, 150, 50, 0.65);
   }
 
   .pretzel-led--off {
-    --led-core: #ff6a52;
-    --led-mid: #a3200f;
-    --led-glow: rgba(255, 80, 60, 0.7);
+    --led-core: #ff5544;
+    --led-mid: #a3170b;
+    --led-glow: rgba(255, 60, 40, 0.7);
   }
 
-  /* ── Bakelite keys ────────────────────────────────────────────── */
+  /* Power-key LED (inside the key) */
+  .pretzel-power-led {
+    display: inline-block;
+    width: 0.4375rem;
+    height: 0.4375rem;
+    border-radius: 9999px;
+    background: #3a2420;
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.7);
+  }
+
+  .pretzel-power-led--on {
+    background: radial-gradient(circle at 35% 30%, #ffd0c8 0 15%, #ff3b2f 50%, #a3170b);
+    box-shadow: 0 0 7px 1px rgba(255, 60, 40, 0.75);
+  }
+
+  .pretzel-power-led--standby {
+    background: radial-gradient(circle at 35% 30%, #ffe4c4 0 15%, #ff9a3c 50%, #b85a0c);
+    box-shadow: 0 0 7px 1px rgba(255, 150, 50, 0.7);
+  }
+
+  .pretzel-power-led--pulse {
+    animation: pretzel-led-pulse 1.6s ease-in-out infinite;
+  }
+
+  @keyframes pretzel-led-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+
+  /* ── Panel keys: dark plastic caps ────────────────────────────── */
   .pretzel-btn-ghost,
   .pretzel-btn-secondary,
   .pretzel-btn-icon,
@@ -441,17 +469,17 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 0.5rem;
+    border-radius: 0.25rem;
     border: 1px solid var(--k-edge);
     color: var(--k-fg);
-    font-weight: 600;
-    letter-spacing: 0.02em;
+    font-weight: 700;
+    letter-spacing: 0.04em;
     background-image: linear-gradient(180deg, var(--k-top), var(--k-bottom));
     box-shadow:
       inset 0 1px 0 var(--k-hl),
-      inset 0 -2px 0 rgba(0, 0, 0, 0.07),
+      inset 0 -2px 0 rgba(0, 0, 0, 0.25),
       0 3px 0 var(--k-side),
-      0 4px 7px rgba(0, 0, 0, 0.35);
+      0 4px 7px rgba(0, 0, 0, 0.5);
     transition:
       transform 0.08s ease,
       box-shadow 0.08s ease,
@@ -464,7 +492,7 @@
   .pretzel-btn-icon:hover:not(:disabled),
   .pretzel-btn-icon-wide:hover:not(:disabled),
   .pretzel-btn-emphasis:hover:not(:disabled) {
-    filter: brightness(1.04);
+    filter: brightness(1.1);
   }
 
   .pretzel-btn-ghost:active:not(:disabled),
@@ -474,9 +502,9 @@
   .pretzel-btn-emphasis:active:not(:disabled) {
     transform: translateY(2px);
     box-shadow:
-      inset 0 1px 3px rgba(0, 0, 0, 0.25),
+      inset 0 1px 3px rgba(0, 0, 0, 0.45),
       0 1px 0 var(--k-side),
-      0 1px 2px rgba(0, 0, 0, 0.3);
+      0 1px 2px rgba(0, 0, 0, 0.4);
   }
 
   .pretzel-btn-ghost:disabled,
@@ -485,7 +513,7 @@
   .pretzel-btn-icon-wide:disabled,
   .pretzel-btn-emphasis:disabled {
     cursor: not-allowed;
-    opacity: 0.55;
+    opacity: 0.5;
   }
 
   .pretzel-btn-ghost:focus-visible,
@@ -494,17 +522,17 @@
   .pretzel-btn-icon-wide:focus-visible,
   .pretzel-btn-emphasis:focus-visible,
   .nav-button:focus-visible {
-    outline: 2px solid var(--pretzel-amber-bottom);
+    outline: 2px solid var(--pretzel-korg-orange);
     outline-offset: 3px;
   }
 
   .pretzel-btn-ghost {
     flex-shrink: 0;
-    padding: 0.375rem 0.75rem;
+    padding: 0.375rem 0.625rem;
     font-size: 0.6875rem;
     line-height: 1rem;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
   }
 
   .pretzel-btn-ghost--sm {
@@ -529,7 +557,7 @@
     padding: 0.375rem 0.5rem;
     font-size: 0.6875rem;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
   }
 
   .pretzel-btn-emphasis {
@@ -545,7 +573,7 @@
     --k-edge: var(--pretzel-amber-edge);
     --k-side: var(--pretzel-amber-side);
     --k-fg: var(--pretzel-amber-fg);
-    --k-hl: rgba(255, 240, 200, 0.75);
+    --k-hl: rgba(255, 220, 180, 0.6);
   }
 
   .pretzel-key--danger {
@@ -554,7 +582,7 @@
     --k-edge: var(--pretzel-red-edge);
     --k-side: var(--pretzel-red-side);
     --k-fg: var(--pretzel-red-fg);
-    --k-hl: rgba(255, 210, 190, 0.45);
+    --k-hl: rgba(255, 200, 180, 0.4);
   }
 
   .pretzel-btn-group {
@@ -566,7 +594,7 @@
   /* ── Wells: nested cards, list rows, inputs ───────────────────── */
   .pretzel-nested-card,
   .pretzel-well {
-    border-radius: 0.5rem;
+    border-radius: 0.375rem;
     background-color: var(--pretzel-well-bg);
     box-shadow: var(--pretzel-well-shadow);
     padding: 0.75rem;
@@ -578,7 +606,7 @@
 
   .pretzel-input {
     width: 100%;
-    border-radius: 0.5rem;
+    border-radius: 0.375rem;
     border: 1px solid var(--pretzel-border-subtle);
     background-color: var(--pretzel-input-bg);
     padding: 0.5rem 0.75rem;
@@ -594,10 +622,10 @@
 
   .pretzel-input:focus {
     outline: none;
-    border-color: var(--pretzel-amber-bottom);
+    border-color: var(--pretzel-korg-orange);
     box-shadow:
       var(--pretzel-well-shadow),
-      0 0 0 2px rgba(217, 138, 43, 0.45);
+      0 0 0 2px rgba(240, 129, 42, 0.45);
   }
 
   .pretzel-tag--alert {
@@ -607,17 +635,17 @@
     padding: 0 0.375rem;
     font-size: 0.625rem;
     line-height: 1rem;
-    font-weight: 700;
+    font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: var(--pretzel-alert-fg);
   }
 
-  /* ── Fader ────────────────────────────────────────────────────── */
+  /* ── Faders: black slot, orange lit fill, Korg slider cap ─────── */
   .pretzel-range {
     --fill: 0%;
-    --lit: var(--pretzel-readout-fg);
-    height: 0.5rem;
+    --lit: var(--pretzel-korg-orange);
+    height: 0.4375rem;
     min-width: 0;
     flex: 1 1 0%;
     cursor: pointer;
@@ -632,69 +660,81 @@
       var(--pretzel-slot);
     box-shadow:
       inset 0 1px 3px rgba(0, 0, 0, 0.9),
-      0 1px 0 var(--pretzel-divider-highlight);
+      0 1px 0 rgba(255, 255, 255, 0.07);
   }
 
   .pretzel-range::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 1.125rem;
-    height: 1.75rem;
-    border-radius: 0.25rem;
-    border: 1px solid var(--pretzel-key-edge);
+    width: 1rem;
+    height: 1.625rem;
+    border-radius: 0.1875rem;
+    border: 1px solid #000;
     background:
-      repeating-linear-gradient(
-        180deg,
-        transparent 0 3px,
-        rgba(0, 0, 0, 0.16) 3px 4px
-      ),
-      linear-gradient(90deg, var(--pretzel-key-top), var(--pretzel-key-bottom));
+      linear-gradient(90deg, transparent 0 42%, #f2efe6 42% 58%, transparent 58%),
+      linear-gradient(90deg, #3a3a3a, #161616);
     box-shadow:
-      inset 0 1px 0 var(--pretzel-key-highlight),
-      0 2px 3px rgba(0, 0, 0, 0.5);
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 2px 3px rgba(0, 0, 0, 0.7);
   }
 
   .pretzel-range::-moz-range-thumb {
-    width: 1.125rem;
-    height: 1.75rem;
-    border-radius: 0.25rem;
-    border: 1px solid var(--pretzel-key-edge);
+    width: 1rem;
+    height: 1.625rem;
+    border-radius: 0.1875rem;
+    border: 1px solid #000;
     background:
-      repeating-linear-gradient(
-        180deg,
-        transparent 0 3px,
-        rgba(0, 0, 0, 0.16) 3px 4px
-      ),
-      linear-gradient(90deg, var(--pretzel-key-top), var(--pretzel-key-bottom));
+      linear-gradient(90deg, transparent 0 42%, #f2efe6 42% 58%, transparent 58%),
+      linear-gradient(90deg, #3a3a3a, #161616);
     box-shadow:
-      inset 0 1px 0 var(--pretzel-key-highlight),
-      0 2px 3px rgba(0, 0, 0, 0.5);
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 2px 3px rgba(0, 0, 0, 0.7);
   }
 
   .pretzel-range:focus-visible {
-    outline: 2px solid var(--pretzel-amber-bottom);
+    outline: 2px solid var(--pretzel-korg-orange);
     outline-offset: 6px;
   }
 
   .pretzel-range:disabled {
     cursor: not-allowed;
-    opacity: 0.55;
+    opacity: 0.5;
   }
 
   .pretzel-range--amber {
-    --lit: #ffc46b;
+    --lit: #ffad5c;
+  }
+
+  /**
+   * Vertical fader: rotate a normal range input -90° inside a fixed box, so
+   * touch dragging works everywhere without writing-mode support for ranges.
+   * The input's width equals the box height; top of the slot = 100%.
+   */
+  .pretzel-range-vertical {
+    position: relative;
+    width: 2.5rem;
+    height: 6.5rem;
+    flex-shrink: 0;
+  }
+
+  .pretzel-range-vertical > .pretzel-range {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 6.5rem;
+    transform: translate(-50%, -50%) rotate(-90deg);
   }
 
   /* ── VU meter ─────────────────────────────────────────────────── */
   .pretzel-vu {
     display: flex;
     gap: 3px;
-    border-radius: 0.375rem;
+    border-radius: 0.25rem;
     padding: 0.375rem;
-    background: var(--pretzel-readout-bg);
+    background: #080808;
     box-shadow:
-      inset 0 2px 5px rgba(0, 0, 0, 0.85),
-      0 1px 0 var(--pretzel-divider-highlight);
+      inset 0 2px 5px rgba(0, 0, 0, 0.9),
+      0 1px 0 rgba(255, 255, 255, 0.06);
   }
 
   .pretzel-vu__seg {
@@ -712,14 +752,14 @@
   }
 
   .pretzel-vu__seg--hot {
-    --seg: #ffb347;
+    --seg: #ff9a3c;
   }
 
   .pretzel-vu__seg--peak {
-    --seg: #ff6a52;
+    --seg: #ff3b2f;
   }
 
-  /* ── Piano-key nav ────────────────────────────────────────────── */
+  /* ── Piano-key nav (kept from the hi-fi iteration) ────────────── */
   .pretzel-nav-gradient {
     background-color: var(--pretzel-wood-bottom);
     background-image:
@@ -741,19 +781,19 @@
   .nav-button {
     position: relative;
     gap: 0.25rem;
-    color: var(--pretzel-key-fg);
-    border: 1px solid var(--pretzel-key-edge);
+    color: var(--pretzel-nav-key-fg);
+    border: 1px solid var(--pretzel-nav-key-edge);
     border-radius: 0.375rem 0.375rem 0.875rem 0.875rem;
     background-image: linear-gradient(
       180deg,
-      var(--pretzel-key-top) 0%,
-      var(--pretzel-key-top) 55%,
-      var(--pretzel-key-bottom) 100%
+      var(--pretzel-nav-key-top) 0%,
+      var(--pretzel-nav-key-top) 55%,
+      var(--pretzel-nav-key-bottom) 100%
     );
     box-shadow:
-      inset 0 1px 0 var(--pretzel-key-highlight),
+      inset 0 1px 0 var(--pretzel-nav-key-highlight),
       inset 0 -4px 0 rgba(0, 0, 0, 0.08),
-      0 5px 0 var(--pretzel-key-side),
+      0 5px 0 var(--pretzel-nav-key-side),
       0 7px 10px rgba(0, 0, 0, 0.5);
     transition:
       transform 0.1s ease,
@@ -766,12 +806,12 @@
     transform: translateY(4px);
     background-image: linear-gradient(
       180deg,
-      var(--pretzel-key-bottom) 0%,
-      var(--pretzel-key-top) 100%
+      var(--pretzel-nav-key-bottom) 0%,
+      var(--pretzel-nav-key-top) 100%
     );
     box-shadow:
       inset 0 2px 4px rgba(0, 0, 0, 0.22),
-      0 1px 0 var(--pretzel-key-side),
+      0 1px 0 var(--pretzel-nav-key-side),
       0 2px 3px rgba(0, 0, 0, 0.45);
   }
 
@@ -796,7 +836,7 @@
   .pretzel-nav-label {
     font-size: 0.8125rem;
     letter-spacing: 0.14em;
-    text-shadow: var(--pretzel-emboss);
+    text-shadow: var(--pretzel-nav-emboss);
   }
 
   .pretzel-nav-icon {
@@ -805,7 +845,7 @@
     opacity: 0.85;
   }
 
-  /* ── TV D-pad: knurled ring, cream wedges, bakelite OK cap ───── */
+  /* ── TV D-pad: big Korg knob ──────────────────────────────────── */
   .pretzel-tv-dpad {
     position: relative;
     width: 12rem;
@@ -815,20 +855,16 @@
     margin-right: auto;
     border-radius: 50%;
     overflow: hidden;
-    border: 9px solid transparent;
+    border: 10px solid transparent;
     background:
-      linear-gradient(var(--pretzel-key-bottom), var(--pretzel-key-bottom))
-        padding-box,
-      repeating-conic-gradient(
-          from 0deg,
-          #c9c1b1 0deg 2deg,
-          #8a8173 2deg 4deg
-        )
+      linear-gradient(#111, #111) padding-box,
+      repeating-conic-gradient(from 0deg, #2e2e2e 0deg 3deg, #121212 3deg 6deg)
         border-box;
     box-shadow:
-      0 0 0 1px rgba(0, 0, 0, 0.45),
-      0 6px 0 rgba(0, 0, 0, 0.25),
-      0 10px 18px rgba(0, 0, 0, 0.45);
+      0 0 0 1px #000,
+      0 0 0 3px rgba(255, 255, 255, 0.06),
+      0 6px 0 rgba(0, 0, 0, 0.35),
+      0 10px 18px rgba(0, 0, 0, 0.55);
   }
 
   .pretzel-tv-dpad__wedge {
@@ -839,22 +875,18 @@
     border: none;
     padding: 0;
     margin: 0;
-    color: var(--pretzel-key-fg);
-    background: radial-gradient(
-      circle at 50% 35%,
-      var(--pretzel-key-top) 0%,
-      var(--pretzel-key-bottom) 75%
-    );
+    color: var(--pretzel-fg-heading);
+    background: radial-gradient(circle at 50% 35%, #383838 0%, #1f1f1f 75%);
     transition: filter 0.1s ease;
     -webkit-tap-highlight-color: transparent;
   }
 
   .pretzel-tv-dpad__wedge:hover:not(:disabled) {
-    filter: brightness(1.04);
+    filter: brightness(1.15);
   }
 
   .pretzel-tv-dpad__wedge:active:not(:disabled) {
-    filter: brightness(0.86);
+    filter: brightness(0.75);
   }
 
   .pretzel-tv-dpad__wedge:disabled {
@@ -890,6 +922,7 @@
     padding-left: 0.6rem;
   }
 
+  /* Brushed-aluminum knob cap */
   .pretzel-tv-dpad__ok {
     position: absolute;
     left: 50%;
@@ -904,21 +937,29 @@
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    border: 1px solid #1a110a;
+    border: 1px solid #000;
     padding: 0;
     font-size: 1.25rem;
     line-height: 1;
-    color: #f3e4c4;
-    background: radial-gradient(
-      circle at 40% 30%,
-      #8a5a36 0%,
-      #5a361d 55%,
-      #3a2010 100%
-    );
+    color: #1a1a1a;
+    background:
+      repeating-radial-gradient(
+        circle at 50% 50%,
+        rgba(255, 255, 255, 0.08) 0 1px,
+        rgba(0, 0, 0, 0.06) 1px 2px
+      ),
+      conic-gradient(
+        from 200deg,
+        #e9e9e9,
+        #9c9c9c 25%,
+        #f5f5f5 50%,
+        #a5a5a5 75%,
+        #e9e9e9
+      );
     box-shadow:
-      inset 0 1px 1px rgba(255, 220, 180, 0.35),
-      0 0 0 4px rgba(0, 0, 0, 0.12),
-      0 3px 6px rgba(0, 0, 0, 0.55);
+      inset 0 1px 1px rgba(255, 255, 255, 0.8),
+      0 0 0 4px #0b0b0b,
+      0 3px 6px rgba(0, 0, 0, 0.7);
     transform: translate(-50%, -50%);
     transition:
       transform 0.08s ease,
@@ -929,8 +970,8 @@
   .pretzel-tv-dpad__ok:active:not(:disabled) {
     transform: translate(-50%, -50%) scale(0.96);
     box-shadow:
-      inset 0 2px 4px rgba(0, 0, 0, 0.6),
-      0 0 0 4px rgba(0, 0, 0, 0.12);
+      inset 0 2px 4px rgba(0, 0, 0, 0.45),
+      0 0 0 4px #0b0b0b;
   }
 
   .pretzel-tv-dpad__ok:disabled {
@@ -939,15 +980,15 @@
 
   .pretzel-tv-dpad__ok:focus-visible,
   .pretzel-tv-dpad__wedge:focus-visible {
-    outline: 2px solid var(--pretzel-amber-bottom);
+    outline: 2px solid var(--pretzel-korg-orange);
     outline-offset: -4px;
   }
 
-  /* ── Light cards: backlit when on ─────────────────────────────── */
+  /* ── Light cards: orange backlight when on ────────────────────── */
   .pretzel-light-card {
     position: relative;
     overflow: hidden;
-    border-radius: 0.75rem;
+    border-radius: 0.375rem;
     transition:
       background-color 0.2s ease,
       box-shadow 0.2s ease;
@@ -957,13 +998,13 @@
     background-color: var(--pretzel-well-bg);
     background-image: radial-gradient(
       ellipse 90% 120% at 0% 0%,
-      rgba(255, 176, 70, 0.28),
+      rgba(240, 129, 42, 0.22),
       transparent 70%
     );
     box-shadow:
       var(--pretzel-well-shadow),
-      inset 0 0 0 1px rgba(217, 138, 43, 0.45),
-      0 0 16px -2px rgba(255, 160, 50, 0.35);
+      inset 0 0 0 1px rgba(240, 129, 42, 0.45),
+      0 0 16px -2px rgba(240, 129, 42, 0.35);
   }
 
   .pretzel-light-card--off {
@@ -973,20 +1014,20 @@
 
   /* Bulb toggle: a glass lamp lens (lit color comes from the kelvin class). */
   .pretzel-lamp-lens {
-    border: 2px solid rgba(0, 0, 0, 0.35);
+    border: 2px solid rgba(0, 0, 0, 0.5);
     box-shadow:
       inset 0 -2px 4px rgba(0, 0, 0, 0.2),
       inset 0 2px 2px rgba(255, 255, 255, 0.6),
-      0 0 14px 2px rgba(255, 180, 70, 0.6);
+      0 0 14px 2px rgba(255, 170, 70, 0.55);
   }
 
   .pretzel-toggle-bulb-off {
-    border: 2px solid rgba(0, 0, 0, 0.35);
-    background: radial-gradient(circle at 35% 30%, #a49985, #5d5547);
-    color: #2c261e;
+    border: 2px solid rgba(0, 0, 0, 0.6);
+    background: radial-gradient(circle at 35% 30%, #5a5550, #2a2724);
+    color: #a8a29a;
     box-shadow:
-      inset 0 2px 4px rgba(0, 0, 0, 0.45),
-      0 1px 0 var(--pretzel-divider-highlight);
+      inset 0 2px 4px rgba(0, 0, 0, 0.6),
+      0 1px 0 rgba(255, 255, 255, 0.06);
   }
 
   .pretzel-text-card-name-on {
@@ -1002,36 +1043,36 @@
   }
 
   .pretzel-swatch {
-    border: 2px solid rgba(0, 0, 0, 0.3);
+    border: 2px solid #000;
     box-shadow:
-      inset 0 2px 2px rgba(255, 255, 255, 0.45),
-      inset 0 -2px 3px rgba(0, 0, 0, 0.2),
-      0 1px 2px rgba(0, 0, 0, 0.35);
+      inset 0 2px 2px rgba(255, 255, 255, 0.4),
+      inset 0 -2px 3px rgba(0, 0, 0, 0.25),
+      0 1px 2px rgba(0, 0, 0, 0.5);
   }
 
   .pretzel-swatch-active {
     box-shadow:
-      0 0 0 2px var(--pretzel-plate-bottom),
-      0 0 0 4px var(--pretzel-amber-bottom),
-      0 0 10px 2px rgba(255, 160, 50, 0.6);
+      0 0 0 2px var(--pretzel-well-bg),
+      0 0 0 4px var(--pretzel-korg-orange),
+      0 0 10px 2px rgba(240, 129, 42, 0.55);
   }
 
   .pretzel-remote-label {
     margin-bottom: 0.5rem;
     font-size: 10px;
-    font-weight: 700;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.16em;
     color: var(--pretzel-fg-subtle);
   }
 
-  /* ── Chores sprint: full-screen VFD clock face ────────────────── */
+  /* ── Chores sprint: full-screen red LED display ───────────────── */
   .pretzel-vfd-screen {
-    background-color: #0f0a06;
+    background-color: #0b0b0b;
     background-image:
       radial-gradient(
         ellipse 100% 60% at 50% 0%,
-        rgba(255, 150, 40, 0.09),
+        rgba(255, 60, 40, 0.07),
         transparent 70%
       ),
       repeating-linear-gradient(
@@ -1039,21 +1080,21 @@
         rgba(255, 255, 255, 0.015) 0 1px,
         transparent 1px 3px
       );
-    color: #f3d9a8;
+    color: #f2efe6;
   }
 
   .pretzel-vfd-row {
     position: relative;
     overflow: hidden;
-    border-radius: 0.5rem;
-    border: 1px solid rgba(255, 179, 71, 0.16);
-    background: rgba(255, 179, 71, 0.04);
+    border-radius: 0.375rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
     padding: 0.75rem;
   }
 
   .pretzel-vfd-row--active {
-    border-color: rgba(255, 179, 71, 0.6);
-    box-shadow: 0 0 14px -2px rgba(255, 150, 40, 0.45);
+    border-color: rgba(240, 129, 42, 0.7);
+    box-shadow: 0 0 14px -2px rgba(240, 129, 42, 0.45);
   }
 
   .pretzel-vfd-row--done {
@@ -1061,15 +1102,15 @@
   }
 
   .pretzel-vfd-bar {
-    background: rgba(255, 160, 50, 0.22);
+    background: rgba(240, 129, 42, 0.22);
   }
 
   .pretzel-vfd-label {
     font-size: 0.6875rem;
-    font-weight: 700;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.16em;
-    color: rgba(255, 179, 71, 0.65);
+    letter-spacing: 0.18em;
+    color: var(--pretzel-korg-orange);
   }
 }
 
@@ -1086,5 +1127,9 @@
   .pretzel-vu__seg,
   .pretzel-nav-lamp {
     transition: none;
+  }
+
+  .pretzel-power-led--pulse {
+    animation: none;
   }
 }
