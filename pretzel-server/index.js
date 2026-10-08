@@ -12,6 +12,12 @@ const { join, dirname } = require("path");
 const weather = require("./lib/weather");
 const { ChoresManager } = require("./lib/chores");
 const { RemindersScheduler } = require("./lib/reminders");
+const {
+  apiKeyMiddleware,
+  bindAddr,
+  safeEqual,
+  envString,
+} = require("../shared/auth");
 
 const PORT =
   Number(process.env.PORT) && Number.isFinite(Number(process.env.PORT))
@@ -27,11 +33,13 @@ const MPG123_DEVICE =
     ? process.env.PRETZEL_MPG123_DEVICE.trim()
     : "hw:2,0";
 
-const PRETZEL_SETTINGS_PASSCODE =
-  typeof process.env.PRETZEL_SETTINGS_PASSCODE === "string" &&
-  process.env.PRETZEL_SETTINGS_PASSCODE !== ""
-    ? process.env.PRETZEL_SETTINGS_PASSCODE
-    : "Asdf1234";
+/** Admin routes are disabled (403) unless this is set; there is no default. */
+const PRETZEL_SETTINGS_PASSCODE = envString("PRETZEL_SETTINGS_PASSCODE");
+if (!PRETZEL_SETTINGS_PASSCODE) {
+  console.warn(
+    "PRETZEL_SETTINGS_PASSCODE is not set — /pretzel/admin/* and reminder edits are disabled.",
+  );
+}
 
 const PRETZEL_REPO_ROOT =
   typeof process.env.PRETZEL_REPO_ROOT === "string" &&
@@ -107,6 +115,13 @@ function resolveTarget(done) {
 
 const app = express();
 app.use(express.json());
+// /pretzel/status stays open as a liveness probe.
+app.use(
+  apiKeyMiddleware({
+    service: "pretzel-server",
+    exemptPaths: ["/pretzel/status"],
+  }),
+);
 
 const SPEAK_BODY_LIMIT = 256 * 1024;
 const SPEAK_QUERY_LIMIT = 4096;
@@ -582,7 +597,10 @@ app.get("/pretzel/reminders", (req, res) => {
 // ── Operator admin (LAN + header secret; not strong auth) ───────
 function assertSettingsPass(req, res, next) {
   const got = req.headers["x-pretzel-settings-passcode"];
-  if (typeof got !== "string" || got !== PRETZEL_SETTINGS_PASSCODE) {
+  if (
+    !PRETZEL_SETTINGS_PASSCODE ||
+    !safeEqual(got, PRETZEL_SETTINGS_PASSCODE)
+  ) {
     return res.status(403).json({ ok: false, error: "Forbidden" });
   }
   next();
@@ -907,7 +925,8 @@ app.post("/pretzel/admin/reload-chores", assertSettingsPass, (req, res) => {
   } catch (e) {
     console.error("Reminder scheduler init error:", e.message);
   }
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Pretzel server listening on ${PORT}`);
+  const host = bindAddr();
+  app.listen(PORT, host, () => {
+    console.log(`Pretzel server listening on ${host}:${PORT}`);
   });
 })();

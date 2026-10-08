@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 
-const SETTINGS_PASSCODE = "Asdf1234";
+/**
+ * Operator passcode, typed by the user and verified by pretzel-server
+ * (`PRETZEL_SETTINGS_PASSCODE`). Never bundled; kept in sessionStorage only.
+ */
+let adminPasscode = "";
 const SESSION_UNLOCK_KEY = "pretzel_settings_unlocked";
 
 type ServiceStamp = {
@@ -85,7 +89,7 @@ async function adminFetchJson(
     ...init,
     headers: {
       Accept: "application/json",
-      "X-Pretzel-Settings-Passcode": SETTINGS_PASSCODE,
+      "X-Pretzel-Settings-Passcode": adminPasscode,
       ...(init?.body ? { "Content-Type": "application/json" } : {}),
       ...init?.headers,
     },
@@ -125,7 +129,9 @@ export function SettingsSection() {
 
   useEffect(() => {
     try {
-      if (sessionStorage.getItem(SESSION_UNLOCK_KEY) === "1") {
+      const saved = sessionStorage.getItem(SESSION_UNLOCK_KEY);
+      if (saved && saved !== "1") {
+        adminPasscode = saved;
         setUnlocked(true);
       }
     } catch {
@@ -149,22 +155,28 @@ export function SettingsSection() {
     if (unlocked) void loadStatus();
   }, [unlocked, loadStatus]);
 
-  const tryUnlock = () => {
-    if (passInput === SETTINGS_PASSCODE) {
-      setUnlockError(false);
-      setUnlocked(true);
-      try {
-        sessionStorage.setItem(SESSION_UNLOCK_KEY, "1");
-      } catch {
-        /* ignore */
-      }
-      setPassInput("");
-    } else {
+  const tryUnlock = async () => {
+    adminPasscode = passInput;
+    try {
+      const res = await adminFetchJson("/pretzel/admin/status");
+      if (!res.ok) throw new Error("rejected");
+    } catch {
+      adminPasscode = "";
       setUnlockError(true);
+      return;
     }
+    setUnlockError(false);
+    setUnlocked(true);
+    try {
+      sessionStorage.setItem(SESSION_UNLOCK_KEY, passInput);
+    } catch {
+      /* ignore */
+    }
+    setPassInput("");
   };
 
   const lock = () => {
+    adminPasscode = "";
     setUnlocked(false);
     try {
       sessionStorage.removeItem(SESSION_UNLOCK_KEY);

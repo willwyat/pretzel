@@ -15,9 +15,16 @@ Ports for pretzel-server and tv-relay are set in their `index.js` files unless y
 
 **LIFX (optional):** Set `LIFX_API_TOKEN` on the Pi for `/lifx/*` on pretzel-server (**3001**). Optional `LIFX_API_URL` defaults to `https://api.lifx.com/v1`. Guests on **8080** use the same-origin path `/lifx/*` (proxied to **3001** by `remote-ui`).
 
+## Security and Tailscale access
+
+- **`PRETZEL_API_KEY`** (same value on pretzel-server, tv-relay and remote-ui): when set, every control endpoint on **3000**/**3001** requires header **`X-Pretzel-Key`** (401 otherwise). `remote-ui` injects the key on its `/tv`, `/pretzel` and `/lifx` proxies, so the PWA needs no changes and the browser never sees it. `GET /pretzel/status` stays open as a liveness probe. If unset, endpoints stay unauthenticated (LAN-trust) and a warning is logged at startup.
+- **`BIND_ADDR`:** interface to listen on (default `0.0.0.0`). Set it to the Pi's Tailscale IP or `127.0.0.1` to stop exposing a service on the LAN.
+- **Remote callers (e.g. wyat-ai on Render) over Tailscale:** join the Pi and the caller to the same tailnet and call `http://<pi-tailnet-name>:3001/...` / `:3000/...` with `X-Pretzel-Key`. Use Tailscale ACLs so only the caller's node/tag can reach ports 3000/3001 (and 8080 only for your own devices). For HTTPS on the PWA, `sudo tailscale serve --bg 8080`.
+- Run the tests with `npm test` at the repo root.
+
 ## Operator settings (remote UI)
 
-Operator UI is at **`/settings`** on **8080** (e.g. `http://pretzel.local:8080/settings`). After passcode unlock it runs **git pull** in `PRETZEL_REPO_ROOT`, restarts **pretzel-server** / **tv-relay** / **remote-ui**, rebuilds **remote-ui**, and shows **systemd** last start times (`ActiveEnterTimestamp`). All of that goes to pretzel-server over **`/pretzel/admin/*`** with header **`X-Pretzel-Settings-Passcode`** (must match **`PRETZEL_SETTINGS_PASSCODE`** on the Pi; default matches the bundled UI passcode — rotate the env var for real deployments).
+Operator UI is at **`/settings`** on **8080** (e.g. `http://pretzel.local:8080/settings`). After passcode unlock it runs **git pull** in `PRETZEL_REPO_ROOT`, restarts **pretzel-server** / **tv-relay** / **remote-ui**, rebuilds **remote-ui**, and shows **systemd** last start times (`ActiveEnterTimestamp`). All of that goes to pretzel-server over **`/pretzel/admin/*`** with header **`X-Pretzel-Settings-Passcode`** (must match **`PRETZEL_SETTINGS_PASSCODE`** on the Pi). There is **no default passcode**: admin routes return 403 until the env var is set, and the UI asks for the passcode and checks it against the server (it is no longer bundled in the client).
 
 - **`PRETZEL_REPO_ROOT`:** directory passed to `git -C` (default: parent of `pretzel-server`, i.e. the monorepo root on disk).
 - **Restart pretzel-server:** the HTTP response returns first; the browser connection then drops when the service restarts. Reload the page to refresh “last restarted” for that unit.
@@ -81,7 +88,7 @@ Longer comments and pairing notes for tv-relay are in [tv-relay/tv-relay.service
 Example unit files include an optional env var (commented) you can enable on the Pi:
 
 ```ini
-# Environment=PRETZEL_STACK_VERSION=1.7.13
+# Environment=PRETZEL_STACK_VERSION=2.0.0
 ```
 
 Set the value to match [VERSION](VERSION) after each deploy. Inspect what systemd passed to a unit:

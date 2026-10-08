@@ -1,0 +1,8 @@
+{
+  "name": "pretzel",
+  "private": true,
+  "description": "Pretzel Pi stack (tests only; each service has its own package.json)",
+  "scripts": {
+    "test": "node --test shared/*.test.js"
+  }
+}

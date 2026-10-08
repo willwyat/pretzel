@@ -1,6 +1,7 @@
 const express = require("express");
 const dgram = require("dgram");
 const WebSocket = require("ws");
+const { apiKeyMiddleware, bindAddr } = require("../shared/auth");
 
 // LG TV on this LAN (inline; repo is private):
 //   IPv4 192.168.1.186 /24, gateway 192.168.1.1, DNS 192.168.1.1
@@ -143,6 +144,7 @@ function sendWakeOnLan(macHex) {
 
 const app = express();
 app.use(express.json());
+app.use(apiKeyMiddleware({ service: "tv-relay" }));
 
 let ws = null;
 let inputWs = null;
@@ -565,8 +567,9 @@ app.all("/tv/status", async (req, res) => {
 });
 
 connect();
-app.listen(PORT, "0.0.0.0", () => {
+const BIND_HOST = bindAddr();
+app.listen(PORT, BIND_HOST, () => {
   console.log(
-    `TV relay listening on ${PORT} (not pretzel-server :3001). Status: curl -sS http://127.0.0.1:${PORT}/tv/status | D-pad+OK: POST /tv/up|down|left|right|enter | Other keys: POST /tv/button -H 'Content-Type: application/json' -d '{\"button\":\"ENTER\"}' | Power on: curl -sS -X POST http://127.0.0.1:${PORT}/tv/power/on`,
+    `TV relay listening on ${BIND_HOST}:${PORT} (not pretzel-server :3001). Status: curl -sS http://127.0.0.1:${PORT}/tv/status | D-pad+OK: POST /tv/up|down|left|right|enter | Other keys: POST /tv/button -H 'Content-Type: application/json' -d '{\"button\":\"ENTER\"}' | Power on: curl -sS -X POST http://127.0.0.1:${PORT}/tv/power/on`,
   );
 });

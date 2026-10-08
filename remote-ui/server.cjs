@@ -8,10 +8,14 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 const { createProxyMiddleware } = require("http-proxy-middleware");
+const { bindAddr, envString } = require("../shared/auth");
 
+// Log and keep the proxy up: one bad request must not take down the guest UI.
 process.on("uncaughtException", (err) => {
   console.error("remote-ui uncaughtException:", err);
-  process.exit(1);
+});
+process.on("unhandledRejection", (err) => {
+  console.error("remote-ui unhandledRejection:", err);
 });
 
 const PORT = parseInt(
@@ -29,6 +33,12 @@ const TV_RELAY = process.env.TV_RELAY_URL || "http://127.0.0.1:3000";
 const PRETZEL_SERVER =
   process.env.PRETZEL_SERVER_URL || "http://127.0.0.1:3001";
 
+/** Injected on every proxied request so the browser never holds the key. */
+const PRETZEL_API_KEY = envString("PRETZEL_API_KEY");
+const upstreamHeaders = PRETZEL_API_KEY
+  ? { "X-Pretzel-Key": PRETZEL_API_KEY }
+  : {};
+
 const app = express();
 
 // Express strips the mount path before the proxy sees it, so we put the prefix
@@ -38,6 +48,7 @@ app.use(
   createProxyMiddleware({
     target: TV_RELAY,
     changeOrigin: true,
+    headers: upstreamHeaders,
     pathRewrite: (p) => "/tv" + p,
   }),
 );
@@ -47,6 +58,7 @@ app.use(
   createProxyMiddleware({
     target: PRETZEL_SERVER,
     changeOrigin: true,
+    headers: upstreamHeaders,
     pathRewrite: (p) => "/pretzel" + p,
   }),
 );
@@ -56,6 +68,7 @@ app.use(
   createProxyMiddleware({
     target: PRETZEL_SERVER,
     changeOrigin: true,
+    headers: upstreamHeaders,
     pathRewrite: (p) => "/lifx" + p,
   }),
 );
@@ -76,7 +89,7 @@ app.get(/^\/settings(\/.*)?$/, (req, res) => {
 
 app.use(express.static(distDir, { maxAge: "1h" }));
 
-const server = app.listen(PORT, "0.0.0.0", () => {
+const server = app.listen(PORT, bindAddr(), () => {
   const addr = server.address();
   console.log(
     `Pretzel remote UI + proxy listening ${JSON.stringify(addr)} → TV ${TV_RELAY} | pretzel+LIFX ${PRETZEL_SERVER}`,

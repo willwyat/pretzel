@@ -19,8 +19,13 @@ Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
 # Optional: match repo root VERSION after deploy (see README).
-# Environment=PRETZEL_STACK_VERSION=1.8.0
-# Optional: Settings page / curl admin — must match header from UI or client.
+# Environment=PRETZEL_STACK_VERSION=2.0.0
+# Shared auth (same value on pretzel-server, tv-relay and remote-ui). When set, every
+# control endpoint requires header X-Pretzel-Key; remote-ui injects it for the PWA.
+# Environment=PRETZEL_API_KEY=long_random_string
+# Optional: listen on one interface only (e.g. the Tailscale IP, or 127.0.0.1).
+# Environment=BIND_ADDR=100.x.y.z
+# Required for /pretzel/admin/* and reminder edits (no default; admin is disabled if unset).
 # Environment=PRETZEL_SETTINGS_PASSCODE=change_me
 # Optional: git pull repo root (default: parent of this directory).
 # Environment=PRETZEL_REPO_ROOT=/home/pi/pretzel

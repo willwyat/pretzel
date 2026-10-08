@@ -31,7 +31,12 @@ Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
 # Optional: match repo root VERSION after deploy (see README).
-# Environment=PRETZEL_STACK_VERSION=1.8.0
+# Environment=PRETZEL_STACK_VERSION=2.0.0
+# Shared auth (same value on pretzel-server, tv-relay and remote-ui). When set, every
+# control endpoint requires header X-Pretzel-Key; remote-ui injects it for the PWA.
+# Environment=PRETZEL_API_KEY=long_random_string
+# Optional: listen on one interface only (e.g. the Tailscale IP, or 127.0.0.1).
+# Environment=BIND_ADDR=100.x.y.z
 # Environment=REMOTE_UI_PORT=8080
 # Environment=TV_RELAY_URL=http://127.0.0.1:3000
 # Environment=PRETZEL_SERVER_URL=http://127.0.0.1:3001
