@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import type { Light } from "../types/lifx";
 import { LightbulbIcon } from "./LightbulbIcon";
 
@@ -103,9 +103,9 @@ export function LightCard({
         <button
           type="button"
           onClick={() => onToggle(light)}
-          className={`mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full transition ${
+          className={`mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition ${
             isOn
-              ? `${kelvinToTailwind(kelvin)} text-gray-900 shadow-inner`
+              ? `${kelvinToTailwind(kelvin)} pretzel-lamp-lens text-gray-900`
               : "pretzel-toggle-bulb-off"
           }`}
           title={isOn ? "Turn off" : "Turn on"}
@@ -123,7 +123,7 @@ export function LightCard({
               {light.label}
             </h3>
             {!light.connected && (
-              <span className="flex-shrink-0 rounded bg-rose-900/80 px-1.5 py-0.5 text-[10px] font-medium text-rose-300">
+              <span className="pretzel-tag--alert">
                 Offline
               </span>
             )}
@@ -171,6 +171,14 @@ export function LightCard({
                   commitBrightness(localBrightness);
                 }}
                 className="pretzel-range pretzel-range--amber w-full"
+                style={
+                  {
+                    "--fill": `${Math.round(
+                      (dragging ? localBrightness : (light.brightness ?? 0)) *
+                        100,
+                    )}%`,
+                  } as CSSProperties
+                }
               />
               <span className="pretzel-vol-pct">
                 {Math.round(
@@ -196,7 +204,7 @@ export function LightCard({
                     type="button"
                     title={swatch.label}
                     onClick={() => onColor(light, swatch.color)}
-                    className={`h-5 w-5 rounded-full transition-transform hover:scale-110 ${
+                    className={`pretzel-swatch h-6 w-6 rounded-full transition-transform hover:scale-110 ${
                       active ? "pretzel-swatch-active" : ""
                     }`}
                     style={{ background: swatch.bg }}

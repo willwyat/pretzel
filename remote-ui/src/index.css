@@ -2,117 +2,130 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Warm retro hi-fi: walnut cabinet, cream bakelite faceplates and keys,
+ * amber backlit readouts, pilot LEDs. Every material is a token so the dark
+ * variant (ebony cabinet, black anodized faceplates, charcoal keys) is a
+ * token swap, not a second stylesheet.
+ */
 @layer base {
   :root {
     color-scheme: light;
 
-    --pretzel-fg-primary: #44403c;
-    --pretzel-surface-button: #f4f4f4;
-    --pretzel-surface-page: #ececec;
+    /* Cabinet (page) */
+    --pretzel-wood-top: #7a4d2c;
+    --pretzel-wood-bottom: #57361f;
+    --pretzel-wood-grain: rgba(30, 14, 4, 0.16);
+    --pretzel-wood-sheen: rgba(255, 214, 160, 0.16);
+    --pretzel-fg-page-strong: #f6ead2;
+    --pretzel-fg-page-muted: #dcc7a4;
+    --pretzel-fg-page-accent: #f6ead2;
 
-    --pretzel-fg-page-muted: #444;
-    --pretzel-fg-page-strong: #44403c;
-    --pretzel-fg-page-accent: #333;
+    /* Faceplate (panels) */
+    --pretzel-plate-top: #f3ead6;
+    --pretzel-plate-bottom: #e4d7bb;
+    --pretzel-plate-edge: #b8a47f;
+    --pretzel-plate-highlight: rgba(255, 255, 255, 0.75);
+    --pretzel-screw-head: #d8ccb4;
+    --pretzel-screw-rim: #8c7a5c;
 
-    --pretzel-nav-ring: #888;
+    --pretzel-fg-heading: #3a2816;
+    --pretzel-fg-muted: #66513a;
+    --pretzel-fg-subtle: #7a6550;
+    --pretzel-emboss: 0 1px 0 rgba(255, 255, 255, 0.7);
+    --pretzel-divider: rgba(80, 56, 28, 0.22);
+    --pretzel-divider-highlight: rgba(255, 255, 255, 0.6);
 
-    --pretzel-surface-panel: #ffffff;
-    --pretzel-surface-panel-elevated: #f9fafb;
-    --pretzel-surface-nested: #f3f4f6;
-    --pretzel-border-subtle: #d1d5db;
-    --pretzel-border-strong: #9ca3af;
-    --pretzel-divider: #e5e7eb;
+    /* Recessed wells (nested cards, inputs, list rows) */
+    --pretzel-well-bg: rgba(90, 62, 30, 0.07);
+    --pretzel-well-shadow: inset 0 2px 4px rgba(60, 38, 14, 0.18),
+      0 1px 0 rgba(255, 255, 255, 0.65);
+    --pretzel-input-bg: #fbf6ea;
+    --pretzel-input-fg: #2f2112;
+    --pretzel-input-placeholder: #9a856a;
 
-    --pretzel-fg-heading: #111827;
-    --pretzel-fg-muted: #4b5563;
-    --pretzel-fg-subtle: #6b7280;
+    /* Bakelite keys */
+    --pretzel-key-top: #fdf8ee;
+    --pretzel-key-bottom: #e3d6bb;
+    --pretzel-key-edge: #a8946f;
+    --pretzel-key-side: #b5a17c;
+    --pretzel-key-fg: #3a2816;
+    --pretzel-key-highlight: rgba(255, 255, 255, 0.9);
 
-    --pretzel-control-border: #c5c9d0;
-    --pretzel-control-fg: #374151;
-    --pretzel-control-bg-hover: #f3f4f6;
-    --pretzel-control-track: #e5e7eb;
+    /* Amber + red key caps (same in both themes) */
+    --pretzel-amber-top: #f7bd63;
+    --pretzel-amber-bottom: #d98a2b;
+    --pretzel-amber-edge: #9b5d16;
+    --pretzel-amber-side: #a8661b;
+    --pretzel-amber-fg: #3a1f05;
+    --pretzel-red-top: #d4604b;
+    --pretzel-red-bottom: #a33a2a;
+    --pretzel-red-edge: #6e2117;
+    --pretzel-red-side: #7a271b;
+    --pretzel-red-fg: #fff3e6;
 
-    --pretzel-emphasis-control-bg: #f3f4f6;
-    --pretzel-emphasis-control-border: #6b7280;
-    --pretzel-emphasis-control-fg: #111827;
-    --pretzel-emphasis-control-hover: #e5e7eb;
+    /* Readout glass */
+    --pretzel-readout-bg: #1b120b;
+    --pretzel-readout-fg: #ffb347;
+    --pretzel-readout-glow: rgba(255, 150, 40, 0.55);
 
-    --pretzel-input-bg: #ffffff;
-    --pretzel-input-fg: #111827;
-    --pretzel-input-border: #9ca3af;
-    --pretzel-input-placeholder: #6b7280;
+    /* Fader slot */
+    --pretzel-slot: #1c130c;
 
-    --pretzel-btn-secondary-bg: #f3f4f6;
-    --pretzel-btn-secondary-fg: #1f2937;
-    --pretzel-btn-secondary-border: #9ca3af;
-    --pretzel-btn-secondary-hover: #e5e7eb;
+    --pretzel-alert-fg: #a3301f;
+    --pretzel-warn-fg: #9a5a0c;
 
-    --pretzel-surface-card-on: #f9fafb;
-    --pretzel-surface-card-off: #f3f4f6;
-    --pretzel-border-card-on: #d1d5db;
-    --pretzel-border-card-off: #e5e7eb;
-    --pretzel-ring-offset-card: #ffffff;
-    --pretzel-control-bg-image: linear-gradient(
-      to top,
-      #d8d9db 0%,
-      #fff 80%,
-      #fdfdfd 100%
-    );
-    --pretzel-control-box-shadow:
-      0 4px 3px 1px #fcfcfc, 0 6px 8px #d6d7d9, 0 -2px 3px #cecfd1,
-      0 -6px 4px #fefefe, inset 0 0 3px 0 #cecfd1;
+    /* Legacy names still referenced from JSX via var() */
+    --pretzel-border-subtle: rgba(80, 56, 28, 0.2);
+    --pretzel-surface-panel-elevated: var(--pretzel-well-bg);
   }
 
   @media (prefers-color-scheme: dark) {
     :root {
       color-scheme: dark;
 
-      --pretzel-fg-primary: #f5f5f5;
-      --pretzel-surface-button: #3a3a3a;
-      --pretzel-surface-page: #161616;
+      --pretzel-wood-top: #2a1c12;
+      --pretzel-wood-bottom: #140d08;
+      --pretzel-wood-grain: rgba(0, 0, 0, 0.35);
+      --pretzel-wood-sheen: rgba(255, 190, 120, 0.06);
+      --pretzel-fg-page-strong: #ead9b5;
+      --pretzel-fg-page-muted: #b39d78;
+      --pretzel-fg-page-accent: #ead9b5;
 
-      --pretzel-fg-page-muted: #a3a3a3;
-      --pretzel-fg-page-strong: #fafafa;
-      --pretzel-fg-page-accent: #d4d4d4;
+      --pretzel-plate-top: #2b2622;
+      --pretzel-plate-bottom: #1d1916;
+      --pretzel-plate-edge: #0b0907;
+      --pretzel-plate-highlight: rgba(255, 240, 210, 0.08);
+      --pretzel-screw-head: #6f665a;
+      --pretzel-screw-rim: #0f0c0a;
 
-      --pretzel-nav-ring: #a3a3a3;
+      --pretzel-fg-heading: #ecdcb8;
+      --pretzel-fg-muted: #bfae8c;
+      --pretzel-fg-subtle: #9a8a6c;
+      --pretzel-emboss: 0 -1px 0 rgba(0, 0, 0, 0.7);
+      --pretzel-divider: rgba(0, 0, 0, 0.55);
+      --pretzel-divider-highlight: rgba(255, 240, 210, 0.06);
 
-      --pretzel-surface-panel: #262626;
-      --pretzel-surface-panel-elevated: #171717;
-      --pretzel-surface-nested: #1c1c1c;
-      --pretzel-border-subtle: #404040;
-      --pretzel-border-strong: #525252;
-      --pretzel-divider: #3f3f3f;
+      --pretzel-well-bg: rgba(0, 0, 0, 0.25);
+      --pretzel-well-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.6),
+        0 1px 0 rgba(255, 240, 210, 0.06);
+      --pretzel-input-bg: #15110e;
+      --pretzel-input-fg: #ecdcb8;
+      --pretzel-input-placeholder: #7d6f58;
 
-      --pretzel-fg-heading: #f5f5f5;
-      --pretzel-fg-muted: #a3a3a3;
-      --pretzel-fg-subtle: #737373;
+      --pretzel-key-top: #3d3630;
+      --pretzel-key-bottom: #27221e;
+      --pretzel-key-edge: #0d0a08;
+      --pretzel-key-side: #120e0b;
+      --pretzel-key-fg: #ecdcb8;
+      --pretzel-key-highlight: rgba(255, 240, 210, 0.14);
 
-      --pretzel-control-border: #525252;
-      --pretzel-control-fg: #d4d4d4;
-      --pretzel-control-bg-hover: #3a3a3a;
-      --pretzel-control-track: #404040;
+      --pretzel-slot: #0a0705;
 
-      --pretzel-emphasis-control-bg: #404040;
-      --pretzel-emphasis-control-border: #737373;
-      --pretzel-emphasis-control-fg: #fafafa;
-      --pretzel-emphasis-control-hover: #525252;
+      --pretzel-alert-fg: #ff8a73;
+      --pretzel-warn-fg: #f2b55c;
 
-      --pretzel-input-bg: #171717;
-      --pretzel-input-fg: #f5f5f5;
-      --pretzel-input-border: #525252;
-      --pretzel-input-placeholder: #737373;
-
-      --pretzel-btn-secondary-bg: #404040;
-      --pretzel-btn-secondary-fg: #e5e5e5;
-      --pretzel-btn-secondary-border: #525252;
-      --pretzel-btn-secondary-hover: #525252;
-
-      --pretzel-surface-card-on: #404040;
-      --pretzel-surface-card-off: #262626;
-      --pretzel-border-card-on: #525252;
-      --pretzel-border-card-off: #404040;
-      --pretzel-ring-offset-card: #262626;
+      --pretzel-border-subtle: rgba(0, 0, 0, 0.5);
     }
   }
 
@@ -122,6 +135,41 @@
     font-weight: 100 900;
     font-style: normal;
     font-display: swap;
+  }
+
+  body {
+    min-height: 100vh;
+    color: var(--pretzel-fg-heading);
+    background-color: var(--pretzel-wood-bottom);
+    background-image:
+      radial-gradient(
+        ellipse 120% 60% at 50% 0%,
+        var(--pretzel-wood-sheen),
+        transparent 70%
+      ),
+      repeating-linear-gradient(
+        93deg,
+        var(--pretzel-wood-grain) 0 1px,
+        transparent 1px 6px,
+        rgba(255, 255, 255, 0.025) 6px 8px,
+        transparent 8px 17px
+      ),
+      repeating-linear-gradient(
+        87deg,
+        transparent 0 31px,
+        var(--pretzel-wood-grain) 31px 33px,
+        transparent 33px 58px
+      ),
+      linear-gradient(
+        180deg,
+        var(--pretzel-wood-top),
+        var(--pretzel-wood-bottom)
+      );
+    background-attachment: fixed;
+  }
+
+  input[type="checkbox"] {
+    accent-color: var(--pretzel-amber-bottom);
   }
 }
 
@@ -135,63 +183,89 @@
     user-select: none;
   }
 
-  .pretzel-no-select :where(input, textarea) {
+  .pretzel-no-select :where(input, textarea, pre) {
     -webkit-user-select: text;
     user-select: text;
   }
 
   .pretzel-app-shell {
-    background-color: var(--pretzel-surface-page);
+    background: transparent;
   }
 
-  .pretzel-nav-gradient {
-    background-image: linear-gradient(
-      to top,
-      var(--pretzel-surface-page) 0%,
-      color-mix(in srgb, var(--pretzel-surface-page) 95%, transparent) 55%,
-      transparent 100%
-    );
+  /* ── Page-level type (sits on the walnut) ─────────────────────── */
+  .pretzel-page-title {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--pretzel-fg-page-strong);
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
   }
 
+  .pretzel-page-subtitle {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--pretzel-fg-page-muted);
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+  }
+
+  /* ── Faceplate panels with corner screws ──────────────────────── */
   .pretzel-panel {
-    /* border-radius: 0.75rem; */
-    /* border-width: 1px; */
-    /* border-style: solid; */
-    /* border-color: var(--pretzel-border-subtle); */
-    /* background-color: var(--pretzel-surface-panel); */
+    --screw: var(--pretzel-screw-head) 0 2.5px,
+      var(--pretzel-screw-rim) 3px 3.75px, transparent 4.25px;
+    border-radius: 0.875rem;
+    border: 1px solid var(--pretzel-plate-edge);
+    background-color: var(--pretzel-plate-bottom);
+    background-image:
+      radial-gradient(circle at 9px 9px, var(--screw)),
+      radial-gradient(circle at calc(100% - 9px) 9px, var(--screw)),
+      radial-gradient(circle at 9px calc(100% - 9px), var(--screw)),
+      radial-gradient(circle at calc(100% - 9px) calc(100% - 9px), var(--screw)),
+      linear-gradient(
+        180deg,
+        var(--pretzel-plate-top),
+        var(--pretzel-plate-bottom)
+      );
+    box-shadow:
+      inset 0 1px 0 var(--pretzel-plate-highlight),
+      inset 0 -2px 3px rgba(0, 0, 0, 0.12),
+      0 2px 0 rgba(0, 0, 0, 0.25),
+      0 10px 22px -6px rgba(0, 0, 0, 0.55);
   }
 
-  .pretzel-panel__header {
+  .pretzel-panel__header,
+  .pretzel-panel__header--simple {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 0.75rem;
-    padding: 1rem;
+    padding: 1rem 1.25rem;
     border-bottom: 1px solid var(--pretzel-divider);
-  }
-
-  .pretzel-panel__header--simple {
-    border-bottom: 1px solid var(--pretzel-divider);
-    padding: 1rem;
+    box-shadow: 0 1px 0 var(--pretzel-divider-highlight);
   }
 
   .pretzel-panel__body {
-    padding: 1rem;
-    /* display: flex; */
-    /* flex-direction: row; */
+    padding: 1rem 1.25rem;
     width: 100%;
-    /* justify-content: center; */
   }
 
   .pretzel-panel__block-bordered {
     border-top: 1px solid var(--pretzel-divider);
+    box-shadow: inset 0 1px 0 var(--pretzel-divider-highlight);
   }
 
+  /* Engraved type on faceplates */
   .pretzel-text-panel-title {
-    font-size: 1rem;
+    font-size: 0.9375rem;
     line-height: 1.5rem;
-    font-weight: 600;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
     color: var(--pretzel-fg-heading);
+    text-shadow: var(--pretzel-emboss);
   }
 
   .pretzel-text-panel-muted {
@@ -212,6 +286,24 @@
     color: var(--pretzel-fg-muted);
   }
 
+  .pretzel-text-group-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--pretzel-fg-subtle);
+    text-shadow: var(--pretzel-emboss);
+  }
+
+  .pretzel-text-alert {
+    color: var(--pretzel-alert-fg);
+  }
+
+  .pretzel-text-warn {
+    color: var(--pretzel-warn-fg);
+  }
+
+  /* Sun block on the cabinet */
   .pretzel-text-sun-block {
     min-height: 2.75rem;
     font-size: 0.875rem;
@@ -220,199 +312,280 @@
   }
 
   .pretzel-text-sun-title {
-    font-weight: 600;
+    margin-bottom: 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
     color: var(--pretzel-fg-page-strong);
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+  }
+
+  .pretzel-text-sun-day {
+    margin-left: 0.5rem;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0.75;
+  }
+
+  /* ── Amber readout window ─────────────────────────────────────── */
+  .pretzel-readout,
+  .pretzel-text-sun-time,
+  .pretzel-vol-pct {
+    display: inline-block;
+    border-radius: 0.3125rem;
+    padding: 0.125rem 0.4375rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--pretzel-readout-fg);
+    text-shadow:
+      0 0 6px var(--pretzel-readout-glow),
+      0 0 1px var(--pretzel-readout-glow);
+    background-color: var(--pretzel-readout-bg);
+    background-image: linear-gradient(
+      170deg,
+      rgba(255, 255, 255, 0.07) 0%,
+      transparent 40%
+    );
+    box-shadow:
+      inset 0 2px 5px rgba(0, 0, 0, 0.85),
+      inset 0 0 0 1px rgba(0, 0, 0, 0.6),
+      0 1px 0 var(--pretzel-divider-highlight);
   }
 
   .pretzel-text-sun-time {
-    font-variant-numeric: tabular-nums;
-    font-size: 1rem;
-    line-height: 1.5rem;
-    color: var(--pretzel-fg-page-accent);
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+    padding: 0.125rem 0.625rem;
+    box-shadow:
+      inset 0 2px 5px rgba(0, 0, 0, 0.85),
+      inset 0 0 0 1px rgba(0, 0, 0, 0.6),
+      0 1px 0 rgba(255, 220, 170, 0.18);
+  }
+
+  .pretzel-vol-pct {
+    min-width: 3.25rem;
+    flex-shrink: 0;
+    text-align: right;
+    font-size: 0.75rem;
+  }
+
+  .pretzel-readout--lg {
+    padding: 0.25rem 0.875rem;
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: 600;
+  }
+
+  .pretzel-readout--xl {
+    padding: 0.5rem 1.25rem;
+    font-size: 2.5rem;
+    line-height: 1;
+    font-weight: 600;
+  }
+
+  /* ── Pilot LEDs ───────────────────────────────────────────────── */
+  .pretzel-led {
+    --led-core: #8c8273;
+    --led-mid: #5f574c;
+    --led-glow: transparent;
+    display: inline-block;
+    width: 0.6875rem;
+    height: 0.6875rem;
+    flex-shrink: 0;
+    border-radius: 9999px;
+    background: radial-gradient(
+      circle at 35% 30%,
+      rgba(255, 255, 255, 0.85) 0 12%,
+      var(--led-core) 30%,
+      var(--led-mid) 100%
+    );
+    box-shadow:
+      0 0 0 2px rgba(0, 0, 0, 0.35),
+      0 1px 0 2.5px var(--pretzel-divider-highlight),
+      0 0 9px 1px var(--led-glow);
+  }
+
+  .pretzel-led--ok {
+    --led-core: #5ee06f;
+    --led-mid: #1d7d2f;
+    --led-glow: rgba(90, 230, 110, 0.7);
+  }
+
+  .pretzel-led--warn {
+    --led-core: #ffbf4d;
+    --led-mid: #b86b0c;
+    --led-glow: rgba(255, 170, 50, 0.7);
+  }
+
+  .pretzel-led--off {
+    --led-core: #ff6a52;
+    --led-mid: #a3200f;
+    --led-glow: rgba(255, 80, 60, 0.7);
+  }
+
+  /* ── Bakelite keys ────────────────────────────────────────────── */
+  .pretzel-btn-ghost,
+  .pretzel-btn-secondary,
+  .pretzel-btn-icon,
+  .pretzel-btn-icon-wide,
+  .pretzel-btn-emphasis {
+    --k-top: var(--pretzel-key-top);
+    --k-bottom: var(--pretzel-key-bottom);
+    --k-edge: var(--pretzel-key-edge);
+    --k-side: var(--pretzel-key-side);
+    --k-fg: var(--pretzel-key-fg);
+    --k-hl: var(--pretzel-key-highlight);
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    border: 1px solid var(--k-edge);
+    color: var(--k-fg);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    background-image: linear-gradient(180deg, var(--k-top), var(--k-bottom));
+    box-shadow:
+      inset 0 1px 0 var(--k-hl),
+      inset 0 -2px 0 rgba(0, 0, 0, 0.07),
+      0 3px 0 var(--k-side),
+      0 4px 7px rgba(0, 0, 0, 0.35);
+    transition:
+      transform 0.08s ease,
+      box-shadow 0.08s ease,
+      filter 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .pretzel-btn-ghost:hover:not(:disabled),
+  .pretzel-btn-secondary:hover:not(:disabled),
+  .pretzel-btn-icon:hover:not(:disabled),
+  .pretzel-btn-icon-wide:hover:not(:disabled),
+  .pretzel-btn-emphasis:hover:not(:disabled) {
+    filter: brightness(1.04);
+  }
+
+  .pretzel-btn-ghost:active:not(:disabled),
+  .pretzel-btn-secondary:active:not(:disabled),
+  .pretzel-btn-icon:active:not(:disabled),
+  .pretzel-btn-icon-wide:active:not(:disabled),
+  .pretzel-btn-emphasis:active:not(:disabled) {
+    transform: translateY(2px);
+    box-shadow:
+      inset 0 1px 3px rgba(0, 0, 0, 0.25),
+      0 1px 0 var(--k-side),
+      0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  .pretzel-btn-ghost:disabled,
+  .pretzel-btn-secondary:disabled,
+  .pretzel-btn-icon:disabled,
+  .pretzel-btn-icon-wide:disabled,
+  .pretzel-btn-emphasis:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .pretzel-btn-ghost:focus-visible,
+  .pretzel-btn-secondary:focus-visible,
+  .pretzel-btn-icon:focus-visible,
+  .pretzel-btn-icon-wide:focus-visible,
+  .pretzel-btn-emphasis:focus-visible,
+  .nav-button:focus-visible {
+    outline: 2px solid var(--pretzel-amber-bottom);
+    outline-offset: 3px;
   }
 
   .pretzel-btn-ghost {
     flex-shrink: 0;
-    border-radius: 0.5rem;
-    border-width: 1px;
-    border-style: solid;
-    border-color: var(--pretzel-control-border);
     padding: 0.375rem 0.75rem;
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     line-height: 1rem;
-    font-weight: 500;
-    color: var(--pretzel-control-fg);
-    background-color: transparent;
-    transition: background-color 0.15s ease;
-  }
-
-  .pretzel-btn-ghost:hover:not(:disabled) {
-    background-color: var(--pretzel-control-bg-hover);
-  }
-
-  .pretzel-btn-ghost:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
   }
 
   .pretzel-btn-ghost--sm {
     padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
+  }
+
+  .pretzel-btn-secondary {
+    padding: 0.5625rem 0.875rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .pretzel-btn-icon {
+    height: 2.25rem;
+    width: 2.25rem;
+    flex-shrink: 0;
+  }
+
+  .pretzel-btn-icon-wide {
+    min-height: 2.25rem;
+    flex: 1 1 0%;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .pretzel-btn-emphasis {
+    height: 2.25rem;
+    width: 2.25rem;
+    flex-shrink: 0;
+    font-size: 10px;
+  }
+
+  .pretzel-key--accent {
+    --k-top: var(--pretzel-amber-top);
+    --k-bottom: var(--pretzel-amber-bottom);
+    --k-edge: var(--pretzel-amber-edge);
+    --k-side: var(--pretzel-amber-side);
+    --k-fg: var(--pretzel-amber-fg);
+    --k-hl: rgba(255, 240, 200, 0.75);
+  }
+
+  .pretzel-key--danger {
+    --k-top: var(--pretzel-red-top);
+    --k-bottom: var(--pretzel-red-bottom);
+    --k-edge: var(--pretzel-red-edge);
+    --k-side: var(--pretzel-red-side);
+    --k-fg: var(--pretzel-red-fg);
+    --k-hl: rgba(255, 210, 190, 0.45);
   }
 
   .pretzel-btn-group {
     display: flex;
     flex-direction: column;
     align-items: center;
+  }
+
+  /* ── Wells: nested cards, list rows, inputs ───────────────────── */
+  .pretzel-nested-card,
+  .pretzel-well {
     border-radius: 0.5rem;
-    box-shadow:
-      inset 1px 1px 1px 0 rgb(255, 255, 255),
-      inset -1px -1px 1px 0 rgba(0, 0, 0, 0.15),
-      0.444584px 0.444584px 0.628737px -1px rgba(0, 0, 0, 0.26),
-      1.21072px 1.21072px 1.71222px -1.5px rgba(0, 0, 0, 0.247),
-      2.6583px 2.6583px 3.75941px -2.25px rgba(0, 0, 0, 0.23),
-      5.90083px 5.90083px 8.34503px -3px rgba(0, 0, 0, 0.192),
-      10px 10px 21.2132px -3.75px rgba(0, 0, 0, 0.056),
-      -0.5px -0.5px 0 0 rgb(0 0 0/5%);
+    background-color: var(--pretzel-well-bg);
+    box-shadow: var(--pretzel-well-shadow);
+    padding: 0.75rem;
   }
 
-  .pretzel-btn-group-item {
-    /* margin-bottom: 1.5rem; */
-  }
-
-  .pretzel-btn-icon {
-    display: flex;
-    height: 2.25rem;
-    width: 2.25rem;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    /* border-width: 1px; */
-    border-style: solid;
-    border-color: var(--pretzel-control-border);
-    color: var(--pretzel-control-fg);
-    /* background-color: var(--pretzel-surface-button); */
-    background-image: linear-gradient(
-      to top,
-      #d8d9db 0%,
-      #fff 80%,
-      #fdfdfd 100%
-    );
-    transition: background-color 0.15s ease;
-    border-radius: 0.5rem;
-    /* box-shadow:
-      inset 1px 1px 1px 0 rgb(255, 255, 255, 0.5),
-      inset -1px -1px 1px 0 rgba(0, 0, 0, 0.15),
-      0.444584px 0.444584px 0.628737px -1px rgba(0, 0, 0, 0.26),
-      1.21072px 1.21072px 1.71222px -1.5px rgba(0, 0, 0, 0.247),
-      2.6583px 2.6583px 3.75941px -2.25px rgba(0, 0, 0, 0.23),
-      5.90083px 5.90083px 8.34503px -3px rgba(0, 0, 0, 0.192),
-      10px 10px 21.2132px -3.75px rgba(0, 0, 0, 0.056),
-      -0.5px -0.5px 0 0 rgb(0 0 0/5%); */
-    border: 1px solid var(--pretzel-control-border);
-    box-shadow: var(--pretzel-control-box-shadow);
-  }
-
-  .pretzel-nav-label {
-    text-shadow:
-      0.3px 0.3px 0.5px rgba(255, 255, 255, 0.1),
-      -0.4px -0.4px 0.5px rgba(0, 0, 0, 0.35);
-  }
-
-  .pretzel-btn-icon:hover:not(:disabled) {
-    background-color: var(--pretzel-control-bg-hover);
-  }
-
-  .pretzel-btn-icon:disabled {
-    cursor: not-allowed;
-    /* opacity: 0.4; */
-  }
-
-  .pretzel-btn-icon-wide {
-    display: flex;
-    min-height: 2.25rem;
-    flex: 1 1 0%;
-    align-items: center;
-    justify-content: center;
-    border-radius: 0.5rem;
-    border-width: 1px;
-    border-style: solid;
-    border-color: var(--pretzel-control-border);
-    padding: 0.375rem 0.5rem;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--pretzel-control-fg);
-    background-color: transparent;
-    transition: background-color 0.15s ease;
-  }
-
-  .pretzel-btn-icon-wide:hover:not(:disabled) {
-    background-color: var(--pretzel-control-bg-hover);
-  }
-
-  .pretzel-btn-icon-wide:disabled {
-    cursor: not-allowed;
-    opacity: 0.4;
-  }
-
-  .pretzel-btn-emphasis {
-    display: flex;
-    height: 2.25rem;
-    width: 2.25rem;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    border-radius: 0.5rem;
-    border-width: 1px;
-    border-style: solid;
-    border-color: var(--pretzel-emphasis-control-border);
-    background-color: var(--pretzel-emphasis-control-bg);
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--pretzel-emphasis-control-fg);
-    transition: background-color 0.15s ease;
-  }
-
-  .pretzel-btn-emphasis:hover:not(:disabled) {
-    background-color: var(--pretzel-emphasis-control-hover);
-  }
-
-  .pretzel-btn-emphasis:disabled {
-    cursor: not-allowed;
-    opacity: 0.4;
-  }
-
-  .pretzel-range {
-    height: 0.375rem;
-    min-width: 0;
-    flex: 1 1 0%;
-    cursor: pointer;
-    appearance: none;
-    border-radius: 9999px;
-    background-color: var(--pretzel-control-track);
-    accent-color: #3b82f6;
-  }
-
-  .pretzel-range:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-  }
-
-  .pretzel-range--amber {
-    accent-color: #f59e0b;
+  .pretzel-well--row {
+    padding: 0.5rem 0.75rem;
   }
 
   .pretzel-input {
     width: 100%;
     border-radius: 0.5rem;
-    border-width: 1px;
-    border-style: solid;
-    border-color: var(--pretzel-input-border);
+    border: 1px solid var(--pretzel-border-subtle);
     background-color: var(--pretzel-input-bg);
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
     line-height: 1.25rem;
     color: var(--pretzel-input-fg);
+    box-shadow: var(--pretzel-well-shadow);
   }
 
   .pretzel-input::placeholder {
@@ -420,108 +593,219 @@
   }
 
   .pretzel-input:focus {
-    border-color: #3b82f6;
     outline: none;
-    box-shadow: 0 0 0 1px #3b82f6;
+    border-color: var(--pretzel-amber-bottom);
+    box-shadow:
+      var(--pretzel-well-shadow),
+      0 0 0 2px rgba(217, 138, 43, 0.45);
   }
 
-  .pretzel-nested-card {
-    border-radius: 0.5rem;
-    border-width: 1px;
-    border-style: solid;
-    border-color: var(--pretzel-border-subtle);
-    /* background-color: color-mix(
-      in srgb,
-      var(--pretzel-surface-panel-elevated) 80%,
-      transparent
-    ); */
-    padding: 0.75rem;
+  .pretzel-tag--alert {
+    flex-shrink: 0;
+    border-radius: 0.25rem;
+    border: 1px solid currentColor;
+    padding: 0 0.375rem;
+    font-size: 0.625rem;
+    line-height: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--pretzel-alert-fg);
   }
 
-  .pretzel-btn-secondary {
-    border-radius: 0.5rem;
-    border-width: 1px;
-    border-style: solid;
-    border-color: var(--pretzel-btn-secondary-border);
-    background-color: var(--pretzel-btn-secondary-bg);
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-    line-height: 1.25rem;
-    font-weight: 500;
-    color: var(--pretzel-btn-secondary-fg);
-    transition: background-color 0.15s ease;
+  /* ── Fader ────────────────────────────────────────────────────── */
+  .pretzel-range {
+    --fill: 0%;
+    --lit: var(--pretzel-readout-fg);
+    height: 0.5rem;
+    min-width: 0;
+    flex: 1 1 0%;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 9999px;
+    background: linear-gradient(
+        90deg,
+        var(--lit) 0 var(--fill),
+        transparent var(--fill)
+      ),
+      var(--pretzel-slot);
+    box-shadow:
+      inset 0 1px 3px rgba(0, 0, 0, 0.9),
+      0 1px 0 var(--pretzel-divider-highlight);
   }
 
-  .pretzel-btn-secondary:hover:not(:disabled) {
-    background-color: var(--pretzel-btn-secondary-hover);
+  .pretzel-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 1.125rem;
+    height: 1.75rem;
+    border-radius: 0.25rem;
+    border: 1px solid var(--pretzel-key-edge);
+    background:
+      repeating-linear-gradient(
+        180deg,
+        transparent 0 3px,
+        rgba(0, 0, 0, 0.16) 3px 4px
+      ),
+      linear-gradient(90deg, var(--pretzel-key-top), var(--pretzel-key-bottom));
+    box-shadow:
+      inset 0 1px 0 var(--pretzel-key-highlight),
+      0 2px 3px rgba(0, 0, 0, 0.5);
   }
 
-  .pretzel-btn-secondary:disabled {
+  .pretzel-range::-moz-range-thumb {
+    width: 1.125rem;
+    height: 1.75rem;
+    border-radius: 0.25rem;
+    border: 1px solid var(--pretzel-key-edge);
+    background:
+      repeating-linear-gradient(
+        180deg,
+        transparent 0 3px,
+        rgba(0, 0, 0, 0.16) 3px 4px
+      ),
+      linear-gradient(90deg, var(--pretzel-key-top), var(--pretzel-key-bottom));
+    box-shadow:
+      inset 0 1px 0 var(--pretzel-key-highlight),
+      0 2px 3px rgba(0, 0, 0, 0.5);
+  }
+
+  .pretzel-range:focus-visible {
+    outline: 2px solid var(--pretzel-amber-bottom);
+    outline-offset: 6px;
+  }
+
+  .pretzel-range:disabled {
     cursor: not-allowed;
-    opacity: 0.5;
+    opacity: 0.55;
   }
 
-  .pretzel-nav-tab-active {
-    outline: 2px solid var(--pretzel-nav-ring);
-    outline-offset: 2px;
+  .pretzel-range--amber {
+    --lit: #ffc46b;
   }
 
-  .pretzel-light-card {
+  /* ── VU meter ─────────────────────────────────────────────────── */
+  .pretzel-vu {
+    display: flex;
+    gap: 3px;
+    border-radius: 0.375rem;
+    padding: 0.375rem;
+    background: var(--pretzel-readout-bg);
+    box-shadow:
+      inset 0 2px 5px rgba(0, 0, 0, 0.85),
+      0 1px 0 var(--pretzel-divider-highlight);
+  }
+
+  .pretzel-vu__seg {
+    height: 0.5rem;
+    flex: 1 1 0%;
+    border-radius: 1px;
+    background: var(--seg, #5ee06f);
+    opacity: 0.14;
+    transition: opacity 0.12s ease;
+  }
+
+  .pretzel-vu__seg--lit {
+    opacity: 1;
+    box-shadow: 0 0 6px var(--seg, #5ee06f);
+  }
+
+  .pretzel-vu__seg--hot {
+    --seg: #ffb347;
+  }
+
+  .pretzel-vu__seg--peak {
+    --seg: #ff6a52;
+  }
+
+  /* ── Piano-key nav ────────────────────────────────────────────── */
+  .pretzel-nav-gradient {
+    background-color: var(--pretzel-wood-bottom);
+    background-image:
+      linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent 10px),
+      repeating-linear-gradient(
+        93deg,
+        var(--pretzel-wood-grain) 0 1px,
+        transparent 1px 7px
+      ),
+      linear-gradient(
+        180deg,
+        var(--pretzel-wood-top),
+        var(--pretzel-wood-bottom)
+      );
+    border-top: 1px solid rgba(0, 0, 0, 0.6);
+    box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.35);
+  }
+
+  .nav-button {
     position: relative;
-    overflow: hidden;
-    border-radius: 0.75rem;
-    border-width: 1px;
-    border-style: solid;
+    gap: 0.25rem;
+    color: var(--pretzel-key-fg);
+    border: 1px solid var(--pretzel-key-edge);
+    border-radius: 0.375rem 0.375rem 0.875rem 0.875rem;
+    background-image: linear-gradient(
+      180deg,
+      var(--pretzel-key-top) 0%,
+      var(--pretzel-key-top) 55%,
+      var(--pretzel-key-bottom) 100%
+    );
+    box-shadow:
+      inset 0 1px 0 var(--pretzel-key-highlight),
+      inset 0 -4px 0 rgba(0, 0, 0, 0.08),
+      0 5px 0 var(--pretzel-key-side),
+      0 7px 10px rgba(0, 0, 0, 0.5);
     transition:
-      border-color 0.15s ease,
+      transform 0.1s ease,
+      box-shadow 0.1s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .nav-button:active,
+  .pretzel-nav-tab-active {
+    transform: translateY(4px);
+    background-image: linear-gradient(
+      180deg,
+      var(--pretzel-key-bottom) 0%,
+      var(--pretzel-key-top) 100%
+    );
+    box-shadow:
+      inset 0 2px 4px rgba(0, 0, 0, 0.22),
+      0 1px 0 var(--pretzel-key-side),
+      0 2px 3px rgba(0, 0, 0, 0.45);
+  }
+
+  .pretzel-nav-lamp {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: #6b5a43;
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.6);
+    transition:
       background-color 0.15s ease,
       box-shadow 0.15s ease;
   }
 
-  .pretzel-light-card--on {
-    border-color: var(--pretzel-border-card-on);
-    background-color: var(--pretzel-surface-card-on);
-    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  .pretzel-nav-tab-active .pretzel-nav-lamp {
+    background: radial-gradient(circle at 35% 30%, #fff1cf 0 15%, #ffb347 45%, #c76d0f);
+    box-shadow:
+      0 0 8px 2px rgba(255, 160, 50, 0.75),
+      inset 0 0 1px rgba(0, 0, 0, 0.4);
   }
 
-  .pretzel-light-card--off {
-    border-color: var(--pretzel-border-card-off);
-    background-color: var(--pretzel-surface-card-off);
+  .pretzel-nav-label {
+    font-size: 0.8125rem;
+    letter-spacing: 0.14em;
+    text-shadow: var(--pretzel-emboss);
   }
 
-  .pretzel-text-group-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--pretzel-fg-subtle);
+  .pretzel-nav-icon {
+    height: 1.75rem;
+    width: 1.75rem;
+    opacity: 0.85;
   }
 
-  .pretzel-icon-muted {
-    color: var(--pretzel-fg-muted);
-  }
-
-  .pretzel-vol-pct {
-    width: 2rem;
-    text-align: right;
-    font-size: 11px;
-    font-variant-numeric: tabular-nums;
-    color: var(--pretzel-fg-muted);
-  }
-
-  .pretzel-remote-label {
-    margin-bottom: 0.5rem;
-    font-size: 10px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--pretzel-fg-subtle);
-  }
-
-  /**
-   * LG-style circular D-pad: 11rem (176px) circle, four 90° wedge hit targets
-   * with ~2% inset clip-paths so diagonal gaps show the outer #1e293b ring.
-   */
+  /* ── TV D-pad: knurled ring, cream wedges, bakelite OK cap ───── */
   .pretzel-tv-dpad {
     position: relative;
     width: 12rem;
@@ -531,14 +815,20 @@
     margin-right: auto;
     border-radius: 50%;
     overflow: hidden;
-    border: 1px solid var(--pretzel-control-border);
-    background-image: linear-gradient(
-      to top,
-      #d8d9db 0%,
-      #fff 80%,
-      #fdfdfd 100%
-    );
-    box-shadow: var(--pretzel-control-box-shadow);
+    border: 9px solid transparent;
+    background:
+      linear-gradient(var(--pretzel-key-bottom), var(--pretzel-key-bottom))
+        padding-box,
+      repeating-conic-gradient(
+          from 0deg,
+          #c9c1b1 0deg 2deg,
+          #8a8173 2deg 4deg
+        )
+        border-box;
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.45),
+      0 6px 0 rgba(0, 0, 0, 0.25),
+      0 10px 18px rgba(0, 0, 0, 0.45);
   }
 
   .pretzel-tv-dpad__wedge {
@@ -549,54 +839,55 @@
     border: none;
     padding: 0;
     margin: 0;
-    color: var(--pretzel-fg-primary);
-    background-image: var(--pretzel-control-bg-image);
-    box-shadow: var(--pretzel-control-box-shadow);
-    transition:
-      background-color 0.12s ease,
-      filter 0.12s ease;
+    color: var(--pretzel-key-fg);
+    background: radial-gradient(
+      circle at 50% 35%,
+      var(--pretzel-key-top) 0%,
+      var(--pretzel-key-bottom) 75%
+    );
+    transition: filter 0.1s ease;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .pretzel-tv-dpad__wedge:hover:not(:disabled) {
-    background-color: var(--pretzel-control-bg-hover);
-    filter: brightness(1.05);
+    filter: brightness(1.04);
   }
 
   .pretzel-tv-dpad__wedge:active:not(:disabled) {
-    filter: brightness(0.92);
+    filter: brightness(0.86);
   }
 
   .pretzel-tv-dpad__wedge:disabled {
     cursor: not-allowed;
-    /* opacity: 0.45; */
   }
 
+  /* Hairline gaps between wedges: clip each triangle 1.5% shy of the diagonals. */
   .pretzel-tv-dpad__wedge--up {
-    clip-path: polygon(50% 50%, 0% 0%, 100% 0%);
+    clip-path: polygon(50% 48%, 1.5% 0%, 98.5% 0%);
     align-items: flex-start;
     justify-content: center;
-    padding-top: 0.55rem;
+    padding-top: 0.6rem;
   }
 
   .pretzel-tv-dpad__wedge--right {
-    clip-path: polygon(50% 50%, 100% 0%, 100% 100%);
+    clip-path: polygon(52% 50%, 100% 1.5%, 100% 98.5%);
     align-items: center;
     justify-content: flex-end;
-    padding-right: 0.55rem;
+    padding-right: 0.6rem;
   }
 
   .pretzel-tv-dpad__wedge--down {
-    clip-path: polygon(50% 50%, 100% 100%, 0% 100%);
+    clip-path: polygon(50% 52%, 98.5% 100%, 1.5% 100%);
     align-items: flex-end;
     justify-content: center;
-    padding-bottom: 0.55rem;
+    padding-bottom: 0.6rem;
   }
 
   .pretzel-tv-dpad__wedge--left {
-    clip-path: polygon(50% 50%, 0% 100%, 0% 0%);
+    clip-path: polygon(48% 50%, 0% 98.5%, 0% 1.5%);
     align-items: center;
     justify-content: flex-start;
-    padding-left: 0.55rem;
+    padding-left: 0.6rem;
   }
 
   .pretzel-tv-dpad__ok {
@@ -605,59 +896,97 @@
     top: 50%;
     z-index: 10;
     display: flex;
-    height: 38%;
-    width: 38%;
+    height: 40%;
+    width: 40%;
     min-height: 2.75rem;
     min-width: 2.75rem;
     cursor: pointer;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    border-width: 1px;
-    border-style: solid;
-    border-color: rgba(15, 23, 42, 0.45);
-    background-color: var(--pretzel-control-track);
+    border: 1px solid #1a110a;
     padding: 0;
-    font-size: 1.5rem;
-    font-weight: 700;
+    font-size: 1.25rem;
     line-height: 1;
-    letter-spacing: 0.02em;
-    color: var(--pretzel-fg-primary);
-    /* box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.2),
-      0 1px 2px rgba(0, 0, 0, 0.2); */
-    border: 1px solid var(--pretzel-control-border);
-    background-image: var(--pretzel-control-bg-image);
-    box-shadow: var(--pretzel-control-box-shadow);
+    color: #f3e4c4;
+    background: radial-gradient(
+      circle at 40% 30%,
+      #8a5a36 0%,
+      #5a361d 55%,
+      #3a2010 100%
+    );
+    box-shadow:
+      inset 0 1px 1px rgba(255, 220, 180, 0.35),
+      0 0 0 4px rgba(0, 0, 0, 0.12),
+      0 3px 6px rgba(0, 0, 0, 0.55);
     transform: translate(-50%, -50%);
     transition:
-      background-color 0.12s ease,
-      filter 0.12s ease;
-  }
-
-  .pretzel-tv-dpad__ok:hover:not(:disabled) {
-    background-color: #a8b8cb;
-    filter: brightness(1.03);
+      transform 0.08s ease,
+      box-shadow 0.08s ease;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .pretzel-tv-dpad__ok:active:not(:disabled) {
-    filter: brightness(0.94);
+    transform: translate(-50%, -50%) scale(0.96);
+    box-shadow:
+      inset 0 2px 4px rgba(0, 0, 0, 0.6),
+      0 0 0 4px rgba(0, 0, 0, 0.12);
   }
 
   .pretzel-tv-dpad__ok:disabled {
     cursor: not-allowed;
-    /* opacity: 0.45; */
   }
 
   .pretzel-tv-dpad__ok:focus-visible,
   .pretzel-tv-dpad__wedge:focus-visible {
-    outline: 2px solid var(--pretzel-border-strong);
-    outline-offset: 2px;
+    outline: 2px solid var(--pretzel-amber-bottom);
+    outline-offset: -4px;
+  }
+
+  /* ── Light cards: backlit when on ─────────────────────────────── */
+  .pretzel-light-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    transition:
+      background-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .pretzel-light-card--on {
+    background-color: var(--pretzel-well-bg);
+    background-image: radial-gradient(
+      ellipse 90% 120% at 0% 0%,
+      rgba(255, 176, 70, 0.28),
+      transparent 70%
+    );
+    box-shadow:
+      var(--pretzel-well-shadow),
+      inset 0 0 0 1px rgba(217, 138, 43, 0.45),
+      0 0 16px -2px rgba(255, 160, 50, 0.35);
+  }
+
+  .pretzel-light-card--off {
+    background-color: var(--pretzel-well-bg);
+    box-shadow: var(--pretzel-well-shadow);
+  }
+
+  /* Bulb toggle: a glass lamp lens (lit color comes from the kelvin class). */
+  .pretzel-lamp-lens {
+    border: 2px solid rgba(0, 0, 0, 0.35);
+    box-shadow:
+      inset 0 -2px 4px rgba(0, 0, 0, 0.2),
+      inset 0 2px 2px rgba(255, 255, 255, 0.6),
+      0 0 14px 2px rgba(255, 180, 70, 0.6);
   }
 
   .pretzel-toggle-bulb-off {
-    background-color: var(--pretzel-control-track);
-    color: var(--pretzel-fg-muted);
+    border: 2px solid rgba(0, 0, 0, 0.35);
+    background: radial-gradient(circle at 35% 30%, #a49985, #5d5547);
+    color: #2c261e;
+    box-shadow:
+      inset 0 2px 4px rgba(0, 0, 0, 0.45),
+      0 1px 0 var(--pretzel-divider-highlight);
   }
 
   .pretzel-text-card-name-on {
@@ -668,51 +997,94 @@
     color: var(--pretzel-fg-subtle);
   }
 
+  .pretzel-icon-muted {
+    color: var(--pretzel-fg-muted);
+  }
+
+  .pretzel-swatch {
+    border: 2px solid rgba(0, 0, 0, 0.3);
+    box-shadow:
+      inset 0 2px 2px rgba(255, 255, 255, 0.45),
+      inset 0 -2px 3px rgba(0, 0, 0, 0.2),
+      0 1px 2px rgba(0, 0, 0, 0.35);
+  }
+
   .pretzel-swatch-active {
     box-shadow:
-      0 0 0 2px var(--pretzel-border-strong),
-      0 0 0 4px var(--pretzel-ring-offset-card);
+      0 0 0 2px var(--pretzel-plate-bottom),
+      0 0 0 4px var(--pretzel-amber-bottom),
+      0 0 10px 2px rgba(255, 160, 50, 0.6);
+  }
+
+  .pretzel-remote-label {
+    margin-bottom: 0.5rem;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--pretzel-fg-subtle);
+  }
+
+  /* ── Chores sprint: full-screen VFD clock face ────────────────── */
+  .pretzel-vfd-screen {
+    background-color: #0f0a06;
+    background-image:
+      radial-gradient(
+        ellipse 100% 60% at 50% 0%,
+        rgba(255, 150, 40, 0.09),
+        transparent 70%
+      ),
+      repeating-linear-gradient(
+        0deg,
+        rgba(255, 255, 255, 0.015) 0 1px,
+        transparent 1px 3px
+      );
+    color: #f3d9a8;
+  }
+
+  .pretzel-vfd-row {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 179, 71, 0.16);
+    background: rgba(255, 179, 71, 0.04);
+    padding: 0.75rem;
+  }
+
+  .pretzel-vfd-row--active {
+    border-color: rgba(255, 179, 71, 0.6);
+    box-shadow: 0 0 14px -2px rgba(255, 150, 40, 0.45);
+  }
+
+  .pretzel-vfd-row--done {
+    opacity: 0.4;
+  }
+
+  .pretzel-vfd-bar {
+    background: rgba(255, 160, 50, 0.22);
+  }
+
+  .pretzel-vfd-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: rgba(255, 179, 71, 0.65);
   }
 }
 
-.nav-button {
-  color: var(--pretzel-fg-primary);
-  background-color: var(--pretzel-surface-button);
-  box-shadow:
-    inset 1px 1px 1px 0 rgb(255, 255, 255),
-    inset -1px -1px 1px 0 rgba(0, 0, 0, 0.15),
-    0.444584px 0.444584px 0.628737px -1px rgba(0, 0, 0, 0.26),
-    1.21072px 1.21072px 1.71222px -1.5px rgba(0, 0, 0, 0.247),
-    2.6583px 2.6583px 3.75941px -2.25px rgba(0, 0, 0, 0.23),
-    5.90083px 5.90083px 8.34503px -3px rgba(0, 0, 0, 0.192),
-    10px 10px 21.2132px -3.75px rgba(0, 0, 0, 0.056),
-    -0.5px -0.5px 0 0 rgb(0 0 0/5%);
-  transition: box-shadow 0.3s ease;
-}
-
-.nav-button:active {
-  box-shadow:
-    inset 0.5px 0.5px 1px #fff,
-    inset -0.5px -0.5px 1px #00000026,
-    0.222px 0.222px 0.314px -0.5px #0003,
-    0.605px 0.605px 0.856px -1px #0000002e,
-    1.329px 1.329px 1.88px -1.5px #00000040,
-    2.95px 2.95px 4.172px -2px #0000001a,
-    2.5px 2.5px 3px -2.5px #00000026,
-    -0.5px -0.5px 0 0 rgb(0 0 0/10%);
-}
-
-@media (prefers-color-scheme: dark) {
-  .nav-button {
-    box-shadow:
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
-      inset 0 -1px 0 0 rgba(0, 0, 0, 0.35),
-      0 1px 2px rgba(0, 0, 0, 0.4);
-  }
-
-  .nav-button:active {
-    box-shadow:
-      inset 0 2px 4px rgba(0, 0, 0, 0.45),
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+@media (prefers-reduced-motion: reduce) {
+  .pretzel-btn-ghost,
+  .pretzel-btn-secondary,
+  .pretzel-btn-icon,
+  .pretzel-btn-icon-wide,
+  .pretzel-btn-emphasis,
+  .nav-button,
+  .pretzel-tv-dpad__wedge,
+  .pretzel-tv-dpad__ok,
+  .pretzel-light-card,
+  .pretzel-vu__seg,
+  .pretzel-nav-lamp {
+    transition: none;
   }
 }

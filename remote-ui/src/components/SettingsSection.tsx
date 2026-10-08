@@ -48,6 +48,35 @@ function formatWhen(iso: string | null, raw: string | null) {
   return raw || "—";
 }
 
+function ServiceRow({
+  name,
+  stamp,
+}: {
+  name: string;
+  stamp: ServiceStamp | undefined;
+}) {
+  const led = stamp?.error
+    ? "pretzel-led--warn"
+    : stamp?.activeEnterTimestampIso || stamp?.activeEnterTimestamp
+      ? "pretzel-led--ok"
+      : "";
+  return (
+    <li className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span className={`pretzel-led ${led}`} aria-hidden />
+      <span className="pretzel-text-group-label min-w-[7.5rem]">{name}</span>
+      <span className="pretzel-readout text-xs">
+        {formatWhen(
+          stamp?.activeEnterTimestampIso ?? null,
+          stamp?.activeEnterTimestamp ?? null,
+        )}
+      </span>
+      {stamp?.error ? (
+        <span className="pretzel-text-warn w-full text-xs">{stamp.error}</span>
+      ) : null}
+    </li>
+  );
+}
+
 async function adminFetchJson(
   path: string,
   init?: RequestInit,
@@ -365,13 +394,13 @@ export function SettingsSection() {
                 className="pretzel-input"
               />
               {unlockError && (
-                <p className="mt-1 text-xs text-red-400">Incorrect passcode.</p>
+                <p className="pretzel-text-alert mt-1 text-xs">Incorrect passcode.</p>
               )}
             </div>
             <button
               type="button"
               onClick={tryUnlock}
-              className="rounded-lg border border-blue-600 bg-blue-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-600"
+              className="pretzel-btn-secondary pretzel-key--accent px-5"
             >
               Unlock
             </button>
@@ -379,56 +408,29 @@ export function SettingsSection() {
         ) : (
           <div className="flex flex-col gap-4">
             <div className="pretzel-nested-card">
-              <p className="pretzel-text-panel-muted text-xs font-medium">
+              <p className="pretzel-text-group-label">
                 Last service start (systemd)
               </p>
               {statusLoading && (
                 <p className="pretzel-text-panel-body mt-2">Loading status…</p>
               )}
               {!statusLoading && statusBody && !statusBody.ok && (
-                <p className="mt-2 text-sm text-red-400">
+                <p className="pretzel-text-alert mt-2 text-sm">
                   {statusBody.error || "Could not load status."}
                 </p>
               )}
               {!statusLoading && statusBody?.ok && statusBody.services && (
-                <ul className="pretzel-text-panel-body mt-2 space-y-2">
-                  <li>
-                    <span className="pretzel-text-panel-subtle">pretzel-server:</span>{" "}
-                    {formatWhen(
-                      ps?.activeEnterTimestampIso ?? null,
-                      ps?.activeEnterTimestamp ?? null,
-                    )}
-                    {ps?.error ? (
-                      <span className="text-amber-400"> ({ps.error})</span>
-                    ) : null}
-                  </li>
-                  <li>
-                    <span className="pretzel-text-panel-subtle">tv-relay:</span>{" "}
-                    {formatWhen(
-                      tv?.activeEnterTimestampIso ?? null,
-                      tv?.activeEnterTimestamp ?? null,
-                    )}
-                    {tv?.error ? (
-                      <span className="text-amber-400"> ({tv.error})</span>
-                    ) : null}
-                  </li>
-                  <li>
-                    <span className="pretzel-text-panel-subtle">remote-ui:</span>{" "}
-                    {formatWhen(
-                      ui?.activeEnterTimestampIso ?? null,
-                      ui?.activeEnterTimestamp ?? null,
-                    )}
-                    {ui?.error ? (
-                      <span className="text-amber-400"> ({ui.error})</span>
-                    ) : null}
-                  </li>
+                <ul className="mt-3 space-y-2.5">
+                  <ServiceRow name="pretzel-server" stamp={ps} />
+                  <ServiceRow name="tv-relay" stamp={tv} />
+                  <ServiceRow name="remote-ui" stamp={ui} />
                 </ul>
               )}
               <button
                 type="button"
                 onClick={() => void loadStatus()}
                 disabled={statusLoading}
-                className="pretzel-btn-ghost pretzel-btn-ghost--sm mt-2"
+                className="pretzel-btn-ghost pretzel-btn-ghost--sm mt-3"
               >
                 Refresh status
               </button>

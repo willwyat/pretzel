@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { fetchJson } from "../lib/fetchJson";
+import { VuMeter } from "./VuMeter";
 
 export const PRETZEL_SPEAK_MAX_CHARS = 8000;
 
@@ -63,10 +64,10 @@ export function PretzelSection() {
   const displayVol = dragging ? localVolume : volume;
 
   const statusDotClass = offline
-    ? "bg-red-500"
+    ? "pretzel-led--off"
     : !volumeReadOk
-      ? "bg-amber-500"
-      : "bg-emerald-500";
+      ? "pretzel-led--warn"
+      : "pretzel-led--ok";
   const statusTitle = offline
     ? "Pretzel server offline"
     : !volumeReadOk
@@ -105,7 +106,7 @@ export function PretzelSection() {
       <div className="pretzel-panel__header">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <span
-            className={`mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full ${statusDotClass}`}
+            className={`pretzel-led mt-1.5 ${statusDotClass}`}
             title={statusTitle}
             aria-hidden
           />
@@ -133,10 +134,11 @@ export function PretzelSection() {
         )}
       </div>
 
-      <div className="pretzel-panel__body">
-        <div className="flex items-center gap-2">
-          <span className="pretzel-text-panel-muted text-sm opacity-70" aria-hidden>
-            🔈
+      <div className="pretzel-panel__body space-y-3">
+        <VuMeter value={volumeReadOk && !offline ? displayVol : 0} />
+        <div className="flex items-center gap-3">
+          <span className="pretzel-text-group-label" aria-hidden>
+            Vol
           </span>
           <input
             type="range"
@@ -157,6 +159,7 @@ export function PretzelSection() {
               commitVolume(localVolume);
             }}
             className="pretzel-range w-full"
+            style={{ "--fill": `${displayVol}%` } as CSSProperties}
           />
           <span className="pretzel-vol-pct">{displayVol}%</span>
         </div>
@@ -203,7 +206,7 @@ export function PretzelSection() {
                 offline || speakSending || speakText.trim().length === 0
               }
               onClick={handleSpeak}
-              className="pretzel-btn-secondary px-3 py-1.5 text-xs disabled:cursor-not-allowed"
+              className="pretzel-btn-secondary pretzel-key--accent px-3 py-1.5 text-xs disabled:cursor-not-allowed"
             >
               {speakSending ? "Sending…" : "Speak"}
             </button>
