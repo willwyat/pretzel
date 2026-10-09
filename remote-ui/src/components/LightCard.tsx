@@ -62,6 +62,40 @@ function kelvinToTailwind(kelvin: number): string {
   return "bg-blue-100";
 }
 
+/** Approximate on-screen color of a white at the given color temperature. */
+function kelvinToCss(kelvin: number): string {
+  const k = Math.min(Math.max(kelvin, 1500), 9000);
+  const stops: [number, [number, number, number]][] = [
+    [1500, [255, 106, 0]],
+    [2700, [255, 169, 87]],
+    [3500, [255, 206, 140]],
+    [4000, [255, 223, 178]],
+    [5000, [255, 243, 224]],
+    [6500, [214, 232, 255]],
+    [9000, [175, 205, 255]],
+  ];
+  for (let i = 1; i < stops.length; i++) {
+    const [k1, c1] = stops[i];
+    const [k0, c0] = stops[i - 1];
+    if (k <= k1) {
+      const t = (k - k0) / (k1 - k0);
+      const [r, g, b] = c0.map((v, j) => Math.round(v + (c1[j] - v) * t));
+      return `rgb(${r} ${g} ${b})`;
+    }
+  }
+  return "rgb(175 205 255)";
+}
+
+/** Fader / backlight color that follows the bulb's current color. */
+function lightAccent(light: Light): string {
+  const sat = light.color?.saturation ?? 0;
+  if (sat >= 0.1) {
+    const hue = Math.round(light.color?.hue ?? 0);
+    return `hsl(${hue} ${Math.round(40 + sat * 60)}% 55%)`;
+  }
+  return kelvinToCss(light.color?.kelvin ?? 4000);
+}
+
 function kelvinLabel(kelvin: number): string {
   if (kelvin <= 2500) return "Candlelight";
   if (kelvin <= 3000) return "Warm";
@@ -80,8 +114,11 @@ export function LightCard({
   const [localBrightness, setLocalBrightness] = useState(light.brightness ?? 0);
   const [dragging, setDragging] = useState(false);
 
+  // The fader cap tracks what the user asked for; it only re-syncs from the
+  // bulb when the confirmed value changes and the user isn't mid-drag.
   useEffect(() => {
-    setLocalBrightness(light.brightness ?? 0);
+    if (!dragging) setLocalBrightness(light.brightness ?? 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [light.id, light.brightness]);
 
   const commitBrightness = useCallback(
@@ -92,15 +129,23 @@ export function LightCard({
   );
 
   const kelvin = light.color?.kelvin ?? 4000;
-  const brightnessPct = Math.round(
-    (dragging ? localBrightness : (light.brightness ?? 0)) * 100,
-  );
+  /** Where the user put the cap (desired level). */
+  const brightnessPct = Math.round(localBrightness * 100);
+  /** Last level the bulb confirmed; the lit fill catches up to the cap from here. */
+  const confirmedPct = Math.round((light.brightness ?? 0) * 100);
+  const accent = lightAccent(light);
+  const endDrag = () => {
+    if (!dragging) return;
+    setDragging(false);
+    commitBrightness(localBrightness);
+  };
 
   return (
     <div
       className={`pretzel-light-card relative overflow-hidden transition-all ${
         isOn ? "pretzel-light-card--on" : "pretzel-light-card--off"
       }`}
+      style={{ "--accent": accent } as CSSProperties}
     >
       <div className="flex items-start gap-3 p-4">
         <button
@@ -120,15 +165,15 @@ export function LightCard({
           <div className="flex items-center justify-between gap-2">
             <h3
               className={`truncate text-sm font-medium ${
-                isOn ? "pretzel-text-card-name-on" : "pretzel-text-card-name-off"
+                isOn
+                  ? "pretzel-text-card-name-on"
+                  : "pretzel-text-card-name-off"
               }`}
             >
               {light.label}
             </h3>
             {!light.connected && (
-              <span className="pretzel-tag--alert">
-                Offline
-              </span>
+              <span className="pretzel-tag--alert">Offline</span>
             )}
           </div>
 
@@ -180,16 +225,12 @@ export function LightCard({
                   setLocalBrightness(val);
                   setDragging(true);
                 }}
-                onMouseUp={() => {
-                  setDragging(false);
-                  commitBrightness(localBrightness);
-                }}
-                onTouchEnd={() => {
-                  setDragging(false);
-                  commitBrightness(localBrightness);
-                }}
-                className="pretzel-range pretzel-range--amber"
-                style={{ "--fill": `${brightnessPct}%` } as CSSProperties}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
+                onKeyUp={endDrag}
+                onBlur={endDrag}
+                className="pretzel-range pretzel-range--accent"
+                style={{ "--fill": `${confirmedPct}%` } as CSSProperties}
               />
             </div>
             <span className="pretzel-text-group-label">Brt</span>
