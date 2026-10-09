@@ -10,7 +10,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "chess.js": "^1.4.0",
     "express": "^5.2.1",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "ws": "^8.22.0"
   }
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { DevicesSection } from "./DevicesSection";
 
 const SETTINGS_PASSCODE = "Asdf1234";
 const SESSION_UNLOCK_KEY = "pretzel_settings_unlocked";
@@ -354,6 +355,7 @@ export function SettingsSection() {
   const ui = statusBody?.services?.remoteUi;
 
   return (
+    <>
     <section className="pretzel-panel">
       <div className="pretzel-panel__header">
         <div>
@@ -519,5 +521,7 @@ export function SettingsSection() {
         )}
       </div>
     </section>
+    {unlocked ? <DevicesSection fetchAdmin={adminFetchJson} /> : null}
+    </>
   );
 }

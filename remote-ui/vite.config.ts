@@ -13,7 +13,7 @@ function settingsSpaFallback(): Plugin {
     configureServer(server) {
       server.middlewares.use((req, _res, next) => {
         const pathname = req.url?.split("?")[0] ?? "";
-        if (req.method === "GET" && /^\/settings(\/.*)?$/.test(pathname)) {
+        if (req.method === "GET" && /^\/(settings|chess)(\/.*)?$/.test(pathname)) {
           const q = req.url?.includes("?")
             ? "?" + req.url.split("?").slice(1).join("?")
             : "";
@@ -119,6 +119,7 @@ export default defineConfig(({ mode }) => {
         "/pretzel": {
           target: "http://127.0.0.1:3001",
           changeOrigin: true,
+          ws: true,
           rewrite: (p) => "/pretzel" + p,
         },
         "/lifx": {

@@ -12,6 +12,9 @@ const { join, dirname } = require("path");
 const weather = require("./lib/weather");
 const { ChoresManager } = require("./lib/chores");
 const { RemindersScheduler } = require("./lib/reminders");
+const { ChessManager } = require("./lib/chess");
+const { listDevices } = require("./lib/devices");
+const { WebSocketServer } = require("ws");
 
 const PORT =
   Number(process.env.PORT) && Number.isFinite(Number(process.env.PORT))
@@ -901,13 +904,127 @@ app.post("/pretzel/admin/reload-chores", assertSettingsPass, (req, res) => {
   }
 });
 
+// ── LAN devices (operator) ──────────────────────────────────────
+const TV_IP = process.env.TV_IP || "192.168.1.186";
+app.get("/pretzel/admin/devices", assertSettingsPass, async (req, res) => {
+  try {
+    const result = await listDevices({
+      knownLabels: { [TV_IP]: "LG TV" },
+      force: req.query.refresh === "1",
+    });
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── Chess (public on LAN; Pi is the referee) ────────────────────
+const chessManager = new ChessManager({ dataDir });
+
+app.get("/pretzel/chess/games", (req, res) => {
+  res.json({ ok: true, games: chessManager.listGames() });
+});
+
+app.get("/pretzel/chess/games/:id", (req, res) => {
+  const g = chessManager.getGame(req.params.id);
+  if (!g) return res.status(404).json({ ok: false, error: "Not found" });
+  const { whiteIp, blackIp, ...pub } = g;
+  res.json({ ok: true, game: pub });
+});
+
+function clientIpOf(req) {
+  const xff = req.headers["x-forwarded-for"];
+  const first = typeof xff === "string" ? xff.split(",")[0].trim() : "";
+  return (first || req.socket.remoteAddress || "").replace(/^::ffff:/, "");
+}
+
+const chessWss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
+/** ws -> { clientId } */
+const chessClients = new Map();
+
+function chessBroadcast() {
+  for (const [ws, info] of chessClients) {
+    if (ws.readyState === ws.OPEN && info.clientId) {
+      ws.send(JSON.stringify({ type: "state", state: chessManager.snapshot(info.clientId) }));
+    }
+  }
+}
+chessManager.subscribe(chessBroadcast);
+// Keep clocks honest on screens even if nothing happens: clients tick locally.
+
+chessWss.on("connection", (ws, req) => {
+  const ip = clientIpOf(req);
+  const info = { clientId: null };
+  chessClients.set(ws, info);
+  ws.isAlive = true;
+  ws.on("pong", () => {
+    ws.isAlive = true;
+  });
+
+  ws.on("message", (data) => {
+    let msg;
+    try {
+      msg = JSON.parse(String(data));
+    } catch {
+      return;
+    }
+    if (!msg || typeof msg.type !== "string") return;
+    if (msg.type === "hello") {
+      if (typeof msg.clientId !== "string" || msg.clientId.length < 8 || msg.clientId.length > 64) return;
+      info.clientId = msg.clientId;
+      chessManager.setConnected(info.clientId, true);
+      ws.send(JSON.stringify({ type: "state", state: chessManager.snapshot(info.clientId) }));
+      return;
+    }
+    if (!info.clientId) return;
+    const id = info.clientId;
+    let r;
+    switch (msg.type) {
+      case "sit": r = chessManager.sit({ clientId: id, name: msg.name, color: msg.color, ip }); break;
+      case "stand": r = chessManager.stand({ clientId: id }); break;
+      case "move": r = chessManager.move({ clientId: id, from: msg.from, to: msg.to, promotion: msg.promotion }); break;
+      case "resign": r = chessManager.resign({ clientId: id }); break;
+      case "offerDraw": r = chessManager.offerDraw({ clientId: id }); break;
+      case "respondDraw": r = chessManager.respondDraw({ clientId: id, accept: !!msg.accept }); break;
+      case "newGame": r = chessManager.newGame({ clientId: id }); break;
+      case "setTimeControl": r = chessManager.setTimeControl({ clientId: id, id: msg.id }); break;
+      default: return;
+    }
+    if (!r.ok) ws.send(JSON.stringify({ type: "error", error: r.error }));
+  });
+
+  ws.on("close", () => {
+    chessClients.delete(ws);
+    const id = info.clientId;
+    if (id && ![...chessClients.values()].some((i) => i.clientId === id)) {
+      chessManager.setConnected(id, false);
+    }
+  });
+});
+
+setInterval(() => {
+  for (const ws of chessClients.keys()) {
+    if (!ws.isAlive) {
+      ws.terminate();
+      continue;
+    }
+    ws.isAlive = false;
+    ws.ping();
+  }
+}, 30_000).unref();
+
 (async () => {
   try {
     await scheduler.reload();
   } catch (e) {
     console.error("Reminder scheduler init error:", e.message);
   }
-  app.listen(PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Pretzel server listening on ${PORT}`);
+  });
+  server.on("upgrade", (req, socket, head) => {
+    const path = (req.url || "").split("?")[0];
+    if (path !== "/pretzel/chess/ws") return socket.destroy();
+    chessWss.handleUpgrade(req, socket, head, (ws) => chessWss.emit("connection", ws, req));
   });
 })();

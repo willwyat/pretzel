@@ -1,0 +1,160 @@
+/**
+ * Pretzel Chess: classic Windows 3.1 / 95 look. Scoped under .win-root so the
+ * Moog theme in index.css is untouched. Fixed light palette on purpose
+ * (a Win95 window does not follow prefers-color-scheme).
+ */
+.win-root {
+  --w-face: #c0c0c0;
+  --w-white: #ffffff;
+  --w-light: #dfdfdf;
+  --w-shadow: #808080;
+  --w-dark: #0a0a0a;
+  --w-title-a: #000080;
+  --w-title-b: #1084d0;
+  font-family: "MS Sans Serif", "Microsoft Sans Serif", Tahoma, Verdana, Geneva, sans-serif;
+  font-size: 13px;
+  color: #000;
+  padding: 12px 0;
+}
+.win-root * { box-sizing: border-box; }
+
+.win {
+  background: var(--w-face);
+  box-shadow:
+    inset -1px -1px var(--w-dark), inset 1px 1px var(--w-light),
+    inset -2px -2px var(--w-shadow), inset 2px 2px var(--w-white),
+    4px 4px 0 rgba(0, 0, 0, 0.45);
+  padding: 3px;
+  max-width: 100%;
+}
+.win--dialog { width: min(340px, 92vw); }
+.win--wide { width: min(480px, 96vw); max-height: 92vh; overflow: auto; }
+
+.win-title {
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(90deg, var(--w-title-a), var(--w-title-b));
+  color: #fff; font-weight: bold; padding: 2px 3px 2px 6px; min-height: 20px;
+  user-select: none;
+}
+.win-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.win-titlebtn {
+  width: 16px; height: 14px; line-height: 11px; text-align: center; color: #000;
+  background: var(--w-face); font-size: 13px; font-weight: bold; text-decoration: none;
+  box-shadow: inset -1px -1px var(--w-dark), inset 1px 1px var(--w-white), inset -2px -2px var(--w-shadow);
+  border: 0; padding: 0; cursor: default; flex: none;
+}
+
+.win-menubar { display: flex; gap: 2px; padding: 2px 0; position: relative; }
+.win-menu { position: relative; }
+.win-menuitem {
+  background: transparent; border: 0; padding: 2px 8px; font: inherit; color: #000;
+  text-decoration: none; cursor: default; display: inline-block;
+}
+.win-menuitem:hover, .win-menuitem:focus-visible { background: var(--w-title-a); color: #fff; outline: 0; }
+.win-dropdown {
+  position: absolute; top: 100%; left: 0; z-index: 20; min-width: 190px; background: var(--w-face);
+  display: flex; flex-direction: column; padding: 2px;
+  box-shadow: inset -1px -1px var(--w-dark), inset 1px 1px var(--w-white), inset -2px -2px var(--w-shadow), 3px 3px 0 rgba(0,0,0,.4);
+}
+.win-dropdown button { background: transparent; border: 0; font: inherit; text-align: left; padding: 3px 18px; cursor: default; color: #000; }
+.win-dropdown button:hover:not(:disabled) { background: var(--w-title-a); color: #fff; }
+.win-dropdown button:disabled { color: var(--w-shadow); text-shadow: 1px 1px 0 var(--w-white); }
+
+.win-body { display: flex; flex-direction: column; gap: 6px; padding: 4px 2px; }
+
+.win-sunken {
+  background: var(--w-white);
+  box-shadow: inset 1px 1px var(--w-shadow), inset -1px -1px var(--w-white),
+    inset 2px 2px var(--w-dark), inset -2px -2px var(--w-light);
+  padding: 2px;
+}
+.win-board-wrap { background: var(--w-shadow); padding: 3px; }
+
+.win-board {
+  display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
+  width: 100%; aspect-ratio: 1; border: 1px solid #000;
+}
+.win-sq {
+  position: relative; display: block; padding: 0; margin: 0; border: 0; border-radius: 0;
+  min-width: 0; min-height: 0; cursor: default; font: inherit;
+}
+.win-sq--light { background: #e0e0e0; }
+.win-sq--dark { background: #808080; }
+.win-sq--last { box-shadow: inset 0 0 0 2px #ffff00; }
+.win-sq--selected { background: #000080 !important; box-shadow: none; }
+.win-sq--check { background: #ff0000 !important; }
+.win-piece { position: absolute; inset: 6%; width: 88%; height: 88%; image-rendering: pixelated; pointer-events: none; }
+.win-dot { position: absolute; left: 38%; top: 38%; width: 24%; height: 24%; background: #000080; pointer-events: none; }
+.win-ring { position: absolute; inset: 2px; border: 3px solid #000080; pointer-events: none; }
+.win-coord { position: absolute; font-size: 9px; line-height: 1; pointer-events: none; color: #000; opacity: .7; }
+.win-coord--rank { left: 2px; top: 2px; }
+.win-coord--file { right: 2px; bottom: 1px; }
+.win-sq--selected .win-coord { color: #fff; }
+
+.win-player {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  padding: 3px 4px; min-height: 26px;
+}
+.win-player--active .win-player-name { font-weight: bold; text-decoration: underline; }
+.win-player-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.win-lcd {
+  font-family: "Courier New", Courier, monospace; font-weight: bold; font-size: 15px;
+  background: #000; color: #ff2a2a; padding: 1px 6px; letter-spacing: 1px;
+  box-shadow: inset 1px 1px var(--w-shadow), inset -1px -1px var(--w-white);
+  display: inline-block;
+}
+
+.win-btn {
+  font: inherit; color: #000; background: var(--w-face); min-width: 72px; padding: 4px 12px; border: 0; cursor: default;
+  box-shadow: inset -1px -1px var(--w-dark), inset 1px 1px var(--w-white), inset -2px -2px var(--w-shadow), inset 2px 2px var(--w-light);
+}
+.win-btn:active:not(:disabled) {
+  box-shadow: inset 1px 1px var(--w-dark), inset -1px -1px var(--w-white), inset 2px 2px var(--w-shadow);
+  padding: 5px 11px 3px 13px;
+}
+.win-btn--primary { outline: 1px solid #000; outline-offset: -1px; }
+.win-btn:focus-visible { outline: 1px dotted #000; outline-offset: -4px; }
+.win-btn:disabled { color: var(--w-shadow); text-shadow: 1px 1px 0 var(--w-white); }
+
+.win-input {
+  font: inherit; background: #fff; border: 0; padding: 3px 4px; flex: 1; min-width: 0;
+  box-shadow: inset 1px 1px var(--w-shadow), inset -1px -1px var(--w-white), inset 2px 2px var(--w-dark), inset -2px -2px var(--w-light);
+}
+.win-group { border: 2px groove #fff; margin: 0; padding: 4px 8px 8px; }
+.win-group legend { padding: 0 4px; }
+.win-row { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+.win-row--wrap { flex-wrap: wrap; }
+.win-row--center { justify-content: center; }
+.win-radio { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
+.win-hint { font-size: 11px; color: #404040; margin: 4px 0 0; }
+
+.win-moves { min-height: 54px; max-height: 110px; overflow: auto; padding: 4px 6px; display: flex; flex-wrap: wrap; gap: 2px 10px; align-content: flex-start; }
+.win-movepair { white-space: nowrap; }
+.win-mv { font: inherit; background: transparent; border: 0; padding: 0 2px; cursor: default; color: #000; }
+.win-mv--on { background: var(--w-title-a); color: #fff; }
+
+.win-list { max-height: 60vh; overflow: auto; padding: 0; }
+.win-listrow {
+  display: flex; flex-direction: column; align-items: flex-start; width: 100%; text-align: left; background: transparent; border: 0;
+  border-bottom: 1px dotted var(--w-shadow); padding: 5px 8px; font: inherit; color: #000; cursor: default;
+}
+.win-listrow:hover { background: var(--w-title-a); color: #fff; }
+.win-listrow:hover .win-hint { color: #ddd; }
+
+.win-statusbar { display: flex; gap: 2px; padding-top: 3px; }
+.win-status-cell {
+  padding: 2px 6px; white-space: nowrap;
+  box-shadow: inset 1px 1px var(--w-shadow), inset -1px -1px var(--w-white);
+}
+.win-status-cell--grow { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+
+.win-modal {
+  position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.25); padding: 12px;
+}
+.win-dialog-body { padding: 14px 12px; }
+.win-dialog-buttons { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; padding: 4px 8px 10px; }
+.win-toast {
+  position: fixed; left: 50%; bottom: 7rem; transform: translateX(-50%); background: #ffffe1; border: 1px solid #000;
+  padding: 4px 10px; z-index: 40; box-shadow: 2px 2px 0 rgba(0,0,0,.4);
+}
