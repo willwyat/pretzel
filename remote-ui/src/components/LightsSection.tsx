@@ -222,7 +222,11 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
         <div className="space-y-6">
           {Object.entries(lightGroups).map(([groupName, groupLights]) => (
             <div key={groupName} className="space-y-2">
-              <h3 className="pretzel-text-group-label">{groupName}</h3>
+              {/* The panel heading already names the room; only label groups
+                  when a room contains several. */}
+              {Object.keys(lightGroups).length > 1 && (
+                <h3 className="pretzel-text-group-label">{groupName}</h3>
+              )}
               <div className="grid gap-3">
                 {groupLights.map((light) => (
                   <LightCard
@@ -238,14 +242,11 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
           ))}
         </div>
 
-        {!loading &&
-          lights.length === 0 &&
-          !error &&
-          !offline && (
-            <p className="py-8 text-center text-sm pretzel-text-panel-subtle">
-              No lights found.
-            </p>
-          )}
+        {!loading && lights.length === 0 && !error && !offline && (
+          <p className="py-8 text-center text-sm pretzel-text-panel-subtle">
+            No lights found.
+          </p>
+        )}
         {!loading &&
           lights.length > 0 &&
           lightsInRoom.length === 0 &&
