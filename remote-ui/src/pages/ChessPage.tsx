@@ -1,116 +1,144 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "../chess.css";
-import { Board, kingSquare } from "../components/chess/Board";
+import { Board, kingSquare, PIECE_NAMES } from "../components/chess/Board";
+import { MoveList } from "../components/chess/MoveList";
 import { PastGames } from "../components/chess/PastGames";
-import { useChess, type Color, type ChessState } from "../lib/chessSocket";
+import { Piece } from "../components/chess/Piece";
+import { PlayerPanel } from "../components/chess/PlayerPanel";
+import { MenuBar, MsgBox, WinWindow } from "../components/chess/win";
+import { useChess, type ChessState, type Color } from "../lib/chessSocket";
 
-function fmtClock(ms: number): string {
-  const total = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
+const NAME_KEY = "pretzel_chess_name";
+const PREFS_KEY = "pretzel_chess_prefs";
+
+type Prefs = { flip: boolean; coords: boolean; sound: boolean };
+const DEFAULT_PREFS: Prefs = { flip: false, coords: true, sound: true };
+
+function load<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? { ...fallback, ...JSON.parse(raw) } : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function save(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
+  } catch {
+    /* private mode */
+  }
+}
+
+const cap = (c: Color) => (c === "white" ? "White" : "Black");
+
+function resultText(s: ChessState): string {
+  if (s.result === "*") return "Game abandoned";
+  const who = s.result === "1-0" ? "White wins" : s.result === "0-1" ? "Black wins" : "Draw";
+  return `${who} — ${s.reason}`;
 }
 
 function statusText(s: ChessState): string {
-  if (s.status === "waiting") return "Waiting for two players to sit down…";
-  if (s.status === "over") {
-    const who = s.result === "1-0" ? "White wins" : s.result === "0-1" ? "Black wins" : "Draw";
-    return `${who} — ${s.reason}`;
+  if (s.status === "over") return resultText(s);
+  if (s.status === "waiting") {
+    if (s.you) return "Waiting for an opponent to sit down…";
+    return "Waiting for players…";
   }
-  const side = s.turn === "white" ? "White" : "Black";
-  return `${side} to move${s.inCheck ? " — Check!" : ""}`;
+  const check = s.inCheck ? " — Check!" : "";
+  if (s.you === s.turn) return `Your move${check}`;
+  if (s.you) return `Waiting for ${s.players[s.turn]?.name ?? cap(s.turn)}…${check}`;
+  return `${cap(s.turn)} to move${check}`;
 }
 
-function MsgBox({
-  title,
-  children,
-  buttons,
-}: {
-  title: string;
-  children: React.ReactNode;
-  buttons: { label: string; onClick: () => void; primary?: boolean }[];
-}) {
-  return (
-    <div className="win-modal">
-      <div className="win win--dialog" role="dialog" aria-label={title}>
-        <div className="win-title">
-          <span>{title}</span>
-        </div>
-        <div className="win-dialog-body">{children}</div>
-        <div className="win-dialog-buttons">
-          {buttons.map((b) => (
-            <button key={b.label} type="button" className={`win-btn${b.primary ? " win-btn--primary" : ""}`} onClick={b.onClick}>
-              {b.label}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+/** Short square-wave blip, like the PC speaker. */
+function beep(freq = 880, ms = 70) {
+  try {
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "square";
+    osc.frequency.value = freq;
+    gain.gain.value = 0.05;
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + ms / 1000);
+    osc.onended = () => void ctx.close();
+  } catch {
+    /* no audio */
+  }
 }
 
 export function ChessPage() {
+  const navigate = useNavigate();
   const { state, connected, error, clearError, receivedAt, send } = useChess();
   const [name, setName] = useState(() => {
     try {
-      return localStorage.getItem("pretzel_chess_name") ?? "";
+      return localStorage.getItem(NAME_KEY) ?? "";
     } catch {
       return "";
     }
   });
+  const [prefs, setPrefs] = useState<Prefs>(() => load(PREFS_KEY, DEFAULT_PREFS));
   const [selected, setSelected] = useState<string | null>(null);
   const [promo, setPromo] = useState<{ from: string; to: string } | null>(null);
-  const [menu, setMenu] = useState<null | "game">(null);
-  const [confirmResign, setConfirmResign] = useState(false);
-  const [showPast, setShowPast] = useState(false);
-  const [, setTick] = useState(0);
+  const [dialog, setDialog] = useState<null | "resign" | "help" | "about" | "past">(null);
 
-  // Local 4 Hz tick so clocks count down smoothly between server pushes.
-  useEffect(() => {
-    const id = window.setInterval(() => setTick((t) => t + 1), 250);
-    return () => window.clearInterval(id);
-  }, []);
+  const setPref = (k: keyof Prefs) => {
+    const next = { ...prefs, [k]: !prefs[k] };
+    setPrefs(next);
+    save(PREFS_KEY, next);
+  };
 
-  // Drop stale selection whenever the position changes.
+  // Drop a stale selection whenever the position changes.
   useEffect(() => {
     setSelected(null);
     setPromo(null);
   }, [state?.fen]);
 
+  // Beep when the opponent moves (or the game ends) so you can look away.
+  const seenPly = useRef<number | null>(null);
+  useEffect(() => {
+    if (!state) return;
+    const ply = state.moves.length;
+    const prev = seenPly.current;
+    seenPly.current = ply;
+    if (!prefs.sound || prev === null || ply <= prev || !state.you) return;
+    if (state.moves[ply - 1].color !== state.you) beep(state.inCheck ? 1200 : 880);
+  }, [state, prefs.sound]);
+
+  // Title shows whose move it is, for when the tab is in the background.
+  useEffect(() => {
+    const prev = document.title;
+    document.title = state && state.status === "active" && state.you === state.turn ? "● Your move — Pretzel Chess" : "Pretzel Chess";
+    return () => {
+      document.title = prev;
+    };
+  }, [state]);
+
   const you = state?.you ?? null;
-  const flipped = you === "black";
   const myTurn = !!state && state.status === "active" && you === state.turn;
+  const flipped = (you === "black") !== prefs.flip;
 
   const targets = useMemo(() => {
     if (!state || !selected) return new Set<string>();
     return new Set(state.legalMoves.filter((m) => m.from === selected).map((m) => m.to));
   }, [state, selected]);
+  const movable = useMemo(() => new Set(state?.legalMoves.map((m) => m.from) ?? []), [state]);
 
-  const movable = useMemo(
-    () => new Set(state?.legalMoves.map((m) => m.from) ?? []),
-    [state],
-  );
+  const close = () => navigate("/");
 
   if (!state) {
     return (
-      <div className="win-root">
-        <div className="win">
-          <div className="win-title"><span>Pretzel Chess</span></div>
+      <div className="win-root win-desktop">
+        <WinWindow title="Pretzel Chess" className="win--dialog" onClose={close}>
           <div className="win-dialog-body">{connected ? "Loading…" : "Connecting to Pretzel…"}</div>
-        </div>
+        </WinWindow>
       </div>
     );
   }
-
-  const clockOf = (c: Color): number => {
-    const base = state.clocks[c];
-    if (state.clockRunning && state.turn === c && state.status === "active") {
-      return base - (Date.now() - receivedAt);
-    }
-    return base;
-  };
-  const timed = state.timeControl !== "untimed";
 
   const onSquare = (sq: string) => {
     if (!myTurn) return;
@@ -121,191 +149,264 @@ export function ChessPage() {
       setSelected(null);
       return;
     }
-    setSelected(movable.has(sq) ? (sq === selected ? null : sq) : null);
+    setSelected(movable.has(sq) && sq !== selected ? sq : null);
   };
 
-  const sit = (color?: Color) => {
+  const sit = (color: Color) => {
     const n = name.trim();
     if (!n) return;
-    try {
-      localStorage.setItem("pretzel_chess_name", n);
-    } catch {
-      /* ignore */
-    }
+    save(NAME_KEY, n);
     send({ type: "sit", name: n, color });
   };
 
+  const can = state.can;
   const top: Color = flipped ? "white" : "black";
   const bottom: Color = flipped ? "black" : "white";
-  const PlayerBar = ({ c }: { c: Color }) => {
-    const p = state.players[c];
-    const active = state.status === "active" && state.turn === c;
-    return (
-      <div className={`win-player${active ? " win-player--active" : ""}`}>
-        <span className="win-player-name">
-          {c === "white" ? "○" : "●"} {p ? p.name : "(empty seat)"}
-          {p && !p.connected ? " (offline)" : ""}
-          {p && you === c ? " — you" : ""}
-        </span>
-        {timed ? <span className="win-lcd">{fmtClock(clockOf(c))}</span> : null}
-      </div>
-    );
-  };
-
-  const pairs: { n: number; w: string; b?: string }[] = [];
-  state.moves.forEach((m, i) => {
-    if (i % 2 === 0) pairs.push({ n: i / 2 + 1, w: m.san });
-    else pairs[pairs.length - 1].b = m.san;
-  });
-
-  const seated = !!you;
-  const canStart = state.moves.length === 0 && state.status !== "over";
+  const offeredToYou = state.status === "active" && !!you && !!state.drawOffer && state.drawOffer !== you;
+  const youOffered = state.status === "active" && !!you && state.drawOffer === you;
+  const checkSq = state.inCheck && state.status !== "waiting" ? kingSquare(state.fen, state.turn) : null;
+  const shareUrl = `${location.host}/chess`;
 
   return (
-    <div className="win-root">
-      <div className="win">
-        <div className="win-title">
-          <span>Pretzel Chess — {state.players.white?.name ?? "?"} vs {state.players.black?.name ?? "?"}</span>
-          <Link to="/" className="win-titlebtn" aria-label="Close">×</Link>
-        </div>
+    <div className="win-root win-desktop">
+      <WinWindow
+        className="win--main"
+        title={
+          state.players.white || state.players.black
+            ? `Pretzel Chess — ${state.players.white?.name ?? "?"} vs ${state.players.black?.name ?? "?"}`
+            : "Pretzel Chess"
+        }
+        icon={<Piece type="n" color="b" className="win-title-piece" />}
+        onClose={close}
+      >
+        <MenuBar
+          menus={[
+            {
+              label: "Game",
+              items: [
+                { label: "New game", disabled: !can.newGame, onClick: () => send({ type: "newGame" }) },
+                { label: "Offer draw", disabled: !can.offerDraw, onClick: () => send({ type: "offerDraw" }) },
+                { label: "Resign…", disabled: !can.resign || state.moves.length === 0, onClick: () => setDialog("resign") },
+                { label: "Leave seat", disabled: !can.stand, onClick: () => send({ type: "stand" }) },
+                "separator",
+                { label: "Past games…", onClick: () => setDialog("past") },
+                "separator",
+                { label: "Exit", onClick: close },
+              ],
+            },
+            {
+              label: "Options",
+              items: [
+                { label: "Flip board", checked: prefs.flip, onClick: () => setPref("flip") },
+                { label: "Coordinates", checked: prefs.coords, onClick: () => setPref("coords") },
+                { label: "Sound", checked: prefs.sound, onClick: () => setPref("sound") },
+              ],
+            },
+            {
+              label: "Help",
+              items: [
+                { label: "How to play", onClick: () => setDialog("help") },
+                { label: "About Pretzel Chess", onClick: () => setDialog("about") },
+              ],
+            },
+          ]}
+        />
 
-        <div className="win-menubar">
-          <div className="win-menu">
-            <button type="button" className="win-menuitem" onClick={() => setMenu(menu === "game" ? null : "game")}>
-              <u>G</u>ame
-            </button>
-            {menu === "game" ? (
-              <div className="win-dropdown" onMouseLeave={() => setMenu(null)}>
-                <button type="button" disabled={!seated || (state.status === "active" && state.moves.length > 0)} onClick={() => { send({ type: "newGame" }); setMenu(null); }}>New game (swap colors)</button>
-                <button type="button" disabled={!seated || state.status !== "active"} onClick={() => { send({ type: "offerDraw" }); setMenu(null); }}>Offer draw</button>
-                <button type="button" disabled={!seated || state.status !== "active"} onClick={() => { setConfirmResign(true); setMenu(null); }}>Resign…</button>
-                <button type="button" disabled={!seated || (state.moves.length > 0 && state.status === "active")} onClick={() => { send({ type: "stand" }); setMenu(null); }}>Leave seat</button>
+        <div className="win-layout">
+          <div className="win-board-col">
+            <PlayerPanel state={state} color={top} receivedAt={receivedAt} />
+            <div className="win-board-wrap">
+              <Board
+                fen={state.fen}
+                flipped={flipped}
+                selected={selected}
+                targets={targets}
+                lastMove={state.lastMove}
+                checkSquare={checkSq}
+                coords={prefs.coords}
+                onSquare={myTurn ? onSquare : undefined}
+              />
+            </div>
+            <PlayerPanel state={state} color={bottom} receivedAt={receivedAt} />
+          </div>
+
+          <div className="win-side">
+            {can.sit.white || can.sit.black ? (
+              <fieldset className="win-group">
+                <legend>Join the game</legend>
+                <div className="win-row">
+                  <label htmlFor="chess-name">Name:</label>
+                  <input
+                    id="chess-name"
+                    className="win-input"
+                    maxLength={20}
+                    autoComplete="nickname"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
+                <div className="win-row">
+                  <button type="button" className="win-btn" disabled={!name.trim() || !can.sit.white} onClick={() => sit("white")}>
+                    Play White
+                  </button>
+                  <button type="button" className="win-btn" disabled={!name.trim() || !can.sit.black} onClick={() => sit("black")}>
+                    Play Black
+                  </button>
+                </div>
+              </fieldset>
+            ) : null}
+
+            {you && state.status === "waiting" ? (
+              <fieldset className="win-group">
+                <legend>Waiting</legend>
+                <p className="win-p">
+                  Open <b>{shareUrl}</b> on another device to play {cap(you === "white" ? "black" : "white")}.
+                </p>
+              </fieldset>
+            ) : null}
+
+            {can.setTimeControl ? (
+              <fieldset className="win-group">
+                <legend>Time control</legend>
+                <div className="win-radios">
+                  {state.timeControls.map((tc) => (
+                    <label key={tc.id} className="win-radio">
+                      <input
+                        type="radio"
+                        name="tc"
+                        checked={state.timeControl === tc.id}
+                        onChange={() => send({ type: "setTimeControl", id: tc.id })}
+                      />
+                      <span>{tc.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="win-hint">Clocks start after White's first move.</p>
+              </fieldset>
+            ) : null}
+
+            {state.status === "over" ? (
+              <fieldset className="win-group win-group--result">
+                <legend>Game over</legend>
+                <p className="win-p">
+                  <b>{resultText(state)}</b>
+                </p>
+                <button type="button" className="win-btn win-btn--default" disabled={!can.newGame} onClick={() => send({ type: "newGame" })}>
+                  {you ? "Rematch" : "New game"}
+                </button>
+              </fieldset>
+            ) : null}
+
+            {!you && state.status === "active" ? <p className="win-hint">You are watching this game.</p> : null}
+
+            <fieldset className="win-group win-group--moves">
+              <legend>Moves</legend>
+              <MoveList sans={state.moves.map((m) => m.san)} />
+            </fieldset>
+
+            {you && state.status === "active" && state.moves.length > 0 ? (
+              <div className="win-row win-actions">
+                {youOffered ? (
+                  <button type="button" className="win-btn" onClick={() => send({ type: "respondDraw", accept: false })}>
+                    Withdraw draw
+                  </button>
+                ) : (
+                  <button type="button" className="win-btn" disabled={!can.offerDraw} onClick={() => send({ type: "offerDraw" })}>
+                    Offer draw
+                  </button>
+                )}
+                <button type="button" className="win-btn" disabled={!can.resign} onClick={() => setDialog("resign")}>
+                  Resign
+                </button>
               </div>
             ) : null}
           </div>
-          <button type="button" className="win-menuitem" onClick={() => { setShowPast(true); setMenu(null); }}>
-            <u>P</u>ast games
-          </button>
-          <Link to="/" className="win-menuitem"><u>H</u>ome</Link>
         </div>
 
-        <div className="win-body">
-          <PlayerBar c={top} />
-          <div className="win-sunken win-board-wrap">
-            <Board
-              fen={state.fen}
-              flipped={flipped}
-              selected={selected}
-              targets={targets}
-              lastMove={state.lastMove}
-              checkSquare={state.inCheck && state.status !== "waiting" ? kingSquare(state.fen, state.turn) : null}
-              onSquare={onSquare}
-            />
+        <div className="win-statusbar" role="status">
+          <div className="win-status-cell win-status-cell--grow">
+            {youOffered ? "Draw offered — waiting for an answer…" : statusText(state)}
           </div>
-          <PlayerBar c={bottom} />
-
-          {!seated && state.status !== "over" ? (
-            <fieldset className="win-group">
-              <legend>Join the game</legend>
-              <div className="win-row">
-                <label htmlFor="chess-name">Your name:</label>
-                <input id="chess-name" className="win-input" maxLength={20} value={name} onChange={(e) => setName(e.target.value)} />
-              </div>
-              <div className="win-row">
-                <button type="button" className="win-btn" disabled={!name.trim() || !!state.players.white} onClick={() => sit("white")}>Play White</button>
-                <button type="button" className="win-btn" disabled={!name.trim() || !!state.players.black} onClick={() => sit("black")}>Play Black</button>
-              </div>
-              <p className="win-hint">Others on the network can watch.</p>
-            </fieldset>
-          ) : null}
-
-          {seated && canStart ? (
-            <fieldset className="win-group">
-              <legend>Time control</legend>
-              <div className="win-row win-row--wrap">
-                {state.timeControls.map((tc) => (
-                  <label key={tc.id} className="win-radio">
-                    <input type="radio" name="tc" checked={state.timeControl === tc.id} onChange={() => send({ type: "setTimeControl", id: tc.id })} />
-                    {tc.label}
-                  </label>
-                ))}
-              </div>
-              <p className="win-hint">Clock starts after White's first move.</p>
-            </fieldset>
-          ) : null}
-
-          {state.status === "over" && seated ? (
-            <div className="win-row">
-              <button type="button" className="win-btn win-btn--primary" onClick={() => send({ type: "newGame" })}>Rematch</button>
-            </div>
-          ) : null}
-
-          <div className="win-sunken win-moves" aria-label="Moves">
-            {pairs.length === 0 ? <span className="win-hint">No moves yet.</span> : null}
-            {pairs.map((p) => (
-              <span key={p.n} className="win-movepair">
-                <b>{p.n}.</b> {p.w} {p.b ?? ""}
-              </span>
-            ))}
+          <div className="win-status-cell">
+            {state.timeControls.find((t) => t.id === state.timeControl)?.label ?? ""}
+          </div>
+          <div className="win-status-cell">
+            <span className={`win-net${connected ? " win-net--on" : ""}`} aria-hidden />
+            {connected ? "Online" : "Offline"}
           </div>
         </div>
-
-        <div className="win-statusbar">
-          <div className="win-status-cell win-status-cell--grow">{statusText(state)}</div>
-          <div className="win-status-cell">{connected ? "Online" : "Offline"}</div>
-        </div>
-      </div>
+      </WinWindow>
 
       {promo ? (
-        <MsgBox
-          title="Promote pawn"
-          buttons={[
-            ["q", "Queen"], ["r", "Rook"], ["b", "Bishop"], ["n", "Knight"],
-          ].map(([p, label]) => ({
-            label,
-            primary: p === "q",
-            onClick: () => { send({ type: "move", from: promo.from, to: promo.to, promotion: p }); setPromo(null); },
-          }))}
-        >
-          Promote to:
+        <MsgBox title="Promote pawn" buttons={[{ label: "Cancel", onClick: () => setPromo(null) }]}>
+          <p className="win-p">Promote to:</p>
+          <div className="win-promo">
+            {(["q", "r", "b", "n"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                className="win-btn win-promo-btn"
+                aria-label={`Promote to ${PIECE_NAMES[t]}`}
+                onClick={() => {
+                  send({ type: "move", from: promo.from, to: promo.to, promotion: t });
+                  setPromo(null);
+                }}
+              >
+                <Piece type={t} color={you === "black" ? "b" : "w"} className="win-promo-piece" />
+              </button>
+            ))}
+          </div>
         </MsgBox>
       ) : null}
 
-      {confirmResign ? (
+      {dialog === "resign" ? (
         <MsgBox
           title="Resign"
+          icon="question"
           buttons={[
-            { label: "Yes", primary: true, onClick: () => { send({ type: "resign" }); setConfirmResign(false); } },
-            { label: "No", onClick: () => setConfirmResign(false) },
+            { label: "Yes", primary: true, onClick: () => { send({ type: "resign" }); setDialog(null); } },
+            { label: "No", onClick: () => setDialog(null) },
           ]}
         >
           Are you sure you want to resign this game?
         </MsgBox>
       ) : null}
 
-      {state.drawOffer && you && state.drawOffer !== you && state.status === "active" ? (
+      {offeredToYou ? (
         <MsgBox
           title="Draw offer"
+          icon="question"
           buttons={[
             { label: "Accept", primary: true, onClick: () => send({ type: "respondDraw", accept: true }) },
             { label: "Decline", onClick: () => send({ type: "respondDraw", accept: false }) },
           ]}
         >
-          Your opponent offers a draw.
+          {state.players[state.drawOffer!]?.name ?? "Your opponent"} offers a draw.
         </MsgBox>
       ) : null}
 
-      {state.drawOffer && you && state.drawOffer === you && state.status === "active" ? (
-        <div className="win-toast">Draw offered — waiting for opponent…</div>
+      {dialog === "help" ? (
+        <MsgBox title="How to play" icon="info" buttons={[{ label: "OK", primary: true, onClick: () => setDialog(null) }]}>
+          <p className="win-p">Open this page on two devices on the Pretzel Wi‑Fi. Each player enters a name and takes a side; anyone else can watch.</p>
+          <p className="win-p">Tap a piece, then tap a highlighted square. The Pi checks every move, keeps the clocks and saves finished games under Game ▸ Past games.</p>
+          <p className="win-p">Checkmate, stalemate, repetition, the fifty-move rule, resignation, agreed draws and running out of time all end the game.</p>
+        </MsgBox>
+      ) : null}
+
+      {dialog === "about" ? (
+        <MsgBox title="About Pretzel Chess" icon="info" buttons={[{ label: "OK", primary: true, onClick: () => setDialog(null) }]}>
+          <p className="win-p"><b>Pretzel Chess</b></p>
+          <p className="win-p">Two-player chess refereed by the Pretzel Pi.</p>
+        </MsgBox>
       ) : null}
 
       {error ? (
-        <MsgBox title="Pretzel Chess" buttons={[{ label: "OK", primary: true, onClick: clearError }]}>
+        <MsgBox title="Pretzel Chess" icon="warning" buttons={[{ label: "OK", primary: true, onClick: clearError }]}>
           {error}
         </MsgBox>
       ) : null}
 
-      {showPast ? <PastGames onClose={() => setShowPast(false)} /> : null}
+      {dialog === "past" ? <PastGames onClose={() => setDialog(null)} /> : null}
     </div>
   );
 }

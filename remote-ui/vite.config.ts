@@ -116,10 +116,13 @@ export default defineConfig(({ mode }) => {
           target: "http://127.0.0.1:3001",
           changeOrigin: true,
         },
+        "/pretzel/chess/ws": {
+          target: "ws://127.0.0.1:3001",
+          ws: true,
+        },
         "/pretzel": {
           target: "http://127.0.0.1:3001",
           changeOrigin: true,
-          ws: true,
           rewrite: (p) => "/pretzel" + p,
         },
         "/lifx": {

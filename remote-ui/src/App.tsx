@@ -1,13 +1,24 @@
-import { useState } from "react";
-import { Route, Routes } from "react-router-dom";
+import { lazy, Suspense, useState } from "react";
+import { Route, Routes, useLocation } from "react-router-dom";
 import { Navbar } from "./components/Navbar";
-import { ChessPage } from "./pages/ChessPage";
 import { HomePage } from "./pages/HomePage";
 import { SettingsPage } from "./pages/SettingsPage";
 import type { HomeRoomTab } from "./types/homeRoom";
 
+const ChessPage = lazy(() => import("./pages/ChessPage").then((m) => ({ default: m.ChessPage })));
+
 export default function App() {
   const [homeRoom, setHomeRoom] = useState<HomeRoomTab>("lounge");
+  const { pathname } = useLocation();
+
+  // Chess is its own full-screen "desktop" (Windows 95 look), outside the Moog shell.
+  if (/^\/chess(\/|$)/.test(pathname)) {
+    return (
+      <Suspense fallback={null}>
+        <ChessPage />
+      </Suspense>
+    );
+  }
 
   return (
     <>
@@ -18,7 +29,6 @@ export default function App() {
             element={<HomePage activeRoom={homeRoom} />}
           />
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/chess" element={<ChessPage />} />
         </Routes>
       </div>
       <Navbar activeRoom={homeRoom} onActiveRoomChange={setHomeRoom} />
