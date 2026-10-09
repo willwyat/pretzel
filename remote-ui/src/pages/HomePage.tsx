@@ -140,6 +140,9 @@ export function HomePage({ activeRoom }: HomePageProps) {
           <Link to="/chess" className="pretzel-btn-ghost">
             Chess
           </Link>
+          <Link to="/tetris" className="pretzel-btn-ghost">
+            Tetris
+          </Link>
           <Link to="/settings" className="pretzel-btn-ghost">
             Settings
           </Link>

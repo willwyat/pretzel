@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { clientId } from "./clientId";
 
 export type Color = "white" | "black";
 
@@ -51,19 +52,6 @@ export type ClientMessage =
   | { type: "newGame" }
   | { type: "setTimeControl"; id: string };
 
-function clientId(): string {
-  try {
-    let id = localStorage.getItem("pretzel_chess_client");
-    if (!id || id.length < 8) {
-      id = (crypto.randomUUID?.() ?? `c${Date.now()}${Math.random().toString(36).slice(2)}`);
-      localStorage.setItem("pretzel_chess_client", id);
-    }
-    return id;
-  } catch {
-    return `c${Date.now()}${Math.random().toString(36).slice(2)}`;
-  }
-}
-
 /** Live connection to the Pi's chess referee. Reconnects with backoff. */
 export function useChess() {
   const [state, setState] = useState<ChessState | null>(null);
@@ -77,7 +65,7 @@ export function useChess() {
     let closed = false;
     let retry = 0;
     let timer: number | undefined;
-    const id = clientId();
+    const id = clientId("pretzel_chess_client");
 
     const open = () => {
       const proto = location.protocol === "https:" ? "wss:" : "ws:";

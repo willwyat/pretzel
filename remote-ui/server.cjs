@@ -71,8 +71,8 @@ if (!fs.existsSync(distIndex)) {
   process.exit(1);
 }
 
-// SPA: serve React app for /settings and /chess (no static file on disk).
-app.get(/^\/(settings|chess)(\/.*)?$/, (req, res) => {
+// SPA: serve React app for /settings, /chess and /tetris (no static file on disk).
+app.get(/^\/(settings|chess|tetris)(\/.*)?$/, (req, res) => {
   res.sendFile(distIndex);
 });
 
