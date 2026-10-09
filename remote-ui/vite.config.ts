@@ -89,7 +89,7 @@ export default defineConfig(({ mode }) => {
             /^\/pretzel\//,
             /^\/lifx\//,
           ],
-          globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2,ttf}"],
+          globPatterns: ["**/*.{js,css,html,svg,png,jpg,jpeg,ico,woff2,ttf}"],
           runtimeCaching: [
             {
               urlPattern: ({ url }) =>
@@ -107,10 +107,11 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       proxy: {
+        // Vite forwards the full path. Do not prepend the prefix again
+        // (Express does strip it; see server.cjs).
         "/tv": {
           target: "http://127.0.0.1:3000",
           changeOrigin: true,
-          rewrite: (p) => "/tv" + p,
         },
         "/pretzel/admin": {
           target: "http://127.0.0.1:3001",
@@ -120,12 +121,10 @@ export default defineConfig(({ mode }) => {
           target: "http://127.0.0.1:3001",
           changeOrigin: true,
           ws: true,
-          rewrite: (p) => "/pretzel" + p,
         },
         "/lifx": {
           target: "http://127.0.0.1:3001",
           changeOrigin: true,
-          rewrite: (p) => "/lifx" + p,
         },
       },
     },

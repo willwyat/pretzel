@@ -5,3 +5,4 @@ pretzel-server/data/chores-state.json
 pretzel-server/data/chores-state.bak.json
 pretzel-server/data/chess-state.json
 pretzel-server/data/chess-games.json
+pretzel-server/data/bulletin.json
