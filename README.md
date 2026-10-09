@@ -9,6 +9,7 @@ Node services and scripts that run on the **Pretzel** Pi: LG TV relay, Pi speake
 | Pi speaker / TTS / volume / weather / LIFX proxy | [pretzel-server/](pretzel-server/) | Express (`/pretzel/*`, `/lifx/*`, operator **`/pretzel/admin/*`** on **3001**) | **3001** | [pretzel-server/pretzel-server.service.example](pretzel-server/pretzel-server.service.example) |
 | LG TV relay (HTTP + WebSocket to TV) | [tv-relay/](tv-relay/) | Express + `ws`; `GET /tv/status` adds `screenOn` via LG `getPowerState` when the main socket is up (standby can leave the socket open) | **3000** | [tv-relay/tv-relay.service.example](tv-relay/tv-relay.service.example) |
 | Guest LAN UI + reverse proxy | [remote-ui/](remote-ui/) | Vite + React → `dist/`; `/` home, **`/settings`** operator page, **`/chess`** two-player chess; `/tv` → 3000, `/pretzel` and `/lifx` → 3001; **PWA** (manifest + service worker after `npm run build`) | **8080** | [remote-ui/remote-ui.service.example](remote-ui/remote-ui.service.example) |
+| Public gateway for Wyat AI (config only) | [gateway/Caddyfile.example](gateway/Caddyfile.example) | Caddy on `127.0.0.1:8088`, published by Tailscale Funnel; requires `X-Pretzel-Key`, blocks `/pretzel/admin/*` | **8088** | — (Debian `caddy` package) |
 | Shell helpers | [scripts/](scripts/) | `speak.sh TEXT [INSTRUCTIONS]` → OpenAI speech; no instructions uses **tts-1**, non-empty instructions use **gpt-4o-mini-tts** (see `SPEAK_SCRIPT` in pretzel-server) | — | — |
 
 Ports for pretzel-server and tv-relay are set in their `index.js` files unless you add env-based configuration later.
@@ -16,6 +17,8 @@ Ports for pretzel-server and tv-relay are set in their `index.js` files unless y
 **LIFX (optional):** Set `LIFX_API_TOKEN` on the Pi for `/lifx/*` on pretzel-server (**3001**). Optional `LIFX_API_URL` defaults to `https://api.lifx.com/v1`. Guests on **8080** use the same-origin path `/lifx/*` (proxied to **3001** by `remote-ui`).
 
 **TV power:** the **POWER** key in the LG TV panel calls `POST /tv/power/on` on tv-relay, which needs **`TV_WOL_MAC`** (the TV's MAC) to wake it from full off via Wake-on-LAN; from standby it also works over the open WebSocket. If neither is possible the panel shows the relay's error. Turning off needs a second tap to confirm.
+
+**Home gateway (no code):** Tailscale remote access and exit node, CUPS/AirPrint printer, scanservjs scanner, optional local Sonos API, and the key-protected public gateway Wyat AI calls are set up in [docs/HOME_SERVICES.md](docs/HOME_SERVICES.md). They add ports **631** (CUPS), **8090** (scanservjs), **5005** (Sonos API) and **8088** (gateway, localhost only).
 
 ## Operator settings (remote UI)
 

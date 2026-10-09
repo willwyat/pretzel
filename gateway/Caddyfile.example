@@ -1,0 +1,41 @@
+# Pretzel public gateway: the one door Wyat AI (Vercel / Render) uses to reach the Pi.
+#
+# Copy to /etc/caddy/Caddyfile, set PRETZEL_PUBLIC_KEY for the caddy service
+# (see docs/HOME_SERVICES.md), then:
+#   sudo systemctl restart caddy
+#
+# Listens on 127.0.0.1:8088 only. Tailscale Funnel publishes it as
+# https://pretzel.<tailnet>.ts.net. Every request must carry the header
+#   X-Pretzel-Key: <PRETZEL_PUBLIC_KEY>
+# or it gets 401. Operator routes (/pretzel/admin/*) are never exposed here;
+# use them over the tailnet or the LAN instead.
+
+http://:8088 {
+	bind 127.0.0.1
+
+	# `route` keeps the order below exactly as written.
+	route {
+		@unsetKey expression `"{$PRETZEL_PUBLIC_KEY:unset}" == "unset"`
+		respond @unsetKey "PRETZEL_PUBLIC_KEY is not set on the Pi" 503
+		@noKey not header X-Pretzel-Key {$PRETZEL_PUBLIC_KEY:unset}
+		respond @noKey "unauthorized" 401
+
+		respond /pretzel/admin/* "not exposed" 403
+
+		# LG TV relay (tv-relay, :3000)
+		reverse_proxy /tv/* 127.0.0.1:3000
+
+		# Scanner (scanservjs, :8090): /scan/api/v1/... -> /api/v1/...
+		handle_path /scan/* {
+			reverse_proxy 127.0.0.1:8090
+		}
+
+		# Local Sonos (node-sonos-http-api, :5005): /sonos/zones -> /zones
+		handle_path /sonos/* {
+			reverse_proxy 127.0.0.1:5005
+		}
+
+		# Everything else: pretzel-server (:3001) — /pretzel/*, /lifx/*
+		reverse_proxy 127.0.0.1:3001
+	}
+}
