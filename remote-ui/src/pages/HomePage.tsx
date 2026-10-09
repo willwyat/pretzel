@@ -136,9 +136,14 @@ export function HomePage({ activeRoom }: HomePageProps) {
             )}
           </div>
         </div>
-        <Link to="/settings" className="pretzel-btn-ghost flex-shrink-0">
-          Settings
-        </Link>
+        <div className="flex flex-shrink-0 gap-2">
+          <Link to="/chess" className="pretzel-btn-ghost">
+            Chess
+          </Link>
+          <Link to="/settings" className="pretzel-btn-ghost">
+            Settings
+          </Link>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-col gap-6">

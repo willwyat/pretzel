@@ -8,7 +8,7 @@ Node services and scripts that run on the **Pretzel** Pi: LG TV relay, Pi speake
 |------|------|------|--------------|-----------------|
 | Pi speaker / TTS / volume / weather / LIFX proxy | [pretzel-server/](pretzel-server/) | Express (`/pretzel/*`, `/lifx/*`, operator **`/pretzel/admin/*`** on **3001**) | **3001** | [pretzel-server/pretzel-server.service.example](pretzel-server/pretzel-server.service.example) |
 | LG TV relay (HTTP + WebSocket to TV) | [tv-relay/](tv-relay/) | Express + `ws`; `GET /tv/status` adds `screenOn` via LG `getPowerState` when the main socket is up (standby can leave the socket open) | **3000** | [tv-relay/tv-relay.service.example](tv-relay/tv-relay.service.example) |
-| Guest LAN UI + reverse proxy | [remote-ui/](remote-ui/) | Vite + React → `dist/`; `/` home, **`/settings`** operator page; `/tv` → 3000, `/pretzel` and `/lifx` → 3001; **PWA** (manifest + service worker after `npm run build`) | **8080** | [remote-ui/remote-ui.service.example](remote-ui/remote-ui.service.example) |
+| Guest LAN UI + reverse proxy | [remote-ui/](remote-ui/) | Vite + React → `dist/`; `/` home, **`/settings`** operator page, **`/chess`** two-player chess; `/tv` → 3000, `/pretzel` and `/lifx` → 3001; **PWA** (manifest + service worker after `npm run build`) | **8080** | [remote-ui/remote-ui.service.example](remote-ui/remote-ui.service.example) |
 | Shell helpers | [scripts/](scripts/) | `speak.sh TEXT [INSTRUCTIONS]` → OpenAI speech; no instructions uses **tts-1**, non-empty instructions use **gpt-4o-mini-tts** (see `SPEAK_SCRIPT` in pretzel-server) | — | — |
 
 Ports for pretzel-server and tv-relay are set in their `index.js` files unless you add env-based configuration later.
@@ -42,6 +42,11 @@ Example status check:
 ```bash
 curl -sS -H "X-Pretzel-Settings-Passcode: YOUR_SECRET" http://127.0.0.1:3001/pretzel/admin/status
 ```
+
+## Chess (`/chess`) and network devices
+
+- **Chess:** open `http://pretzel.local:8080/chess` on two devices; each enters a name and sits as White or Black (others spectate). pretzel-server is the referee (rules via `chess.js`: check, checkmate, castling, en passant, promotion, stalemate, threefold, 50-move; resign, draw offers, optional clocks 5+0 / 10+0 / 15+10). Live play uses a **WebSocket** at `/pretzel/chess/ws` (proxied by remote-ui, which forwards `X-Forwarded-For`). The live game is in `pretzel-server/data/chess-state.json`; finished games (SAN moves, PGN, result, players) are appended to `chess-games.json` (both gitignored) and browsable via **Past games** (`GET /pretzel/chess/games[/:id]`). Run `npm ci` in `pretzel-server` after pulling (new deps `chess.js`, `ws`).
+- **Network devices:** `/settings` (after unlock) lists devices the Pi can see on its LAN (IP, MAC, hostname, state) via `GET /pretzel/admin/devices`: a ping sweep of the Pi's /24 then `ip neigh`. Needs `ping` and `iproute2` (default on Raspberry Pi OS). It shows LAN neighbours, not Wi‑Fi association, so sleeping devices may be missing. The LG TV is labelled using `TV_IP` (default `192.168.1.186`).
 
 ## Traffic flow
 

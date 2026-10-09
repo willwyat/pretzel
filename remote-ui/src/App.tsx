@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Route, Routes } from "react-router-dom";
 import { Navbar } from "./components/Navbar";
+import { ChessPage } from "./pages/ChessPage";
 import { HomePage } from "./pages/HomePage";
 import { SettingsPage } from "./pages/SettingsPage";
 import type { HomeRoomTab } from "./types/homeRoom";
@@ -17,6 +18,7 @@ export default function App() {
             element={<HomePage activeRoom={homeRoom} />}
           />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/chess" element={<ChessPage />} />
         </Routes>
       </div>
       <Navbar activeRoom={homeRoom} onActiveRoomChange={setHomeRoom} />
