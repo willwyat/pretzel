@@ -51,6 +51,10 @@ html.tetris-lock body {
   font-size: 1rem;
   touch-action: manipulation;
 }
+.tetris-top__right {
+  display: flex;
+  gap: 0.5rem;
+}
 .tetris-top__mid {
   display: flex;
   align-items: center;
@@ -270,4 +274,18 @@ html.tetris-lock body {
   background: var(--pretzel-well-bg);
   box-shadow: var(--pretzel-well-shadow);
   font-size: 0.8125rem;
+}
+
+/* Sound overlay: one key per soundtrack choice, label over a short note. */
+.tetris-sound-choice.pretzel-btn-secondary {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  text-align: left;
+}
+.tetris-sound-choice__note {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  opacity: 0.75;
 }

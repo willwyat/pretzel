@@ -1,12 +1,18 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useNavigate } from "react-router-dom";
 import "../tetris.css";
 import { Overlay } from "../components/tetris/Overlay";
 import { IdleStage, SpectatorStage, TetrisGame } from "../components/tetris/TetrisGame";
 import { enterFullscreen, exitFullscreen, useGameViewport } from "../lib/gameShell";
+import { soundtrack, type SoundMode } from "../lib/tetris/soundtrack";
 import { useTetris, type TetrisState } from "../lib/tetrisSocket";
 
 const NAME_KEY = "pretzel_tetris_name";
+const SOUND_CHOICES: { mode: SoundMode; label: string; note: string }[] = [
+  { mode: "midi", label: "Chiptune (MIDI)", note: "Game Boy voices; speeds up with the game." },
+  { mode: "mp3", label: "Recording (MP3)", note: "The original recording at its own tempo." },
+  { mode: "off", label: "Off", note: "No music." },
+];
 
 function nameOf(s: TetrisState, seat: 0 | 1): string {
   return s.players[seat]?.name ?? `Player ${seat + 1}`;
@@ -57,6 +63,8 @@ export function TetrisPage() {
     }
   });
   const [help, setHelp] = useState(false);
+  const [soundOpen, setSoundOpen] = useState(false);
+  const sound = useSyncExternalStore(soundtrack.subscribe, soundtrack.status);
   const [confirmExit, setConfirmExit] = useState(false);
   const [watching, setWatching] = useState(false);
 
@@ -81,6 +89,7 @@ export function TetrisPage() {
       /* ignore */
     }
     enterFullscreen();
+    soundtrack.unlock();
     send({ type: "join", name: n });
   };
 
@@ -124,6 +133,30 @@ export function TetrisPage() {
         </div>
       </Overlay>
     );
+  } else if (soundOpen) {
+    const live =
+      sound.mode === "off"
+        ? "OFF"
+        : `${sound.mode.toUpperCase()} · ${sound.playing ? (sound.mode === "midi" ? `${sound.rate.toFixed(2)}×` : "PLAYING") : "READY"}`;
+    overlay = (
+      <Overlay title="Sound" onClose={() => setSoundOpen(false)}>
+        <p className="pretzel-readout tetris-overlay__readout">{live}</p>
+        <div className="flex flex-col gap-2">
+          {SOUND_CHOICES.map((c) => (
+            <button
+              key={c.mode}
+              type="button"
+              aria-pressed={sound.mode === c.mode}
+              className={`pretzel-btn-secondary tetris-sound-choice${sound.mode === c.mode ? " pretzel-key--accent" : ""}`}
+              onClick={() => soundtrack.setMode(c.mode)}
+            >
+              <span>{c.label}</span>
+              <span className="tetris-sound-choice__note">{c.note}</span>
+            </button>
+          ))}
+        </div>
+      </Overlay>
+    );
   } else if (help) {
     overlay = (
       <Overlay title="How to play" onClose={() => setHelp(false)}>
@@ -136,6 +169,8 @@ export function TetrisPage() {
           <dd>Soft drop while held.</dd>
           <dt>▼▼</dt>
           <dd>Double-tap to hard drop.</dd>
+          <dt>♪</dt>
+          <dd>Choose the music. The chiptune speeds up with the game.</dd>
         </dl>
         <p className="pretzel-text-panel-body">
           Clearing 2 / 3 / 4 lines at once sends 1 / 2 / 4 garbage rows to your opponent. Your own clears cancel
@@ -188,9 +223,12 @@ export function TetrisPage() {
             </button>
           </>
         )}
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button type="button" className="pretzel-btn-secondary" onClick={() => setHelp(true)}>
             How to play
+          </button>
+          <button type="button" className="pretzel-btn-secondary" onClick={() => setSoundOpen(true)}>
+            Sound
           </button>
           <button type="button" className="pretzel-btn-secondary" onClick={exit}>
             Exit
@@ -231,6 +269,7 @@ export function TetrisPage() {
               className="pretzel-btn-secondary pretzel-key--accent"
               onClick={() => {
                 enterFullscreen();
+                soundtrack.unlock();
                 send({ type: "ready" });
               }}
             >
@@ -246,7 +285,10 @@ export function TetrisPage() {
   }
 
   return (
-    <div className="tetris-shell">
+    <div
+      className="tetris-shell"
+      data-sound={`${sound.mode}:${sound.playing ? "playing" : "stopped"}:${sound.rate.toFixed(2)}`}
+    >
       <header className="tetris-top">
         <button type="button" className="pretzel-btn-icon" aria-label="Exit" onClick={requestExit}>
           ✕
@@ -257,9 +299,14 @@ export function TetrisPage() {
             {topStatus(state, connected)}
           </span>
         </div>
-        <button type="button" className="pretzel-btn-icon" aria-label="How to play" onClick={() => setHelp(true)}>
-          ?
-        </button>
+        <div className="tetris-top__right">
+          <button type="button" className="pretzel-btn-icon" aria-label="Sound" onClick={() => setSoundOpen(true)}>
+            ♪
+          </button>
+          <button type="button" className="pretzel-btn-icon" aria-label="How to play" onClick={() => setHelp(true)}>
+            ?
+          </button>
+        </div>
       </header>
 
       {stage}
