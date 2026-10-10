@@ -13,7 +13,7 @@ function settingsSpaFallback(): Plugin {
     configureServer(server) {
       server.middlewares.use((req, _res, next) => {
         const pathname = req.url?.split("?")[0] ?? "";
-        if (req.method === "GET" && /^\/(settings|chess)(\/.*)?$/.test(pathname)) {
+        if (req.method === "GET" && /^\/(settings|chess|tetris)(\/.*)?$/.test(pathname)) {
           const q = req.url?.includes("?")
             ? "?" + req.url.split("?").slice(1).join("?")
             : "";

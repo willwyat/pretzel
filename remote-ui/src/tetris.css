@@ -1,0 +1,84 @@
+/**
+ * Pretzel Tetris: layout only. Colours, type, keys and readouts come from the
+ * black-plate tokens and classes in index.css (pretzel-panel, pretzel-readout,
+ * pretzel-btn-*), so the game sits on the plate like every other section.
+ */
+.tetris-status {
+  align-self: flex-start;
+  max-width: 100%;
+  font-size: 1.25rem;
+  text-transform: uppercase;
+  white-space: normal;
+}
+
+.tetris-player { color: var(--pretzel-fg-heading); }
+.tetris-player--you { color: var(--pretzel-accent); font-weight: 700; }
+.tetris-player--empty { color: var(--pretzel-fg-subtle); }
+.tetris-vs {
+  margin: 0 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--pretzel-fg-subtle);
+}
+
+.tetris-boards {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* Boards are recessed wells in the plate. */
+.tetris-canvas {
+  display: block;
+  border-radius: 0.25rem;
+  box-shadow: var(--pretzel-well-shadow);
+  touch-action: none;
+}
+
+.tetris-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+.tetris-label--opp {
+  margin-top: auto;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tetris-stats {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 6px 0;
+}
+.tetris-stats dd { margin: 0; font-size: 1rem; }
+
+.tetris-pad {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.tetris-pad-btn {
+  min-height: 3rem;
+  font-size: 1.25rem;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+/* Keyboard + mouse: hide the touch pad. */
+@media (hover: hover) and (pointer: fine) {
+  .tetris-pad { display: none; }
+}
+
+.tetris-spectate {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+.tetris-spectate > div { display: flex; flex-direction: column; gap: 6px; }

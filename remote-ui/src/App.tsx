@@ -4,6 +4,7 @@ import { Navbar } from "./components/Navbar";
 import { ChessPage } from "./pages/ChessPage";
 import { HomePage } from "./pages/HomePage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { TetrisPage } from "./pages/TetrisPage";
 import type { HomeRoomTab } from "./types/homeRoom";
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
           />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/chess" element={<ChessPage />} />
+          <Route path="/tetris" element={<TetrisPage />} />
         </Routes>
       </div>
       <Navbar activeRoom={homeRoom} onActiveRoomChange={setHomeRoom} />
