@@ -14,6 +14,7 @@ const { ChoresManager } = require("./lib/chores");
 const { RemindersScheduler } = require("./lib/reminders");
 const { ChessManager } = require("./lib/chess");
 const { TetrisManager } = require("./lib/tetris");
+const { Bulletin } = require("./lib/bulletin");
 const { listDevices } = require("./lib/devices");
 const { WebSocketServer } = require("ws");
 
@@ -207,6 +208,9 @@ async function speakWithReminderSfx(
 
 const choresManager = new ChoresManager(dataDir);
 choresManager.reload();
+
+const bulletin = new Bulletin(dataDir);
+bulletin.load();
 
 const scheduler = new RemindersScheduler({
   dataDir,
@@ -544,6 +548,31 @@ app.post("/pretzel/volume", (req, res) => {
 
 app.get("/pretzel/status", (req, res) => {
   res.json({ ok: true, host: "pretzel" });
+});
+
+app.get("/pretzel/bulletin", (_req, res) => {
+  res.json({ ok: true, notes: bulletin.list() });
+});
+
+app.post("/pretzel/bulletin", (req, res) => {
+  const result = bulletin.add(req.body?.message);
+  if (!result.ok) return res.status(400).json(result);
+  res.status(201).json(result);
+});
+
+app.post("/pretzel/bulletin/:id/seen", (req, res) => {
+  if (typeof req.body?.isSeen !== "boolean") {
+    return res.status(400).json({ ok: false, error: "isSeen must be a boolean" });
+  }
+  const result = bulletin.setSeen(req.params.id, req.body.isSeen);
+  if (!result.ok) return res.status(404).json(result);
+  res.json(result);
+});
+
+app.delete("/pretzel/bulletin/:id", (req, res) => {
+  const result = bulletin.remove(req.params.id);
+  if (!result.ok) return res.status(404).json(result);
+  res.json(result);
 });
 
 app.get("/pretzel/chores", (req, res) => {

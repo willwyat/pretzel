@@ -176,7 +176,7 @@ export function TetrisGame(props: Props) {
   const pad = (a: Action, label: string, aria: string) => (
     <button
       type="button"
-      className="tetris-pad-btn"
+      className={`pretzel-btn-icon-wide tetris-pad-btn${a === "hard" ? " pretzel-key--accent" : ""}`}
       aria-label={aria}
       onPointerDown={(e) => {
         e.preventDefault();
@@ -196,17 +196,17 @@ export function TetrisGame(props: Props) {
       <div className="tetris-boards">
         <canvas ref={mainRef} className="tetris-canvas" aria-label="Your board" />
         <div className="tetris-side" style={{ width: cell * 5 }}>
-          <div className="tetris-label">NEXT</div>
+          <div className="pretzel-text-group-label">Next</div>
           <canvas ref={queueRef} className="tetris-canvas" aria-label="Next pieces" />
           <dl className="tetris-stats">
-            <dt>LEVEL</dt>
-            <dd>{stats.level}</dd>
-            <dt>LINES</dt>
-            <dd>{stats.lines}</dd>
-            <dt>SENT</dt>
-            <dd>{stats.sent}</dd>
+            <dt className="pretzel-text-group-label">Level</dt>
+            <dd className="pretzel-readout">{String(stats.level).padStart(2, "0")}</dd>
+            <dt className="pretzel-text-group-label">Lines</dt>
+            <dd className="pretzel-readout">{String(stats.lines).padStart(3, "0")}</dd>
+            <dt className="pretzel-text-group-label">Sent</dt>
+            <dd className="pretzel-readout">{String(stats.sent).padStart(3, "0")}</dd>
           </dl>
-          <div className="tetris-label tetris-label--opp" title={props.opponentName}>
+          <div className="pretzel-text-group-label tetris-label--opp" title={props.opponentName}>
             {props.opponentName}
           </div>
           <canvas ref={oppRef} className="tetris-canvas" aria-label="Opponent board" />
@@ -257,7 +257,7 @@ export function SpectatorBoards({
     <div ref={wrapRef} className="tetris-spectate">
       {refs.map((r, i) => (
         <div key={i} className="tetris-spectate-board">
-          <div className="tetris-label">{names[i]}</div>
+          <div className="pretzel-text-group-label">{names[i]}</div>
           <canvas ref={r} className="tetris-canvas" aria-label={`${names[i]} board`} />
         </div>
       ))}

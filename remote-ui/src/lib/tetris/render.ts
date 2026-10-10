@@ -1,9 +1,16 @@
 import { COLS, HIDDEN, ROWS, SHAPES, type Game, type PieceId } from "./engine";
 
-/** Index = cell value: 0 empty, 1..7 I J L O S T Z, 8 garbage. */
-export const COLORS = ["", "#22d3ee", "#3b82f6", "#f97316", "#facc15", "#22c55e", "#a855f7", "#ef4444", "#6b7280"];
-const BG = "#05060a";
-const GRID = "#12151f";
+/**
+ * Index = cell value: 0 empty, 1..7 I J L O S T Z, 8 garbage. Standard hues,
+ * warmed to sit on the black plate (L and Z reuse the panel's amber and red caps).
+ */
+export const COLORS = ["", "#2fbfcf", "#3d6fd1", "#f0922a", "#f2c230", "#4fae5a", "#9a5bc9", "#d4483a", "#5c5852"];
+/** Recessed well (--pretzel-well-bg) and a faint silkscreen grid. */
+const BG = "#121212";
+const GRID = "#1d1c1a";
+/** Amber lamp readout (--pretzel-readout-fg / -glow). */
+const READOUT = "#ffb233";
+const READOUT_GLOW = "rgba(255, 160, 30, 0.6)";
 
 /** Size a canvas for crisp drawing at devicePixelRatio; returns its 2D context in CSS pixels. */
 export function fitCanvas(canvas: HTMLCanvasElement, cssW: number, cssH: number): CanvasRenderingContext2D {
@@ -91,17 +98,20 @@ export function drawGame(canvas: HTMLCanvasElement, game: Game, s: number, overl
   }
   const pending = Math.min(ROWS, game.pendingTotal);
   if (pending > 0) {
-    ctx.fillStyle = "#ef4444";
+    ctx.fillStyle = COLORS[7];
     ctx.fillRect(0, (ROWS - pending) * s, Math.max(3, s * 0.15), pending * s);
   }
   if (overlay) {
-    ctx.fillStyle = "rgba(5,6,10,0.72)";
+    ctx.fillStyle = "rgba(10, 8, 4, 0.78)";
     ctx.fillRect(0, 0, COLS * s, ROWS * s);
-    ctx.fillStyle = "#facc15";
+    ctx.fillStyle = READOUT;
+    ctx.shadowColor = READOUT_GLOW;
+    ctx.shadowBlur = 8;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = `bold ${Math.round(s * (overlay.length <= 2 ? 3 : 1.1))}px ui-monospace, Menlo, Consolas, monospace`;
+    ctx.font = `${Math.round(s * (overlay.length <= 2 ? 3.4 : 1.4))}px "Digital-7 Mono", ui-monospace, Menlo, Consolas, monospace`;
     ctx.fillText(overlay, (COLS * s) / 2, (ROWS * s) / 2);
+    ctx.shadowBlur = 0;
   }
 }
 

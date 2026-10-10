@@ -1,137 +1,46 @@
 /**
- * Pretzel Tetris: dark retro arcade look. Scoped under .tetris-root so the
- * Moog theme in index.css is untouched. Fixed dark palette on purpose.
+ * Pretzel Tetris: layout only. Colours, type, keys and readouts come from the
+ * black-plate tokens and classes in index.css (pretzel-panel, pretzel-readout,
+ * pretzel-btn-*), so the game sits on the plate like every other section.
  */
-.tetris-root {
-  --t-bg: #0b0d14;
-  --t-panel: #141826;
-  --t-line: #2a3150;
-  --t-text: #e5e7eb;
-  --t-dim: #8b93b0;
-  --t-accent: #facc15;
-  --t-cyan: #22d3ee;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: var(--t-text);
-  background: var(--t-bg);
-  border: 2px solid var(--t-line);
-  border-radius: 6px;
-  margin: 12px 0;
-  padding: 12px;
-  box-shadow: 0 0 0 4px #05060a, 0 0 24px rgba(34, 211, 238, 0.12);
-}
-.tetris-root * { box-sizing: border-box; }
-
-.tetris-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-.tetris-title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: 0.3em;
-  color: var(--t-cyan);
-  text-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
-}
-.tetris-link {
-  color: var(--t-dim);
-  text-decoration: none;
-  font-size: 13px;
-}
-.tetris-link:hover { color: var(--t-text); }
-.tetris-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #ef4444;
-}
-.tetris-dot--on { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
-
 .tetris-status {
-  margin: 10px 0 4px;
-  text-align: center;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--t-accent);
+  align-self: flex-start;
+  max-width: 100%;
+  font-size: 1.25rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.tetris-players {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  font-size: 13px;
-  color: var(--t-dim);
-}
-.tetris-vs { color: var(--t-line); font-weight: 800; }
-.tetris-you { color: var(--t-text); font-weight: 700; }
-
-.tetris-join, .tetris-actions {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  margin: 10px 0;
-}
-.tetris-input {
-  font: inherit;
-  color: var(--t-text);
-  background: var(--t-panel);
-  border: 1px solid var(--t-line);
-  border-radius: 4px;
-  padding: 6px 8px;
-  width: 11em;
-  user-select: text;
-}
-.tetris-btn {
-  font: inherit;
-  font-weight: 700;
-  color: var(--t-text);
-  background: var(--t-panel);
-  border: 1px solid var(--t-line);
-  border-radius: 4px;
-  padding: 6px 12px;
-  cursor: pointer;
-}
-.tetris-btn--primary { background: var(--t-accent); border-color: var(--t-accent); color: #111; }
-.tetris-hint { font-size: 13px; color: var(--t-dim); }
-.tetris-error {
-  display: block;
-  margin: 8px auto;
-  font: inherit;
-  font-size: 13px;
-  color: #fecaca;
-  background: #450a0a;
-  border: 1px solid #7f1d1d;
-  border-radius: 4px;
-  padding: 4px 10px;
-  cursor: pointer;
+  white-space: normal;
 }
 
-.tetris-play { margin-top: 8px; }
+.tetris-player { color: var(--pretzel-fg-heading); }
+.tetris-player--you { color: var(--pretzel-accent); font-weight: 700; }
+.tetris-player--empty { color: var(--pretzel-fg-subtle); }
+.tetris-vs {
+  margin: 0 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--pretzel-fg-subtle);
+}
+
 .tetris-boards {
   display: flex;
   justify-content: center;
   gap: 12px;
 }
+
+/* Boards are recessed wells in the plate. */
 .tetris-canvas {
   display: block;
-  border: 1px solid var(--t-line);
+  border-radius: 0.25rem;
+  box-shadow: var(--pretzel-well-shadow);
   touch-action: none;
 }
+
 .tetris-side {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
-}
-.tetris-label {
-  font-size: 11px;
-  letter-spacing: 0.15em;
-  color: var(--t-dim);
 }
 .tetris-label--opp {
   margin-top: auto;
@@ -143,33 +52,25 @@
 .tetris-stats {
   display: grid;
   grid-template-columns: auto auto;
-  gap: 0 8px;
+  align-items: center;
+  gap: 6px 8px;
   margin: 6px 0;
-  font-size: 11px;
 }
-.tetris-stats dt { color: var(--t-dim); }
-.tetris-stats dd { margin: 0; color: var(--t-text); font-weight: 700; }
+.tetris-stats dd { margin: 0; font-size: 1rem; }
 
 .tetris-pad {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 6px;
-  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
 }
 .tetris-pad-btn {
-  font-size: 22px;
-  line-height: 1;
-  color: var(--t-text);
-  background: var(--t-panel);
-  border: 1px solid var(--t-line);
-  border-radius: 6px;
-  padding: 12px 0;
+  min-height: 3rem;
+  font-size: 1.25rem;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
-.tetris-pad-btn:active { background: var(--t-line); }
 /* Keyboard + mouse: hide the touch pad. */
 @media (hover: hover) and (pointer: fine) {
   .tetris-pad { display: none; }
@@ -179,14 +80,5 @@
   display: flex;
   justify-content: center;
   gap: 16px;
-  margin-top: 10px;
 }
-.tetris-spectate-board { display: flex; flex-direction: column; gap: 4px; }
-
-.tetris-help {
-  margin: 12px 0 0;
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--t-dim);
-  text-align: center;
-}
+.tetris-spectate > div { display: flex; flex-direction: column; gap: 6px; }

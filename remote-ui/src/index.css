@@ -3,24 +3,21 @@
 @tailwind utilities;
 
 /**
- * Minimoog Model D: oiled-walnut cheeks, a textured black control panel with
- * white silkscreen and white-outlined sections, knurled black knobs, ribbed
- * fader caps, amber lamp/readout glass and lo-fi plastic rocker switches.
- * Every material is a token; the dark variant mostly darkens the case. The
- * piano-key room nav keeps its own ivory tokens (--pretzel-nav-key-*) so panel
- * restyles never touch it.
+ * Minimoog Model D: a textured black control panel (the page) with white
+ * silkscreen and white-outlined sections, knurled black knobs, ribbed fader
+ * caps, amber lamp/readout glass and lo-fi plastic rocker switches. Oiled
+ * walnut is only the bottom room nav. Every material is a token; the dark
+ * variant mostly darkens the plate. The piano-key room nav keeps its own
+ * ivory tokens (--pretzel-nav-key-*) so panel restyles never touch it.
  */
 @layer base {
   :root {
     color-scheme: light;
 
-    /* Case (page) */
+    /* Walnut: bottom room nav only */
     --pretzel-wood-top: #6b3f22;
     --pretzel-wood-bottom: #4a2a15;
     --pretzel-wood-grain: rgba(30, 14, 4, 0.16);
-    --pretzel-wood-sheen: rgba(255, 214, 160, 0.16);
-    --pretzel-fg-page-strong: #f6ead2;
-    --pretzel-fg-page-muted: #dcc7a4;
 
     /* Black panel */
     --pretzel-plate-top: #232220;
@@ -103,9 +100,6 @@
       --pretzel-wood-top: #2a1c12;
       --pretzel-wood-bottom: #140d08;
       --pretzel-wood-grain: rgba(0, 0, 0, 0.35);
-      --pretzel-wood-sheen: rgba(255, 190, 120, 0.06);
-      --pretzel-fg-page-strong: #ead9b5;
-      --pretzel-fg-page-muted: #b39d78;
 
       --pretzel-plate-top: #1d1d1d;
       --pretzel-plate-bottom: #131313;
@@ -128,34 +122,26 @@
     font-display: swap;
   }
 
+  @font-face {
+    font-family: "Digital-7 Mono";
+    src: url("/fonts/digital-7-mono.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+
   body {
     min-height: 100vh;
     color: var(--pretzel-fg-heading);
-    background-color: var(--pretzel-wood-bottom);
+    background-color: var(--pretzel-plate-bottom);
     background-image:
-      radial-gradient(
-        ellipse 120% 60% at 50% 0%,
-        var(--pretzel-wood-sheen),
-        transparent 70%
-      ),
-      repeating-linear-gradient(
-        93deg,
-        var(--pretzel-wood-grain) 0 1px,
-        transparent 1px 6px,
-        rgba(255, 255, 255, 0.025) 6px 8px,
-        transparent 8px 17px
-      ),
-      repeating-linear-gradient(
-        87deg,
-        transparent 0 31px,
-        var(--pretzel-wood-grain) 31px 33px,
-        transparent 33px 58px
-      ),
+      var(--pretzel-noise),
       linear-gradient(
         180deg,
-        var(--pretzel-wood-top),
-        var(--pretzel-wood-bottom)
+        var(--pretzel-plate-top),
+        var(--pretzel-plate-bottom)
       );
+    background-blend-mode: soft-light, normal;
     background-attachment: fixed;
   }
 
@@ -183,14 +169,13 @@
     background: transparent;
   }
 
-  /* ── Page-level type (sits on the walnut) ─────────────────────── */
+  /* ── Page-level type (sits on the black plate) ────────────────── */
   .pretzel-page-title {
     font-size: 1.25rem;
     line-height: 1.75rem;
     font-weight: 800;
     letter-spacing: 0.06em;
-    color: var(--pretzel-fg-page-strong);
-    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+    color: var(--pretzel-fg-heading);
   }
 
   .pretzel-page-subtitle {
@@ -199,43 +184,14 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.16em;
-    color: var(--pretzel-fg-page-muted);
-    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+    color: var(--pretzel-fg-muted);
   }
 
-  /* ── Black panels ─────────────────────────────────────────────── */
+  /* ── Sections on the plate. The white rule is the only divider. ─ */
   .pretzel-panel {
-    position: relative;
-    overflow: hidden;
-    border-radius: 0.5rem;
-    border: 1px solid var(--pretzel-plate-edge);
-    background-color: var(--pretzel-plate-bottom);
-    background-image:
-      var(--pretzel-noise),
-      linear-gradient(
-        180deg,
-        var(--pretzel-plate-top),
-        var(--pretzel-plate-bottom)
-      );
-    background-blend-mode: soft-light, normal;
-    box-shadow:
-      inset 0 1px 0 var(--pretzel-plate-highlight),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.6),
-      0 2px 0 rgba(0, 0, 0, 0.35),
-      0 10px 22px -6px rgba(0, 0, 0, 0.6);
+    background: transparent;
   }
 
-  /* Moog section outline: a thin white keyline inset from the panel edge. */
-  .pretzel-panel::after {
-    content: "";
-    position: absolute;
-    inset: 5px;
-    border: 1px solid rgba(255, 255, 255, 0.55);
-    border-radius: 0.25rem;
-    pointer-events: none;
-  }
-
-  /* Section header: silkscreen title over a single white rule. */
   .pretzel-panel__header,
   .pretzel-panel__header--simple {
     position: relative;
@@ -243,23 +199,25 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 0.75rem;
-    padding: 1.125rem 1.5rem 1.125rem;
+    padding: 0.75rem 0;
     background-image: linear-gradient(
       rgba(255, 255, 255, 0.55),
       rgba(255, 255, 255, 0.55)
     );
-    background-size: calc(100% - 12px) 1px;
-    background-position: 50% calc(100% - 1px);
+    background-size: 100% 1px;
+    background-position: 50% 0;
     background-repeat: no-repeat;
   }
 
   .pretzel-panel__body {
-    padding: 1.125rem 1.5rem 1.25rem;
+    padding: 0.75rem 0 0;
     width: 100%;
   }
 
   .pretzel-panel__block-bordered {
-    border-top: 1px solid var(--pretzel-fg-subtle);
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.55);
   }
 
   /* Silkscreen type: printed, not embossed */
@@ -306,12 +264,12 @@
     color: var(--pretzel-warn-fg);
   }
 
-  /* Sun block on the case */
+  /* Sun block on the plate */
   .pretzel-text-sun-block {
     min-height: 2.75rem;
     font-size: 0.875rem;
     line-height: 1.25rem;
-    color: var(--pretzel-fg-page-muted);
+    color: var(--pretzel-fg-muted);
   }
 
   .pretzel-text-sun-title {
@@ -320,16 +278,13 @@
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.18em;
-    color: var(--pretzel-fg-page-strong);
-    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+    color: var(--pretzel-fg-heading);
   }
 
-  .pretzel-text-sun-day {
-    margin-left: 0.5rem;
-    font-size: 0.6875rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    opacity: 0.75;
+  button.pretzel-text-sun-time {
+    border: 0;
+    cursor: default;
+    -webkit-tap-highlight-color: transparent;
   }
 
   /* ── Amber lamp readout ──────────────────────────────────────────── */
@@ -338,9 +293,12 @@
   .pretzel-vol-pct {
     display: inline-block;
     border-radius: 0.25rem;
-    padding: 0.125rem 0.4375rem;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-weight: 600;
+    padding: 0.1rem 0.35rem;
+    font-family: "Digital-7 Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+      monospace;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: 0.12em;
     font-variant-numeric: tabular-nums;
     color: var(--pretzel-readout-fg);
     text-shadow:
@@ -359,35 +317,37 @@
   }
 
   .pretzel-text-sun-time {
-    font-size: 1.125rem;
-    line-height: 1.75rem;
-    padding: 0.125rem 0.625rem;
+    font-size: 1.375rem;
+    padding: 0.12rem 0.4rem;
   }
 
   .pretzel-vol-pct {
     min-width: 3.25rem;
     flex-shrink: 0;
     text-align: right;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
   }
 
   .pretzel-vol-pct--center {
     min-width: 3rem;
-    padding: 0.125rem 0.25rem;
+    padding: 0.1rem 0.2rem;
     text-align: center;
-    font-size: 0.6875rem;
+    font-size: 0.8125rem;
   }
 
   .pretzel-readout--lg {
-    padding: 0.25rem 0.875rem;
-    font-size: 1.5rem;
-    line-height: 2rem;
+    padding: 0.12rem 0.45rem;
+    font-size: 1.7rem;
   }
 
   .pretzel-readout--xl {
-    padding: 0.5rem 1.25rem;
-    font-size: 2.5rem;
-    line-height: 1;
+    padding: 0.2rem 0.55rem;
+    font-size: 2.75rem;
+  }
+
+  /* Build logs share the lamp chrome but are prose, not a digit row. */
+  pre.pretzel-readout {
+    letter-spacing: 0;
   }
 
   /* ── Pilot LEDs: domed lens in a chrome bezel ─────────────────── */
@@ -431,22 +391,19 @@
     --led-glow: rgba(255, 60, 40, 0.7);
   }
 
-  /* ── Rocker switch: lo-fi cream plastic in a black bezel ─────────
-   * The cap tilts about its middle: top edge down = on, bottom edge down =
-   * off, level = armed (waiting for the confirming second tap). Slight
-   * asymmetry, scuffing and a lamp behind the plastic keep it analog. */
+  /* ── Rocker: one ivory cap, same face as the navbar keys ───────
+   * It tilts on its center seam. Left down = on, right down = off. */
   .pretzel-rocker {
-    --tilt: 15deg;
-    --lamp: transparent;
+    --tilt: -18deg;
     position: relative;
     flex-shrink: 0;
-    width: 2.375rem;
-    height: 3.375rem;
+    width: 4.75rem;
+    height: 2.5rem;
     padding: 0;
     border: 0;
     background: transparent;
     cursor: pointer;
-    perspective: 140px;
+    perspective: 160px;
     -webkit-tap-highlight-color: transparent;
   }
 
@@ -454,89 +411,87 @@
     position: absolute;
     inset: 0;
     display: block;
-    border-radius: 0.25rem;
-    background: linear-gradient(180deg, #0c0c0b, #1b1b1a);
+    border-radius: 0.45rem;
+    background: linear-gradient(180deg, #070706, #161615);
     box-shadow:
-      inset 0 2px 4px #000,
-      0 0 0 1px rgba(255, 255, 255, 0.5),
-      0 1px 0 1px rgba(255, 255, 255, 0.08);
+      inset 0 3px 6px #000,
+      inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+      0 1px 0 rgba(255, 255, 255, 0.14);
   }
 
   .pretzel-rocker__cap {
     position: absolute;
-    inset: 4px 3px;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding-top: 1.0625rem;
-    border-radius: 0.1875rem;
-    border: 1px solid var(--pretzel-rocker-edge);
-    transform: rotate(-0.8deg) rotateX(var(--tilt));
+    inset: 0.2rem 0.28rem 0.42rem;
+    border-radius: 0.28rem 0.28rem 0.55rem 0.55rem;
+    border: 1px solid var(--pretzel-nav-key-edge);
+    transform: rotateY(var(--tilt));
     transform-origin: 50% 50%;
-    transition: transform 0.12s cubic-bezier(0.3, 1.6, 0.5, 1);
-    background:
-      var(--pretzel-noise),
-      /* scuffs and a worn top edge */
-      linear-gradient(172deg, transparent 0 62%, rgba(0, 0, 0, 0.12) 62% 63%, transparent 63%),
-      /* the rocker's tilt line */
+    transform-style: preserve-3d;
+    transition: transform 0.14s cubic-bezier(0.3, 1.4, 0.5, 1);
+    background-image:
+      linear-gradient(
+        90deg,
+        transparent 0 calc(50% - 1px),
+        rgba(0, 0, 0, 0.38) calc(50% - 1px) calc(50% + 1px),
+        transparent calc(50% + 1px)
+      ),
       linear-gradient(
         180deg,
-        var(--pretzel-rocker-top) 0 48%,
-        rgba(0, 0, 0, 0.35) 49% 51%,
-        var(--pretzel-rocker-bottom) 52% 100%
+        var(--pretzel-nav-key-top) 0%,
+        var(--pretzel-nav-key-top) 55%,
+        var(--pretzel-nav-key-bottom) 100%
       );
-    background-blend-mode: multiply, normal, normal;
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.7),
-      inset 0 -2px 3px rgba(60, 50, 30, 0.35),
-      0 0 14px -2px var(--lamp),
-      0 3px 5px rgba(0, 0, 0, 0.6);
+      inset 0 1px 0 var(--pretzel-nav-key-highlight),
+      inset 0 -3px 0 rgba(0, 0, 0, 0.08),
+      0 4px 0 var(--pretzel-nav-key-side),
+      0 6px 8px rgba(0, 0, 0, 0.45);
   }
 
-  /* Printed ON / OFF legends on the two halves of the cap. */
   .pretzel-rocker__cap::before,
   .pretzel-rocker__cap::after {
     position: absolute;
-    left: 0;
-    right: 0;
-    text-align: center;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42%;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--pretzel-nav-key-fg);
     font-size: 0.5rem;
     font-weight: 800;
-    letter-spacing: 0.12em;
-    color: #2a2218;
-    opacity: 0.8;
+    letter-spacing: 0.1em;
+    text-shadow: var(--pretzel-nav-emboss);
   }
 
   .pretzel-rocker__cap::before {
     content: "ON";
-    top: 0.3rem;
+    left: 0;
   }
 
   .pretzel-rocker__cap::after {
     content: "OFF";
-    bottom: 0.3rem;
+    right: 0;
   }
 
   .pretzel-rocker--on .pretzel-rocker__cap {
-    --tilt: -15deg;
+    --tilt: 18deg;
   }
 
   .pretzel-rocker--off .pretzel-rocker__cap,
   .pretzel-rocker--waking .pretzel-rocker__cap {
-    --tilt: 15deg;
+    --tilt: -18deg;
   }
 
   .pretzel-rocker--armed .pretzel-rocker__cap {
     --tilt: 0deg;
-    --lamp: rgba(255, 60, 40, 0.8);
-  }
-
-  .pretzel-rocker--on .pretzel-rocker__cap {
-    --lamp: rgba(255, 170, 50, 0.7);
   }
 
   .pretzel-rocker:active:not(:disabled) .pretzel-rocker__cap {
-    filter: brightness(0.9);
+    filter: brightness(0.94);
   }
 
   .pretzel-rocker:disabled {
@@ -558,14 +513,21 @@
     color: var(--pretzel-fg-muted);
   }
 
-  /* Power LED (inside the rocker cap) */
+  /* Power LED sits on the fulcrum between the two keys. */
   .pretzel-power-led {
-    display: inline-block;
-    width: 0.4375rem;
-    height: 0.4375rem;
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    z-index: 2;
+    width: 0.5rem;
+    height: 0.5rem;
+    transform: translate(-50%, -50%);
     border-radius: 9999px;
+    border: 2px solid #120e0b;
     background: #3a2420;
-    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.7);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.28),
+      inset 0 1px 1px rgba(0, 0, 0, 0.7);
   }
 
   .pretzel-power-led--on {
@@ -930,8 +892,15 @@
   /* ── Piano-key nav (kept from the hi-fi iteration) ────────────── */
   .pretzel-nav-gradient {
     background-color: var(--pretzel-wood-bottom);
+    /* Photo on top. A failed load is a transparent layer, so the grain shows. */
     background-image:
-      linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent 10px),
+      linear-gradient(
+        180deg,
+        rgba(255, 236, 210, 0.55) 0,
+        rgba(255, 214, 160, 0.16) 3px,
+        transparent 12px
+      ),
+      url("/textures/walnut.jpg"),
       repeating-linear-gradient(
         93deg,
         var(--pretzel-wood-grain) 0 1px,
@@ -942,8 +911,22 @@
         var(--pretzel-wood-top),
         var(--pretzel-wood-bottom)
       );
-    border-top: 1px solid rgba(0, 0, 0, 0.6);
-    box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.35);
+    background-repeat: no-repeat, no-repeat, repeat, no-repeat;
+    background-position: center, center, center, center;
+    /* Landscape photo: the 700px side runs along the bar, so cover upscales less. */
+    background-size: auto, cover, auto, auto;
+  }
+
+  /* Shadow sits on the black plate above the bar, not on the grain. */
+  .pretzel-nav-gradient::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 1.25rem;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent);
+    pointer-events: none;
   }
 
   .nav-button {
@@ -1274,6 +1257,92 @@
     letter-spacing: 0.18em;
     color: var(--pretzel-accent);
   }
+
+  /* ── Post-it board ────────────────────────────────────────────── */
+  .pretzel-board {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-start;
+  }
+
+  .pretzel-note {
+    --tilt: -1.5deg;
+    position: relative;
+    display: flex;
+    width: 9.75rem;
+    min-height: 8rem;
+    flex-direction: column;
+    padding: 0.45rem 0.55rem 0.55rem;
+    background: #f6e27a;
+    color: #3a2a12;
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.65) inset,
+      0 10px 16px -6px rgba(0, 0, 0, 0.55);
+    transform: rotate(var(--tilt));
+  }
+
+  .pretzel-note[data-tone="1"] {
+    --tilt: 1.4deg;
+    background: #f4c7c3;
+  }
+
+  .pretzel-note[data-tone="2"] {
+    --tilt: -0.4deg;
+    background: #d5e7c4;
+  }
+
+  .pretzel-note--seen {
+    filter: saturate(0.55);
+  }
+
+  .pretzel-note__message {
+    margin: 0.35rem 0 0.5rem;
+    flex: 1;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .pretzel-note__meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.75;
+  }
+
+  .pretzel-note__remove,
+  .pretzel-note__seen {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .pretzel-note__remove {
+    margin-left: auto;
+    padding: 0 0.15rem;
+    font-size: 1rem;
+    line-height: 1;
+    font-weight: 700;
+    opacity: 0.55;
+  }
+
+  .pretzel-note__seen {
+    padding: 0;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1287,6 +1356,8 @@
   .pretzel-tv-dpad__ok,
   .pretzel-light-card,
   .pretzel-rocker__cap,
+  .pretzel-rocker__cap::before,
+  .pretzel-rocker__cap::after,
   .pretzel-range,
   .pretzel-vu__seg,
   .pretzel-nav-lamp {
@@ -1295,5 +1366,9 @@
 
   .pretzel-power-led--pulse {
     animation: none;
+  }
+
+  .pretzel-note {
+    transform: none;
   }
 }

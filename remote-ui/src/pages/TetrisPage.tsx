@@ -44,11 +44,23 @@ export function TetrisPage() {
     }
   });
 
+  const header = (
+    <div className="mb-6 flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <h1 className="pretzel-page-title">Tetris</h1>
+        <p className="pretzel-page-subtitle">Two-player versus</p>
+      </div>
+      <Link to="/" className="pretzel-btn-ghost">
+        ← Home
+      </Link>
+    </div>
+  );
+
   if (!state) {
     return (
-      <div className="tetris-root">
-        <h1 className="tetris-title">TETRIS</h1>
-        <p className="tetris-status">{connected ? "Loading…" : "Connecting to Pretzel…"}</p>
+      <div className="py-4">
+        {header}
+        <p className="pretzel-text-panel-muted">{connected ? "Loading…" : "Connecting to Pretzel…"}</p>
       </div>
     );
   }
@@ -71,101 +83,129 @@ export function TetrisPage() {
   let resultText: string | null = null;
   if (state.status === "over" && you !== null) resultText = state.winner === you ? "YOU WIN!" : "GAME OVER";
 
+  const player = (seat: 0 | 1) => {
+    const p = state.players[seat];
+    if (!p) return <span className="tetris-player tetris-player--empty">Open seat</span>;
+    return (
+      <span className={`tetris-player${you === seat ? " tetris-player--you" : ""}`}>
+        {p.name}
+        {p.connected ? "" : " (away)"}
+      </span>
+    );
+  };
+
   return (
-    <div className="tetris-root">
-      <header className="tetris-header">
-        <Link to="/" className="tetris-link">
-          ← Home
-        </Link>
-        <h1 className="tetris-title">TETRIS</h1>
-        <span className={`tetris-dot${connected ? " tetris-dot--on" : ""}`} title={connected ? "Connected" : "Reconnecting…"} />
-      </header>
+    <div className="py-4">
+      {header}
 
-      <p className="tetris-status" role="status">
-        {statusText(state)}
-      </p>
-
-      <div className="tetris-players">
-        <span className={you === 0 ? "tetris-you" : undefined}>
-          {state.players[0] ? nameOf(state, 0) : "—"}
-          {state.players[0] && !state.players[0].connected ? " (away)" : ""}
-        </span>
-        <span className="tetris-vs">VS</span>
-        <span className={you === 1 ? "tetris-you" : undefined}>
-          {state.players[1] ? nameOf(state, 1) : "—"}
-          {state.players[1] && !state.players[1].connected ? " (away)" : ""}
-        </span>
-      </div>
-
-      {error ? (
-        <button type="button" className="tetris-error" onClick={clearError}>
-          {error} ✕
-        </button>
-      ) : null}
-
-      {canJoin ? (
-        <form
-          className="tetris-join"
-          onSubmit={(e) => {
-            e.preventDefault();
-            join();
-          }}
-        >
-          <input
-            className="tetris-input"
-            value={name}
-            maxLength={20}
-            placeholder="Your name"
-            onChange={(e) => setName(e.target.value)}
+      <section className="pretzel-panel tetris-root" aria-label="Match">
+        <div className="pretzel-panel__header">
+          <div className="min-w-0">
+            <h2 className="pretzel-text-panel-title">Match</h2>
+            <p className="pretzel-text-panel-muted">
+              {player(0)} <span className="tetris-vs">vs</span> {player(1)}
+            </p>
+          </div>
+          <span
+            className={`pretzel-led mt-1.5 ${connected ? "pretzel-led--ok" : "pretzel-led--off"}`}
+            title={connected ? "Connected" : "Reconnecting…"}
+            aria-hidden
           />
-          <button type="submit" className="tetris-btn tetris-btn--primary">
-            Join
-          </button>
-        </form>
-      ) : null}
+        </div>
 
-      {you !== null ? (
-        <div className="tetris-actions">
-          {state.status === "over" ? (
-            state.players[you]?.ready ? (
-              <span className="tetris-hint">
-                {opponent ? "Waiting for opponent…" : "Waiting for a new opponent…"}
-              </span>
-            ) : (
-              <button type="button" className="tetris-btn tetris-btn--primary" onClick={() => send({ type: "ready" })}>
-                Play again
+        <div className="pretzel-panel__body flex flex-col gap-4">
+          <p className="pretzel-readout pretzel-readout--lg tetris-status" role="status">
+            {statusText(state)}
+          </p>
+
+          {error ? (
+            <button type="button" className="pretzel-text-alert text-left text-sm" onClick={clearError}>
+              {error} ✕
+            </button>
+          ) : null}
+
+          {canJoin ? (
+            <form
+              className="flex items-center gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                join();
+              }}
+            >
+              <input
+                className="pretzel-input"
+                value={name}
+                maxLength={20}
+                placeholder="Your name"
+                aria-label="Your name"
+                onChange={(e) => setName(e.target.value)}
+              />
+              <button type="submit" className="pretzel-btn-secondary pretzel-key--accent">
+                Join
               </button>
+            </form>
+          ) : null}
+
+          {you !== null ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {state.status === "over" ? (
+                state.players[you]?.ready ? (
+                  <span className="pretzel-text-panel-muted">
+                    {opponent ? "Waiting for opponent…" : "Waiting for a new opponent…"}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    className="pretzel-btn-secondary pretzel-key--accent"
+                    onClick={() => send({ type: "ready" })}
+                  >
+                    Play again
+                  </button>
+                )
+              ) : null}
+              <button type="button" className="pretzel-btn-secondary" onClick={() => send({ type: "leave" })}>
+                Leave
+              </button>
+            </div>
+          ) : null}
+
+          {state.matchId && state.seed !== null && state.startsAt !== null ? (
+            you !== null ? (
+              <TetrisGame
+                matchId={state.matchId}
+                seed={state.seed}
+                status={state.status}
+                startsAt={state.startsAt}
+                clockOffset={clockOffset}
+                you={you}
+                opponentName={matchName(state, you === 0 ? 1 : 0)}
+                resultText={resultText}
+                send={send}
+                subscribe={subscribe}
+              />
+            ) : (
+              <SpectatorBoards
+                matchId={state.matchId}
+                names={[matchName(state, 0), matchName(state, 1)]}
+                subscribe={subscribe}
+              />
             )
           ) : null}
-          <button type="button" className="tetris-btn" onClick={() => send({ type: "leave" })}>
-            Leave
-          </button>
         </div>
-      ) : null}
+      </section>
 
-      {state.matchId && state.seed !== null && state.startsAt !== null ? (
-        you !== null ? (
-          <TetrisGame
-            matchId={state.matchId}
-            seed={state.seed}
-            status={state.status}
-            startsAt={state.startsAt}
-            clockOffset={clockOffset}
-            you={you}
-            opponentName={matchName(state, you === 0 ? 1 : 0)}
-            resultText={resultText}
-            send={send}
-            subscribe={subscribe}
-          />
-        ) : (
-          <SpectatorBoards matchId={state.matchId} names={[matchName(state, 0), matchName(state, 1)]} subscribe={subscribe} />
-        )
-      ) : null}
-
-      <p className="tetris-help">
-        ← → move · ↑ / X rotate · Z rotate back · ↓ soft drop · Space hard drop. Clearing 2 / 3 / 4 lines sends 1 / 2 / 4
-        garbage rows; your clears cancel incoming garbage first (red bar).
-      </p>
+      <section className="pretzel-panel mt-6" aria-label="How to play">
+        <div className="pretzel-panel__header">
+          <h2 className="pretzel-text-panel-title">How to play</h2>
+        </div>
+        <div className="pretzel-panel__body">
+          <p className="pretzel-text-panel-body">
+            ← → move · ↑ / X rotate · Z rotate back · ↓ soft drop · Space hard drop. On a phone, use the keys under
+            the board. Clearing 2 / 3 / 4 lines sends 1 / 2 / 4 garbage rows; your own clears cancel incoming garbage
+            first (the red bar beside your board).
+          </p>
+        </div>
+      </section>
     </div>
   );
 }
