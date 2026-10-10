@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { Game } from "../../lib/tetris/engine";
 import { drawGame, drawQueue, drawSnapshot } from "../../lib/tetris/render";
+import { soundtrack } from "../../lib/tetris/soundtrack";
 import type { ClientMessage, TetrisEvent, TetrisStatus } from "../../lib/tetrisSocket";
 
 /** The four on-screen controls. Hard drop is a double-tap on "down". */
@@ -90,6 +91,7 @@ export function TouchPad({
     }
     el.classList.add("is-pressed");
     navigator.vibrate?.(8);
+    soundtrack.unlock();
     onPress?.(k);
   };
   const up = (k: PadKey) => (e: ReactPointerEvent<HTMLButtonElement>) => {
@@ -198,6 +200,10 @@ export function TetrisGame(props: Props) {
       if (queueRef.current) drawQueue(queueRef.current, game.nextPieces(3), Math.round(L.cell * QUEUE_SCALE));
       if (oppRef.current) drawSnapshot(oppRef.current, oppCells, sideLayout(L.cell).oppCell);
 
+      // Music plays while your game runs (after the countdown); the chiptune speeds up with the level.
+      if (game.started && !game.over && L.status !== "over") soundtrack.play(game.level);
+      else soundtrack.stop();
+
       if (game.level !== shown.level || game.linesCleared !== shown.lines || game.linesSent !== shown.sent) {
         shown = { level: game.level, lines: game.linesCleared, sent: game.linesSent };
         setStats(shown);
@@ -209,6 +215,7 @@ export function TetrisGame(props: Props) {
     return () => {
       cancelAnimationFrame(raf);
       unsub();
+      soundtrack.stop();
       // Navigating away mid-match concedes it.
       if (game.started && !game.over && live.current.status === "active") {
         send({ type: "forfeit", matchId, reason: "left the game" });
@@ -274,7 +281,11 @@ export function TetrisGame(props: Props) {
     let timer: number | undefined;
     const onVis = () => {
       window.clearTimeout(timer);
-      if (document.visibilityState !== "hidden") return;
+      if (document.visibilityState !== "hidden") {
+        soundtrack.resume();
+        return;
+      }
+      soundtrack.suspend();
       timer = window.setTimeout(() => {
         const g = gameRef.current;
         if (g && g.started && !g.over && live.current.status === "active") {
