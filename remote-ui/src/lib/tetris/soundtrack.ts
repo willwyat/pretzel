@@ -7,11 +7,21 @@ import { parseMidi, type MidiNote, type MidiSong } from "./midi";
  * own tempo. One shared instance; the choice is remembered per phone.
  */
 export type SoundMode = "midi" | "mp3" | "off";
-export type SoundStatus = { mode: SoundMode; playing: boolean; rate: number };
+export type SoundStatus = {
+  mode: SoundMode;
+  playing: boolean;
+  rate: number;
+  /** Line-clear effects played so far, e.g. "lines:2 tetris:1". */
+  sfx: string;
+};
 
 const MODE_KEY = "pretzel_tetris_sound";
 const MIDI_URL = "/audio/tetris-theme-a.mid";
 const MP3_URL = "/audio/tetris-theme.mp3";
+/** Line-clear effects: 2-3 lines and a Tetris (4 lines). */
+const SFX_URLS = { lines: "/audio/line-clear.mp3", tetris: "/audio/tetris-clear.mp3" } as const;
+type SfxName = keyof typeof SFX_URLS;
+const SFX_GAIN = 0.9;
 const LOOKAHEAD_S = 0.12;
 const SCHEDULE_MS = 25;
 const MASTER_GAIN = 0.5;
@@ -43,13 +53,16 @@ class Soundtrack {
   private level = 1;
   private rate = 1;
   private listeners = new Set<() => void>();
-  private snap: SoundStatus = { mode: this.mode, playing: false, rate: 1 };
+  private snap: SoundStatus = { mode: this.mode, playing: false, rate: 1, sfx: "lines:0 tetris:0" };
 
   // ── Web Audio (MIDI) ──
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private noise: AudioBuffer | null = null;
   private bassWave: PeriodicWave | null = null;
+  private sfx: Partial<Record<SfxName, AudioBuffer>> = {};
+  private sfxLoading = false;
+  private sfxPlayed: Record<SfxName, number> = { lines: 0, tetris: 0 };
   private song: MidiSong | null = null;
   private songLoading: Promise<void> | null = null;
   private timer: number | undefined;
@@ -77,7 +90,7 @@ class Soundtrack {
   private emit() {
     const next = this.compute();
     const prev = this.snap;
-    if (next.mode === prev.mode && next.playing === prev.playing && next.rate === prev.rate) return;
+    if (next.mode === prev.mode && next.playing === prev.playing && next.rate === prev.rate && next.sfx === prev.sfx) return;
     this.snap = next;
     for (const fn of this.listeners) fn();
   }
@@ -89,7 +102,8 @@ class Soundtrack {
         : this.mode === "mp3"
           ? !!this.audio && !this.audio.paused
           : false;
-    return { mode: this.mode, playing, rate: this.mode === "midi" ? this.rate : 1 };
+    const sfx = `lines:${this.sfxPlayed.lines} tetris:${this.sfxPlayed.tetris}`;
+    return { mode: this.mode, playing, rate: this.mode === "midi" ? this.rate : 1, sfx };
   }
 
   setMode(mode: SoundMode) {
@@ -113,11 +127,14 @@ class Soundtrack {
    * browsers only allow audio that was first started inside a user gesture.
    */
   unlock() {
+    if (this.mode === "off") return;
+    // Web Audio carries the chiptune and, in both modes, the line-clear effects.
+    if (!this.ctx) this.createContext();
+    if (this.ctx && this.ctx.state === "suspended" && document.visibilityState === "visible") {
+      this.ctx.resume().catch(() => {});
+    }
+    this.loadSfx();
     if (this.mode === "midi") {
-      if (!this.ctx) this.createContext();
-      if (this.ctx && this.ctx.state === "suspended" && document.visibilityState === "visible") {
-        this.ctx.resume().catch(() => {});
-      }
       void this.loadSong();
     } else if (this.mode === "mp3") {
       const el = this.mp3();
@@ -136,6 +153,24 @@ class Soundtrack {
           delete el.dataset.primed;
         });
     }
+  }
+
+  /** Line-clear effect: 2-3 lines -> "lines", 4 -> "tetris"; singles are silent. Off mutes it. */
+  playClear(lines: number) {
+    if (this.mode === "off" || lines < 2) return;
+    const name: SfxName = lines >= 4 ? "tetris" : "lines";
+    const ctx = this.ctx;
+    const buf = this.sfx[name];
+    if (!ctx || !buf) return;
+    if (ctx.state === "suspended" && document.visibilityState === "visible") ctx.resume().catch(() => {});
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const g = ctx.createGain();
+    g.gain.value = SFX_GAIN;
+    src.connect(g).connect(ctx.destination);
+    src.start();
+    this.sfxPlayed[name]++;
+    this.emit();
   }
 
   /** Start (or keep) the music for the current mode; idempotent, cheap to call every frame. */
@@ -229,6 +264,28 @@ class Soundtrack {
     this.bassWave = ctx.createPeriodicWave(new Float32Array(imag.length), imag);
     this.noise = noise;
     this.ctx = ctx;
+  }
+
+  private loadSfx() {
+    const ctx = this.ctx;
+    if (!ctx || this.sfxLoading) return;
+    this.sfxLoading = true;
+    for (const name of Object.keys(SFX_URLS) as SfxName[]) {
+      fetch(SFX_URLS[name])
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.arrayBuffer();
+        })
+        // Callback form: older Safari has no promise-returning decodeAudioData.
+        .then((data) => new Promise<AudioBuffer>((res, rej) => ctx.decodeAudioData(data, res, rej)))
+        .then((buf) => {
+          this.sfx[name] = buf;
+        })
+        .catch((e) => {
+          console.warn(`tetris sfx: could not load ${name}:`, e);
+          this.sfxLoading = false; // retry on the next tap
+        });
+    }
   }
 
   private loadSong(): Promise<void> {

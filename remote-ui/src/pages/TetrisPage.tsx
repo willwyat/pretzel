@@ -11,7 +11,7 @@ const NAME_KEY = "pretzel_tetris_name";
 const SOUND_CHOICES: { mode: SoundMode; label: string; note: string }[] = [
   { mode: "midi", label: "Chiptune (MIDI)", note: "Game Boy voices; speeds up with the game." },
   { mode: "mp3", label: "Recording (MP3)", note: "The original recording at its own tempo." },
-  { mode: "off", label: "Off", note: "No music." },
+  { mode: "off", label: "Off", note: "No music or sound effects." },
 ];
 
 function nameOf(s: TetrisState, seat: 0 | 1): string {
@@ -170,7 +170,7 @@ export function TetrisPage() {
           <dt>▼▼</dt>
           <dd>Double-tap to hard drop.</dd>
           <dt>♪</dt>
-          <dd>Choose the music. The chiptune speeds up with the game.</dd>
+          <dd>Choose the music. The chiptune speeds up with the game; clearing 2+ lines plays a chime.</dd>
         </dl>
         <p className="pretzel-text-panel-body">
           Clearing 2 / 3 / 4 lines at once sends 1 / 2 / 4 garbage rows to your opponent. Your own clears cancel
@@ -288,6 +288,7 @@ export function TetrisPage() {
     <div
       className="tetris-shell"
       data-sound={`${sound.mode}:${sound.playing ? "playing" : "stopped"}:${sound.rate.toFixed(2)}`}
+      data-sfx={sound.sfx}
     >
       <header className="tetris-top">
         <button type="button" className="pretzel-btn-icon" aria-label="Exit" onClick={requestExit}>
