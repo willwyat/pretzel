@@ -14,6 +14,8 @@ const TIME_CONTROLS = {
 };
 
 const MAX_NAME = 20;
+/** Avatars 1..AVATAR_COUNT (sprite strips in remote-ui/public/avatars/chess/). */
+const AVATAR_COUNT = 5;
 const MAX_ARCHIVE = 200;
 /** A game in progress whose players have all been offline this long may be cleared by anyone. */
 const ABANDON_MS = 10 * 60_000;
@@ -40,6 +42,11 @@ function readJson(filePath, fallback) {
 function cleanName(raw) {
   const s = typeof raw === "string" ? raw.replace(/[\u0000-\u001f<>]/g, "").trim() : "";
   return s.slice(0, MAX_NAME);
+}
+
+/** Avatar number, or null when missing or out of range (older clients send none). */
+function cleanAvatar(raw) {
+  return Number.isInteger(raw) && raw >= 1 && raw <= AVATAR_COUNT ? raw : null;
 }
 
 const other = (color) => (color === "white" ? "black" : "white");
@@ -368,7 +375,7 @@ class ChessManager {
     const last = g.moves[g.moves.length - 1];
     const seat = (c) => {
       const p = g.players[c];
-      return p ? { name: p.name, connected: !!p.connected } : null;
+      return p ? { name: p.name, connected: !!p.connected, avatar: p.avatar ?? null } : null;
     };
     const live = g.status === "active";
     return {
@@ -380,7 +387,16 @@ class ChessManager {
       turn: this._turn(),
       inCheck: this.chess.inCheck(),
       legalMoves,
-      moves: g.moves.map(({ san, from, to, color, at, clock }) => ({ san, from, to, color, at, clock })),
+      moves: g.moves.map(({ san, from, to, color, at, clock, promotion, captured }) => ({
+        san,
+        from,
+        to,
+        color,
+        at,
+        clock,
+        promotion: promotion ?? null,
+        captured: captured ?? null,
+      })),
       lastMove: last ? { from: last.from, to: last.to } : null,
       players: { white: seat("white"), black: seat("black") },
       you,
@@ -422,15 +438,19 @@ class ChessManager {
   }
 
   // ── actions ────────────────────────────────────────────────────
-  sit({ clientId, name, color, ip }) {
+  sit({ clientId, name, color, ip, avatar }) {
     const g = this.game;
     const n = cleanName(name);
+    const a = cleanAvatar(avatar);
     if (!clientId) return { ok: false, error: "clientId required" };
     if (!n) return { ok: false, error: "Enter a name first." };
+    const taken = (c) => a !== null && g.players[other(c)]?.avatar === a;
     const existing = this._colorOf(clientId);
     if (existing) {
-      // Re-sitting just renames / refreshes the address.
-      Object.assign(g.players[existing], { name: n, ip, connected: true });
+      // Re-sitting just renames / refreshes the address (and avatar, if given).
+      if (taken(existing)) return { ok: false, error: "Your opponent has that character." };
+      const p = g.players[existing];
+      Object.assign(p, { name: n, ip, connected: true, avatar: a ?? p.avatar ?? null });
       return this._commit();
     }
     if (g.status === "over") return { ok: false, error: "This game is over. Start a new game first." };
@@ -438,7 +458,8 @@ class ChessManager {
     const want = COLORS.includes(color) ? color : null;
     const free = (want ? [want] : COLORS).find((c) => this._seatOpen(c));
     if (!free) return { ok: false, error: want ? `The ${want} seat is taken.` : "Both seats are taken." };
-    g.players[free] = { clientId, name: n, ip, connected: true, lastSeenAt: this.now() };
+    if (taken(free)) return { ok: false, error: "Your opponent has that character." };
+    g.players[free] = { clientId, name: n, ip, avatar: a, connected: true, lastSeenAt: this.now() };
     this._refreshStatus();
     return this._commit();
   }
@@ -505,6 +526,8 @@ class ChessManager {
       from: m.from,
       to: m.to,
       promotion: m.promotion || null,
+      /** piece type taken by this move (p n b r q), for the avatars' reactions */
+      captured: m.captured || null,
       color,
       at: t,
       clock: tc.baseMs > 0 ? g.clocks[color] : null,
@@ -570,4 +593,4 @@ class ChessManager {
   }
 }
 
-module.exports = { ChessManager, TIME_CONTROLS, ABANDON_MS };
+module.exports = { ChessManager, TIME_CONTROLS, ABANDON_MS, AVATAR_COUNT };

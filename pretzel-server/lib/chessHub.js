@@ -14,7 +14,7 @@ function clientIpOf(req) {
 /**
  * WebSocket front for ChessManager. Protocol (JSON frames):
  *   client → { type: "hello", clientId } first, then any of
- *            sit {name, color?} | stand | move {from, to, promotion?} | resign |
+ *            sit {name, color?, avatar?} | stand | move {from, to, promotion?} | resign |
  *            offerDraw | respondDraw {accept} | newGame | setTimeControl {id}
  *   server → { type: "state", state } after every change (per-client snapshot),
  *            { type: "error", error } when an action is refused.
@@ -37,7 +37,7 @@ function createChessHub(manager) {
   });
 
   const actions = {
-    sit: (id, m, info) => manager.sit({ clientId: id, name: m.name, color: m.color, ip: info.ip }),
+    sit: (id, m, info) => manager.sit({ clientId: id, name: m.name, color: m.color, avatar: m.avatar, ip: info.ip }),
     stand: (id) => manager.stand({ clientId: id }),
     move: (id, m) => manager.move({ clientId: id, from: m.from, to: m.to, promotion: m.promotion }),
     resign: (id) => manager.resign({ clientId: id }),

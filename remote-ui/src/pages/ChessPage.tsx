@@ -2,17 +2,21 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useNavigate } from "react-router-dom";
 import "../tetris.css";
 import "../chess.css";
+import { Avatar } from "../components/chess/Avatar";
 import { Board, kingSquare, parseFen, PIECE_NAMES } from "../components/chess/Board";
 import { PastGames } from "../components/chess/PastGames";
 import { Piece, type PieceType } from "../components/chess/Piece";
 import { PixelName } from "../components/chess/PixelName";
 import { Overlay } from "../components/tetris/Overlay";
+import { AVATARS, expressionFor } from "../lib/chessAvatars";
+import { playMoveSound, unlockChessSounds } from "../lib/chessSounds";
 import { useChess, type ChessState, type Color } from "../lib/chessSocket";
 import { resultLine, seatStatus, TONE_LED, topReadout } from "../lib/chessStatus";
 import { enterFullscreen, exitFullscreen, useGameViewport } from "../lib/gameShell";
 
 const NAME_KEY = "pretzel_chess_name";
 const FLIP_KEY = "pretzel_chess_flip";
+const AVATAR_KEY = "pretzel_chess_avatar";
 const ORDER: PieceType[] = ["q", "r", "b", "n", "p"];
 const VALUE: Record<PieceType, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
 
@@ -65,7 +69,7 @@ function Clock({ ms, running, since }: { ms: number; running: boolean; since: Re
   );
 }
 
-/** Name (Fraktur), clock, and the status line for one side of the board. */
+/** Portrait, name (Fraktur), clock, and the status line for one side of the board. */
 function SeatRow({ state, color, receivedAt }: { state: ChessState; color: Color; receivedAt: RefObject<number> }) {
   const p = state.players[color];
   const status = seatStatus(state, color);
@@ -74,22 +78,24 @@ function SeatRow({ state, color, receivedAt }: { state: ChessState; color: Color
   const name = p ? p.name : "Open seat";
   return (
     <div className={`chess-seat chess-seat--${status.tone}`}>
-      <div className="chess-seat__top">
-        <span className={`chess-seat__swatch chess-seat__swatch--${color}`} aria-label={color} />
-        <PixelName text={name} className={p ? "" : "chess-pixelname--empty"} />
-        {state.timeControl !== "untimed" ? (
-          <Clock ms={state.clocks[color]} running={state.clockRunning && state.turn === color} since={receivedAt} />
-        ) : null}
-      </div>
-      <div className="chess-seat__status" role="status">
-        <span className={TONE_LED[status.tone]} aria-hidden />
-        <span className="chess-seat__text">{status.text}</span>
-        <span className="chess-seat__material" aria-label="Material advantage">
-          {up[color].map((t, i) => (
-            <Piece key={i} type={t} color={color === "white" ? "b" : "w"} className="chess-piece chess-piece--tiny" />
-          ))}
-          {lead > 0 ? <span>+{lead}</span> : null}
-        </span>
+      <Avatar id={p?.avatar ?? null} expression={expressionFor(state, color)} />
+      <div className="chess-seat__info">
+        <div className="chess-seat__top">
+          <PixelName text={name} className={p ? "" : "chess-pixelname--empty"} />
+          {state.timeControl !== "untimed" ? (
+            <Clock ms={state.clocks[color]} running={state.clockRunning && state.turn === color} since={receivedAt} />
+          ) : null}
+        </div>
+        <div className="chess-seat__status" role="status">
+          <span className={TONE_LED[status.tone]} aria-hidden />
+          <span className="chess-seat__text">{status.text}</span>
+          <span className="chess-seat__material" aria-label="Material advantage">
+            {up[color].map((t, i) => (
+              <Piece key={i} type={t} color={color === "white" ? "b" : "w"} className="chess-piece chess-piece--tiny" />
+            ))}
+            {lead > 0 ? <span>+{lead}</span> : null}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -153,6 +159,7 @@ export function ChessPage() {
   const [sheet, setSheet] = useState<null | "menu" | "past" | "help" | "resign">(null);
   const [name, setName] = useState(() => readLocal(NAME_KEY));
   const [flip, setFlip] = useState(() => readLocal(FLIP_KEY) === "1");
+  const [avatar, setAvatar] = useState(() => Number(readLocal(AVATAR_KEY)) || AVATARS[0].id);
   const [selected, setSelected] = useState<string | null>(null);
   const [promo, setPromo] = useState<{ from: string; to: string } | null>(null);
   const [seenResult, setSeenResult] = useState<string | null>(null);
@@ -169,14 +176,22 @@ export function ChessPage() {
     setPromo(null);
   }, [state?.fen]);
 
-  // Buzz when the opponent moves, so the phone can sit on the table.
+  // Any tap may unlock audio (mobile browsers need a gesture before sound plays).
+  useEffect(() => {
+    document.addEventListener("pointerdown", unlockChessSounds);
+    return () => document.removeEventListener("pointerdown", unlockChessSounds);
+  }, []);
+
+  // Click on every new move (not on load); also buzz when the opponent moves, so the phone can sit on the table.
   const seenPly = useRef<number | null>(null);
   useEffect(() => {
     if (!state) return;
     const ply = state.moves.length;
     const prev = seenPly.current;
     seenPly.current = ply;
-    if (prev !== null && ply > prev && state.you && state.moves[ply - 1].color !== state.you) navigator.vibrate?.(40);
+    if (prev === null || ply <= prev) return;
+    playMoveSound();
+    if (state.you && state.moves[ply - 1].color !== state.you) navigator.vibrate?.(40);
   }, [state]);
 
   useEffect(() => {
@@ -199,12 +214,17 @@ export function ChessPage() {
     navigate("/");
   };
 
+  // The opponent's character can't be picked; fall back to the first free one.
+  const takenAvatars = new Set([state?.players.white?.avatar, state?.players.black?.avatar]);
+  const pick = takenAvatars.has(avatar) ? (AVATARS.find((a) => !takenAvatars.has(a.id))?.id ?? avatar) : avatar;
+
   const sit = (color: Color) => {
     const n = name.trim();
     if (!n) return;
     writeLocal(NAME_KEY, n);
+    writeLocal(AVATAR_KEY, String(pick));
     enterFullscreen();
-    send({ type: "sit", name: n, color });
+    send({ type: "sit", name: n, color, avatar: pick });
   };
 
   const onSquare = (sq: string) => {
@@ -280,6 +300,24 @@ export function ChessPage() {
     const named = !!name.trim();
     overlay = (
       <Overlay title="Join game" onClose={() => setView("menu")}>
+        {seatOpen ? (
+          <div className="chess-avatar-pick" role="radiogroup" aria-label="Character">
+            {AVATARS.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                role="radio"
+                aria-checked={pick === a.id}
+                aria-label={a.name}
+                disabled={takenAvatars.has(a.id)}
+                className="chess-avatar-pick__key"
+                onClick={() => setAvatar(a.id)}
+              >
+                <Avatar id={a.id} expression={pick === a.id ? "smug" : "neutral"} />
+              </button>
+            ))}
+          </div>
+        ) : null}
         {seatOpen ? (
           <input
             className="pretzel-input"

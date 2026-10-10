@@ -6,3 +6,5 @@ pretzel-server/data/chores-state.bak.json
 pretzel-server/data/chess-state.json
 pretzel-server/data/chess-games.json
 pretzel-server/data/bulletin.json
+# Pixelta font is personal-use only; keep it out of this public repo (copy to the Pi by hand)
+remote-ui/public/fonts/Pixelta.ttf

@@ -12,6 +12,9 @@ export type MoveRecord = {
   color: Color;
   at: number;
   clock: number | null;
+  promotion: string | null;
+  /** Piece type this move took ("p" "n" "b" "r" "q"), or null. */
+  captured: string | null;
 };
 
 export type TimeControl = { id: string; label: string; baseMs: number; incMs: number };
@@ -29,7 +32,7 @@ export type ChessState = {
   legalMoves: LegalMove[];
   moves: MoveRecord[];
   lastMove: { from: string; to: string } | null;
-  players: Record<Color, { name: string; connected: boolean } | null>;
+  players: Record<Color, { name: string; connected: boolean; avatar: number | null } | null>;
   you: Color | null;
   timeControl: string;
   timeControls: TimeControl[];
@@ -48,7 +51,7 @@ export type ChessState = {
 };
 
 export type ClientMessage =
-  | { type: "sit"; name: string; color?: Color }
+  | { type: "sit"; name: string; color?: Color; avatar?: number }
   | { type: "stand" }
   | { type: "move"; from: string; to: string; promotion?: string }
   | { type: "resign" }

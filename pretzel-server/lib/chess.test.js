@@ -85,6 +85,39 @@ test("en passant and promotion", () => {
   assert.equal(m.move({ clientId: B, from: "a4", to: "a3", promotion: "k" }).error, "Illegal move.");
 });
 
+test("avatars: kept per seat, never shared, invalid values ignored", () => {
+  const { m } = setup({ seat: false });
+  assert.ok(m.sit({ clientId: W, name: "Wendy", color: "white", avatar: 3 }).ok);
+  assert.equal(m.sit({ clientId: B, name: "Bob", avatar: 3 }).error, "Your opponent has that character.");
+  assert.ok(m.sit({ clientId: B, name: "Bob", avatar: 99 }).ok);
+  assert.equal(m.snapshot(S).players.black.avatar, null);
+  assert.ok(m.sit({ clientId: B, name: "Bob", avatar: 5 }).ok); // re-sit changes it
+  assert.equal(m.sit({ clientId: B, name: "Bob", avatar: 3 }).error, "Your opponent has that character.");
+  assert.ok(m.sit({ clientId: B, name: "Bobby" }).ok); // re-sit without one keeps it
+  const s = m.snapshot(S);
+  assert.equal(s.players.white.avatar, 3);
+  assert.deepEqual(s.players.black, { name: "Bobby", connected: true, avatar: 5 });
+  // Avatars follow the players into the rematch, colours swapped.
+  play(m, "e2e4");
+  assert.ok(m.resign({ clientId: B }).ok);
+  assert.ok(m.newGame({ clientId: W }).ok);
+  const r = m.snapshot(S);
+  assert.equal(r.players.white.avatar, 5);
+  assert.equal(r.players.black.avatar, 3);
+});
+
+test("move records carry the captured piece and promotion", () => {
+  const { m } = setup();
+  play(m, "e2e4 d7d5 e4d5 d8d5");
+  const moves = m.snapshot(S).moves;
+  assert.equal(moves[2].captured, "p");
+  assert.equal(moves[3].captured, "p");
+  assert.equal(moves[0].captured, null);
+  play(m, "b1c3 d5a2 a1a2");
+  assert.equal(m.snapshot(S).moves.at(-1).captured, "q");
+  assert.equal(m.snapshot(S).moves.at(-1).promotion, null);
+});
+
 test("stalemate and threefold repetition end the game", () => {
   // Fastest known stalemate (Sam Loyd, 10 moves).
   const a = setup();
