@@ -1,41 +1,105 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
-import { Game, type Action } from "../../lib/tetris/engine";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import { Game } from "../../lib/tetris/engine";
 import { drawGame, drawQueue, drawSnapshot } from "../../lib/tetris/render";
 import type { ClientMessage, TetrisEvent, TetrisStatus } from "../../lib/tetrisSocket";
 
-const KEYS: Record<string, Action> = {
+/** The four on-screen controls. Hard drop is a double-tap on "down". */
+export type PadKey = "left" | "right" | "down" | "cw";
+
+const HIDDEN_FORFEIT_MS = 3000;
+/** Second ▼ press within this window of the first is a hard drop. */
+const DOUBLE_TAP_MS = 250;
+const KEYS: Record<string, PadKey> = {
   ArrowLeft: "left",
   ArrowRight: "right",
-  ArrowDown: "soft",
+  ArrowDown: "down",
   ArrowUp: "cw",
-  KeyX: "cw",
-  KeyZ: "ccw",
-  Space: "hard",
 };
-const HIDDEN_FORFEIT_MS = 3000;
+/** Opponent board and next queue, relative to the main board's cell. */
+const OPP_SCALE = 0.4;
+const QUEUE_SCALE = 0.55;
 
-/** Cell size in CSS px that fits the main board plus the side column in the container and viewport. */
-export function useCellSize(ref: RefObject<HTMLElement | null>): number {
-  const [cell, setCell] = useState(24);
+/** Largest cell (CSS px) for which `fit(width, height)` of the element holds; follows resizes. */
+export function useFitCell(ref: RefObject<HTMLElement | null>, fit: (w: number, h: number) => number): number {
+  const [cell, setCell] = useState(20);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const calc = () => {
-      // Main board is 10 cells wide; the side column is 5 cells (opponent at half size).
-      const byW = Math.floor((el.clientWidth - 12) / 15);
-      const byH = Math.floor((window.innerHeight - 300) / 20);
-      setCell(Math.max(12, Math.min(30, byW, byH)));
-    };
+    const calc = () => setCell(Math.max(8, Math.min(32, Math.floor(fit(el.clientWidth, el.clientHeight)))));
     calc();
     const ro = new ResizeObserver(calc);
     ro.observe(el);
-    window.addEventListener("resize", calc);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", calc);
-    };
-  }, [ref]);
+    return () => ro.disconnect();
+  }, [ref, fit]);
   return cell;
+}
+
+/** Main board (10 cells) plus a side column about 4 cells wide, 20 cells tall. */
+const fitPlayer = (w: number, h: number) => Math.min((w - 28) / 14.2, (h - 8) / 20);
+/** Two snapshot boards side by side. */
+const fitSpectator = (w: number, h: number) => Math.min((w - 40) / 20, (h - 30) / 20);
+
+/**
+ * Walnut control panel with four Moog panel caps. Presses act on pointerdown
+ * with pointer capture, so response is immediate, several keys can be held at
+ * once, and sliding a finger off a key still releases it.
+ */
+export function TouchPad({
+  onPress,
+  onRelease,
+  disabled = false,
+}: {
+  onPress?: (k: PadKey) => void;
+  onRelease?: (k: PadKey) => void;
+  disabled?: boolean;
+}) {
+  const down = (k: PadKey) => (e: ReactPointerEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    if (disabled) return;
+    const el = e.currentTarget;
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      /* pointer already gone */
+    }
+    el.classList.add("is-pressed");
+    navigator.vibrate?.(8);
+    onPress?.(k);
+  };
+  const up = (k: PadKey) => (e: ReactPointerEvent<HTMLButtonElement>) => {
+    const el = e.currentTarget;
+    if (!el.classList.contains("is-pressed")) return;
+    el.classList.remove("is-pressed");
+    onRelease?.(k);
+  };
+  const key = (k: PadKey, glyph: string, label: string, accent = false) => (
+    <button
+      type="button"
+      className={`pretzel-btn-icon-wide tetris-key${accent ? " pretzel-key--accent" : ""}`}
+      aria-label={label}
+      data-key={k}
+      disabled={disabled}
+      onPointerDown={down(k)}
+      onPointerUp={up(k)}
+      onPointerCancel={up(k)}
+      onLostPointerCapture={up(k)}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {glyph}
+    </button>
+  );
+  return (
+    <div className="tetris-pad pretzel-nav-gradient">
+      <div className="tetris-pad__cluster">
+        {key("left", "◀", "Move left")}
+        {key("right", "▶", "Move right")}
+      </div>
+      <div className="tetris-pad__cluster">
+        {key("down", "▼", "Soft drop (double-tap to hard drop)")}
+        {key("cw", "⟳", "Rotate", true)}
+      </div>
+    </div>
+  );
 }
 
 type Props = {
@@ -47,21 +111,23 @@ type Props = {
   clockOffset: number;
   you: 0 | 1;
   opponentName: string;
-  /** Shown over the board once the match is over. */
-  resultText: string | null;
   send: (m: ClientMessage) => void;
   subscribe: (fn: (e: TetrisEvent) => void) => () => void;
 };
 
-/** Local player's game: runs the engine in a rAF loop and syncs sparse events with the Pi. */
+/**
+ * Local player's game: the board stage plus the touch pad (two rows of the
+ * full-screen shell). Runs the engine in a rAF loop and syncs sparse events with the Pi.
+ */
 export function TetrisGame(props: Props) {
   const { matchId, seed, you, send, subscribe } = props;
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLCanvasElement>(null);
   const queueRef = useRef<HTMLCanvasElement>(null);
   const oppRef = useRef<HTMLCanvasElement>(null);
   const gameRef = useRef<Game | null>(null);
-  const cell = useCellSize(wrapRef);
+  const lastDownRef = useRef(0);
+  const cell = useFitCell(stageRef, fitPlayer);
   const [stats, setStats] = useState({ level: 1, lines: 0, sent: 0 });
 
   // Latest props for the animation loop without restarting it.
@@ -99,13 +165,11 @@ export function TetrisGame(props: Props) {
       else if (!game.started && serverNow >= L.startsAt) game.start();
       game.update(dt);
 
-      let overlay: string | null = null;
-      if (L.status === "over") overlay = L.resultText;
-      else if (!game.started) overlay = String(Math.max(1, Math.ceil((L.startsAt - serverNow) / 1000)));
-
-      if (mainRef.current) drawGame(mainRef.current, game, L.cell, overlay);
-      if (queueRef.current) drawQueue(queueRef.current, game.nextPieces(3), Math.round(L.cell * 0.6));
-      if (oppRef.current) drawSnapshot(oppRef.current, oppCells, Math.round(L.cell / 2));
+      const countdown =
+        L.status !== "over" && !game.started ? String(Math.max(1, Math.ceil((L.startsAt - serverNow) / 1000))) : null;
+      if (mainRef.current) drawGame(mainRef.current, game, L.cell, countdown);
+      if (queueRef.current) drawQueue(queueRef.current, game.nextPieces(3), Math.round(L.cell * QUEUE_SCALE));
+      if (oppRef.current) drawSnapshot(oppRef.current, oppCells, Math.round(L.cell * OPP_SCALE));
 
       if (game.level !== shown.level || game.linesCleared !== shown.lines || game.linesSent !== shown.sent) {
         shown = { level: game.level, lines: game.linesCleared, sent: game.linesSent };
@@ -126,32 +190,57 @@ export function TetrisGame(props: Props) {
     };
   }, [matchId, seed, you, send, subscribe]);
 
-  // Keyboard: engine handles auto-repeat, so ignore the OS key repeat.
+  const press = useCallback((k: PadKey) => {
+    const g = gameRef.current;
+    if (!g) return;
+    if (k !== "down") {
+      g.press(k);
+      return;
+    }
+    const now = performance.now();
+    if (now - lastDownRef.current < DOUBLE_TAP_MS) {
+      lastDownRef.current = 0;
+      g.release("soft");
+      g.press("hard");
+    } else {
+      lastDownRef.current = now;
+      g.press("soft");
+    }
+  }, []);
+
+  const release = useCallback((k: PadKey) => {
+    const g = gameRef.current;
+    if (!g) return;
+    if (k === "left" || k === "right") g.release(k);
+    else if (k === "down") g.release("soft");
+  }, []);
+
+  // Arrow keys mirror the four pad keys (handy when testing on a laptop).
   useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      const a = KEYS[e.code];
-      if (!a) return;
+    const kd = (e: KeyboardEvent) => {
+      const k = KEYS[e.code];
+      if (!k) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
       e.preventDefault();
-      if (!e.repeat) gameRef.current?.press(a);
+      if (!e.repeat) press(k);
     };
-    const up = (e: KeyboardEvent) => {
-      const a = KEYS[e.code];
-      if (a) gameRef.current?.release(a);
+    const ku = (e: KeyboardEvent) => {
+      const k = KEYS[e.code];
+      if (k) release(k);
     };
     const blur = () => {
-      for (const a of ["left", "right", "soft"] as const) gameRef.current?.release(a);
+      for (const k of ["left", "right", "down"] as const) release(k);
     };
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
+    window.addEventListener("keydown", kd);
+    window.addEventListener("keyup", ku);
     window.addEventListener("blur", blur);
     return () => {
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
+      window.removeEventListener("keydown", kd);
+      window.removeEventListener("keyup", ku);
       window.removeEventListener("blur", blur);
     };
-  }, []);
+  }, [press, release]);
 
   // A hidden tab stops requestAnimationFrame; after a short grace, concede.
   useEffect(() => {
@@ -173,59 +262,58 @@ export function TetrisGame(props: Props) {
     };
   }, [send]);
 
-  const pad = (a: Action, label: string, aria: string) => (
-    <button
-      type="button"
-      className={`pretzel-btn-icon-wide tetris-pad-btn${a === "hard" ? " pretzel-key--accent" : ""}`}
-      aria-label={aria}
-      onPointerDown={(e) => {
-        e.preventDefault();
-        gameRef.current?.press(a);
-      }}
-      onPointerUp={() => gameRef.current?.release(a)}
-      onPointerLeave={() => gameRef.current?.release(a)}
-      onPointerCancel={() => gameRef.current?.release(a)}
-      onContextMenu={(e) => e.preventDefault()}
-    >
-      {label}
-    </button>
-  );
-
   return (
-    <div ref={wrapRef} className="tetris-play">
-      <div className="tetris-boards">
-        <canvas ref={mainRef} className="tetris-canvas" aria-label="Your board" />
-        <div className="tetris-side" style={{ width: cell * 5 }}>
-          <div className="pretzel-text-group-label">Next</div>
-          <canvas ref={queueRef} className="tetris-canvas" aria-label="Next pieces" />
-          <dl className="tetris-stats">
-            <dt className="pretzel-text-group-label">Level</dt>
-            <dd className="pretzel-readout">{String(stats.level).padStart(2, "0")}</dd>
-            <dt className="pretzel-text-group-label">Lines</dt>
-            <dd className="pretzel-readout">{String(stats.lines).padStart(3, "0")}</dd>
-            <dt className="pretzel-text-group-label">Sent</dt>
-            <dd className="pretzel-readout">{String(stats.sent).padStart(3, "0")}</dd>
-          </dl>
-          <div className="pretzel-text-group-label tetris-label--opp" title={props.opponentName}>
-            {props.opponentName}
+    <>
+      <div ref={stageRef} className="tetris-stage">
+        <div className="tetris-boards">
+          <canvas ref={mainRef} className="tetris-canvas" aria-label="Your board" />
+          <div className="tetris-side">
+            <div className="pretzel-text-group-label">Next</div>
+            <canvas ref={queueRef} className="tetris-canvas" aria-label="Next pieces" />
+            <dl className="tetris-stats">
+              <dt className="pretzel-text-group-label">Lvl</dt>
+              <dd className="pretzel-readout">{String(stats.level).padStart(2, "0")}</dd>
+              <dt className="pretzel-text-group-label">Lns</dt>
+              <dd className="pretzel-readout">{String(stats.lines).padStart(3, "0")}</dd>
+              <dt className="pretzel-text-group-label">Snt</dt>
+              <dd className="pretzel-readout">{String(stats.sent).padStart(3, "0")}</dd>
+            </dl>
+            <div
+              className="pretzel-text-group-label tetris-label--opp"
+              style={{ maxWidth: cell * 10 * OPP_SCALE }}
+              title={props.opponentName}
+            >
+              {props.opponentName}
+            </div>
+            <canvas ref={oppRef} className="tetris-canvas" aria-label="Opponent board" />
           </div>
-          <canvas ref={oppRef} className="tetris-canvas" aria-label="Opponent board" />
         </div>
       </div>
-      <div className="tetris-pad">
-        {pad("left", "◀", "Move left")}
-        {pad("right", "▶", "Move right")}
-        {pad("soft", "▼", "Soft drop")}
-        {pad("ccw", "⟲", "Rotate counter-clockwise")}
-        {pad("cw", "⟳", "Rotate clockwise")}
-        {pad("hard", "⤓", "Hard drop")}
+      <TouchPad onPress={press} onRelease={release} />
+    </>
+  );
+}
+
+/** Empty board behind the lobby / waiting overlays, so the shell keeps its shape. */
+export function IdleStage() {
+  const stageRef = useRef<HTMLDivElement>(null);
+  const mainRef = useRef<HTMLCanvasElement>(null);
+  const cell = useFitCell(stageRef, fitPlayer);
+  useEffect(() => {
+    if (mainRef.current) drawSnapshot(mainRef.current, null, cell);
+  }, [cell]);
+  return (
+    <>
+      <div ref={stageRef} className="tetris-stage">
+        <canvas ref={mainRef} className="tetris-canvas" aria-hidden />
       </div>
-    </div>
+      <TouchPad disabled />
+    </>
   );
 }
 
 /** Third-party view: both players' relayed boards side by side. */
-export function SpectatorBoards({
+export function SpectatorStage({
   matchId,
   names,
   subscribe,
@@ -234,16 +322,17 @@ export function SpectatorBoards({
   names: [string, string];
   subscribe: (fn: (e: TetrisEvent) => void) => () => void;
 }) {
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const refs = [useRef<HTMLCanvasElement>(null), useRef<HTMLCanvasElement>(null)];
   const boards = useRef<[string | null, string | null]>([null, null]);
-  const cell = useCellSize(wrapRef);
-  const size = Math.max(8, Math.round(cell * 0.7));
+  const size = useFitCell(stageRef, fitSpectator);
 
   useEffect(() => {
     boards.current = [null, null];
-    const draw = () =>
-      refs.forEach((r, i) => r.current && drawSnapshot(r.current, boards.current[i], size));
+  }, [matchId]);
+
+  useEffect(() => {
+    const draw = () => refs.forEach((r, i) => r.current && drawSnapshot(r.current, boards.current[i], size));
     draw();
     return subscribe((e) => {
       if (e.type !== "board" || e.matchId !== matchId) return;
@@ -254,13 +343,20 @@ export function SpectatorBoards({
   }, [matchId, size, subscribe]);
 
   return (
-    <div ref={wrapRef} className="tetris-spectate">
-      {refs.map((r, i) => (
-        <div key={i} className="tetris-spectate-board">
-          <div className="pretzel-text-group-label">{names[i]}</div>
-          <canvas ref={r} className="tetris-canvas" aria-label={`${names[i]} board`} />
+    <>
+      <div ref={stageRef} className="tetris-stage">
+        <div className="tetris-spectate">
+          {refs.map((r, i) => (
+            <div key={i} className="tetris-spectate-board">
+              <div className="pretzel-text-group-label">{names[i]}</div>
+              <canvas ref={r} className="tetris-canvas" aria-label={`${names[i]} board`} />
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
+      </div>
+      <div className="tetris-pad pretzel-nav-gradient tetris-pad--label">
+        <span className="pretzel-readout">SPECTATING</span>
+      </div>
+    </>
   );
 }

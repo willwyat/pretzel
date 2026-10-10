@@ -129,3 +129,43 @@ test("rematch starts only when both players are ready, with a new seed", () => {
   assert.equal(m.boardSeat({ clientId: "alice-0001", matchId: first.id }), null);
   assert.equal(m.boardSeat({ clientId: "alice-0001", matchId: m.matchId }), 0);
 });
+
+test("a newcomer after a finished match does not inherit its result", () => {
+  const { m } = startMatch();
+  m.topOut({ clientId: "alice-0001", matchId: m.matchId });
+  m.leave({ clientId: "alice-0001" });
+  // Bob played the last match, so the result stays for him.
+  assert.equal(m.status, "over");
+  assert.equal(m.snapshot("bobby-0002").playedLast, true);
+  m.join({ clientId: "carol-0003", name: "Carol" });
+  assert.equal(m.snapshot("carol-0003").playedLast, false);
+  assert.equal(m.boardSeat({ clientId: "carol-0003", matchId: m.matchId }), null);
+  // Bob presses Play again; Carol is already ready.
+  m.ready({ clientId: "bobby-0002" });
+  assert.equal(m.status, "countdown");
+  assert.equal(m.snapshot("carol-0003").playedLast, true);
+});
+
+test("when everyone from a finished match has left, the lobby resets", () => {
+  const { m } = startMatch();
+  m.topOut({ clientId: "alice-0001", matchId: m.matchId });
+  m.leave({ clientId: "alice-0001" });
+  m.leave({ clientId: "bobby-0002" });
+  assert.equal(m.status, "waiting");
+  assert.equal(m.matchId, null);
+  assert.equal(m.winner, null);
+  m.join({ clientId: "carol-0003", name: "Carol" });
+  assert.equal(m.status, "waiting");
+  assert.equal(m.snapshot("carol-0003").you, 0);
+});
+
+test("a newcomer seated during an old result starts fresh if the old player leaves", () => {
+  const { m } = startMatch();
+  m.topOut({ clientId: "alice-0001", matchId: m.matchId });
+  m.leave({ clientId: "alice-0001" });
+  m.join({ clientId: "carol-0003", name: "Carol" });
+  m.leave({ clientId: "bobby-0002" });
+  assert.equal(m.status, "waiting");
+  assert.equal(m.matchId, null);
+  assert.equal(m.seats[0].ready, true);
+});

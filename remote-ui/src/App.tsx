@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
 import { Navbar } from "./components/Navbar";
 import { ChessPage } from "./pages/ChessPage";
 import { HomePage } from "./pages/HomePage";
@@ -9,6 +9,10 @@ import type { HomeRoomTab } from "./types/homeRoom";
 
 export default function App() {
   const [homeRoom, setHomeRoom] = useState<HomeRoomTab>("lounge");
+  const { pathname } = useLocation();
+
+  // Tetris is a full-screen game mode: no app shell, no room navbar.
+  if (pathname === "/tetris" || pathname.startsWith("/tetris/")) return <TetrisPage />;
 
   return (
     <>
@@ -20,7 +24,6 @@ export default function App() {
           />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/chess" element={<ChessPage />} />
-          <Route path="/tetris" element={<TetrisPage />} />
         </Routes>
       </div>
       <Navbar activeRoom={homeRoom} onActiveRoomChange={setHomeRoom} />
