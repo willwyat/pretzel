@@ -2,8 +2,8 @@ import { useEffect, useRef } from "react";
 
 const FONT = '"UnifrakturMaguntia"';
 /** Glyphs are drawn this many CSS px tall, then each canvas pixel is shown as SCALE×SCALE CSS px. */
-const BASE_PX = 15;
-const SCALE = 2;
+const BASE_PX = 20;
+const SCALE = 1.5;
 
 /**
  * Player name in UnifrakturMaguntia with a hard pixel look: drawn small on a
