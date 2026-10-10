@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { clientId } from "./clientId";
 
 export type Color = "white" | "black";
 
@@ -56,24 +57,6 @@ export type ClientMessage =
   | { type: "newGame" }
   | { type: "setTimeControl"; id: string };
 
-function randomId(): string {
-  return crypto.randomUUID?.() ?? `c${Date.now()}${Math.random().toString(36).slice(2)}`;
-}
-
-/** Stable per-browser id; it is what keeps your seat across reloads and reconnects. */
-function clientId(): string {
-  try {
-    let id = localStorage.getItem("pretzel_chess_client");
-    if (!id || id.length < 8) {
-      id = randomId();
-      localStorage.setItem("pretzel_chess_client", id);
-    }
-    return id;
-  } catch {
-    return randomId();
-  }
-}
-
 /**
  * Live connection to the Pi's chess referee. Reconnects with backoff, and right
  * away when a sleeping phone comes back to the foreground.
@@ -90,7 +73,7 @@ export function useChess() {
     let disposed = false;
     let retry = 0;
     let timer: number | undefined;
-    const id = clientId();
+    const id = clientId("pretzel_chess_client");
 
     const open = () => {
       window.clearTimeout(timer);

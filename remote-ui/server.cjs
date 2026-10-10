@@ -42,25 +42,16 @@ app.use(
   }),
 );
 
-app.use(
-  "/pretzel",
-  createProxyMiddleware({
-    target: PRETZEL_SERVER,
-    changeOrigin: true,
-    pathRewrite: (p) => "/pretzel" + p,
-  }),
-);
-
-// Chess WebSocket. Upgrades bypass Express (full path, no mount stripping), so
-// this proxy is wired to the server's "upgrade" event below. xfwd passes the
-// player's IP on so pretzel-server can label them in the LAN device list.
-const chessSocketProxy = createProxyMiddleware({
+const pretzelProxy = createProxyMiddleware({
   target: PRETZEL_SERVER,
   changeOrigin: true,
   ws: true,
-  xfwd: true,
-  pathFilter: "/pretzel/chess/ws",
+  xfwd: true, // pass client IP on (chess records it)
+  // HTTP requests arrive with the mount path stripped; WebSocket upgrades are
+  // handled outside Express and keep the full path.
+  pathRewrite: (p) => (p.startsWith("/pretzel/") ? p : "/pretzel" + p),
 });
+app.use("/pretzel", pretzelProxy);
 
 app.use(
   "/lifx",
@@ -80,8 +71,8 @@ if (!fs.existsSync(distIndex)) {
   process.exit(1);
 }
 
-// SPA: serve React app for /settings and /chess (no static file on disk).
-app.get(/^\/(settings|chess)(\/.*)?$/, (req, res) => {
+// SPA: serve React app for /settings, /chess and /tetris (no static file on disk).
+app.get(/^\/(settings|chess|tetris)(\/.*)?$/, (req, res) => {
   res.sendFile(distIndex);
 });
 
@@ -94,7 +85,8 @@ const server = app.listen(PORT, "0.0.0.0", () => {
   );
 });
 
-server.on("upgrade", chessSocketProxy.upgrade);
+// WebSocket upgrades (chess) are forwarded to pretzel-server.
+server.on("upgrade", pretzelProxy.upgrade);
 
 server.on("error", (err) => {
   console.error("remote-ui listen error:", err.message);

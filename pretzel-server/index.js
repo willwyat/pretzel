@@ -14,7 +14,10 @@ const { ChoresManager } = require("./lib/chores");
 const { RemindersScheduler } = require("./lib/reminders");
 const { ChessManager } = require("./lib/chess");
 const { createChessHub } = require("./lib/chessHub");
+const { TetrisManager } = require("./lib/tetris");
+const { Bulletin } = require("./lib/bulletin");
 const { listDevices } = require("./lib/devices");
+const { WebSocketServer } = require("ws");
 
 const PORT =
   Number(process.env.PORT) && Number.isFinite(Number(process.env.PORT))
@@ -206,6 +209,9 @@ async function speakWithReminderSfx(
 
 const choresManager = new ChoresManager(dataDir);
 choresManager.reload();
+
+const bulletin = new Bulletin(dataDir);
+bulletin.load();
 
 const scheduler = new RemindersScheduler({
   dataDir,
@@ -543,6 +549,31 @@ app.post("/pretzel/volume", (req, res) => {
 
 app.get("/pretzel/status", (req, res) => {
   res.json({ ok: true, host: "pretzel" });
+});
+
+app.get("/pretzel/bulletin", (_req, res) => {
+  res.json({ ok: true, notes: bulletin.list() });
+});
+
+app.post("/pretzel/bulletin", (req, res) => {
+  const result = bulletin.add(req.body?.message);
+  if (!result.ok) return res.status(400).json(result);
+  res.status(201).json(result);
+});
+
+app.post("/pretzel/bulletin/:id/seen", (req, res) => {
+  if (typeof req.body?.isSeen !== "boolean") {
+    return res.status(400).json({ ok: false, error: "isSeen must be a boolean" });
+  }
+  const result = bulletin.setSeen(req.params.id, req.body.isSeen);
+  if (!result.ok) return res.status(404).json(result);
+  res.json(result);
+});
+
+app.delete("/pretzel/bulletin/:id", (req, res) => {
+  const result = bulletin.remove(req.params.id);
+  if (!result.ok) return res.status(404).json(result);
+  res.json(result);
 });
 
 app.get("/pretzel/chores", (req, res) => {
@@ -931,6 +962,103 @@ app.get("/pretzel/admin/devices", assertSettingsPass, async (req, res) => {
   }
 });
 
+// ── Tetris (2-player versus; clients simulate, Pi seats + relays) ──
+const tetrisManager = new TetrisManager();
+const tetrisWss = new WebSocketServer({ noServer: true, maxPayload: 1024 });
+/** ws -> { clientId } */
+const tetrisClients = new Map();
+const TETRIS_BOARD_RE = /^[0-8]{200}$/;
+
+function tetrisSend(ws, msg) {
+  if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
+}
+
+tetrisManager.subscribe(() => {
+  for (const [ws, info] of tetrisClients) {
+    if (info.clientId) tetrisSend(ws, { type: "state", state: tetrisManager.snapshot(info.clientId) });
+  }
+});
+
+tetrisWss.on("connection", (ws) => {
+  const info = { clientId: null };
+  tetrisClients.set(ws, info);
+  ws.isAlive = true;
+  ws.on("pong", () => {
+    ws.isAlive = true;
+  });
+
+  ws.on("message", (data) => {
+    let msg;
+    try {
+      msg = JSON.parse(String(data));
+    } catch {
+      return;
+    }
+    if (!msg || typeof msg.type !== "string") return;
+    if (msg.type === "hello") {
+      if (typeof msg.clientId !== "string" || msg.clientId.length < 8 || msg.clientId.length > 64) return;
+      info.clientId = msg.clientId;
+      tetrisManager.setConnected(info.clientId, true);
+      tetrisSend(ws, { type: "state", state: tetrisManager.snapshot(info.clientId) });
+      return;
+    }
+    if (!info.clientId) return;
+    const id = info.clientId;
+    const matchId = msg.matchId;
+    let r;
+    switch (msg.type) {
+      case "join": r = tetrisManager.join({ clientId: id, name: msg.name }); break;
+      case "leave": r = tetrisManager.leave({ clientId: id }); break;
+      case "ready": r = tetrisManager.ready({ clientId: id }); break;
+      case "topout": r = tetrisManager.topOut({ clientId: id, matchId }); break;
+      case "forfeit": r = tetrisManager.forfeit({ clientId: id, matchId, reason: msg.reason }); break;
+      case "board": {
+        // Spectators and the opponent see this board; the sender does not need it back.
+        if (typeof msg.cells !== "string" || !TETRIS_BOARD_RE.test(msg.cells)) return;
+        const seat = tetrisManager.boardSeat({ clientId: id, matchId });
+        if (seat === null) return;
+        const out = { type: "board", matchId, seat, cells: msg.cells };
+        for (const other of tetrisClients.keys()) if (other !== ws) tetrisSend(other, out);
+        return;
+      }
+      case "attack": {
+        const a = tetrisManager.attack({ clientId: id, matchId, lines: msg.lines });
+        if (!a.ok) return;
+        for (const [other, oi] of tetrisClients) {
+          if (oi.clientId === a.toClientId) tetrisSend(other, { type: "garbage", matchId, lines: msg.lines });
+        }
+        return;
+      }
+      default: return;
+    }
+    if (!r.ok) tetrisSend(ws, { type: "error", error: r.error });
+  });
+
+  ws.on("close", () => {
+    tetrisClients.delete(ws);
+    const id = info.clientId;
+    if (id && ![...tetrisClients.values()].some((i) => i.clientId === id)) {
+      tetrisManager.setConnected(id, false);
+    }
+  });
+});
+
+setInterval(() => {
+  for (const ws of tetrisClients.keys()) {
+    if (!ws.isAlive) {
+      ws.terminate();
+      continue;
+    }
+    ws.isAlive = false;
+    ws.ping();
+  }
+}, 30_000).unref();
+
+const wsRoutes = new Map([
+  ["/pretzel/chess/ws", chessHub.wss],
+  ["/pretzel/tetris/ws", tetrisWss],
+]);
+
 (async () => {
   try {
     await scheduler.reload();
@@ -941,8 +1069,8 @@ app.get("/pretzel/admin/devices", assertSettingsPass, async (req, res) => {
     console.log(`Pretzel server listening on ${PORT}`);
   });
   server.on("upgrade", (req, socket, head) => {
-    const path = (req.url || "").split("?")[0];
-    if (path === "/pretzel/chess/ws") chessHub.handleUpgrade(req, socket, head);
-    else socket.destroy();
+    const wss = wsRoutes.get((req.url || "").split("?")[0]);
+    if (!wss) return socket.destroy();
+    wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws, req));
   });
 })();

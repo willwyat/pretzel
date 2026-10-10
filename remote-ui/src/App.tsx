@@ -1,24 +1,19 @@
-import { lazy, Suspense, useState } from "react";
+import { useState } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { Navbar } from "./components/Navbar";
+import { ChessPage } from "./pages/ChessPage";
 import { HomePage } from "./pages/HomePage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { TetrisPage } from "./pages/TetrisPage";
 import type { HomeRoomTab } from "./types/homeRoom";
-
-const ChessPage = lazy(() => import("./pages/ChessPage").then((m) => ({ default: m.ChessPage })));
 
 export default function App() {
   const [homeRoom, setHomeRoom] = useState<HomeRoomTab>("lounge");
   const { pathname } = useLocation();
 
-  // Chess is its own full-screen "desktop" (Windows 95 look), outside the Moog shell.
-  if (/^\/chess(\/|$)/.test(pathname)) {
-    return (
-      <Suspense fallback={null}>
-        <ChessPage />
-      </Suspense>
-    );
-  }
+  // Games are full-screen modes: no app shell, no room navbar.
+  if (pathname === "/tetris" || pathname.startsWith("/tetris/")) return <TetrisPage />;
+  if (pathname === "/chess" || pathname.startsWith("/chess/")) return <ChessPage />;
 
   return (
     <>

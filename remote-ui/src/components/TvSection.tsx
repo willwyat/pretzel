@@ -374,7 +374,9 @@ export function TvSection() {
         </div>
         <div className="flex flex-shrink-0 items-center gap-2">
           <div className="flex items-center gap-2">
-            <span className="pretzel-rocker__caption">{powerLabel}</span>
+            {powerLabel !== "Power" ? (
+              <span className="pretzel-rocker__caption">{powerLabel}</span>
+            ) : null}
             <button
               type="button"
               role="switch"

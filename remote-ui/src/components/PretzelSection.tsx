@@ -165,7 +165,7 @@ export function PretzelSection() {
         </div>
       </div>
 
-      <div className="pretzel-panel__body pretzel-panel__block-bordered">
+      <div className="pretzel-panel__body">
         <label
           htmlFor="pretzel-speak-text"
           className="pretzel-text-panel-muted mb-1.5 block text-xs font-medium"

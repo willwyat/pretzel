@@ -20,7 +20,7 @@ function clientIpOf(req) {
  *            { type: "error", error } when an action is refused.
  *
  * @param {import("./chess").ChessManager} manager
- * @returns {{ handleUpgrade(req, socket, head): void }}
+ * @returns {{ wss: WebSocketServer }} — route upgrades for /pretzel/chess/ws to `wss`.
  */
 function createChessHub(manager) {
   const wss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
@@ -99,11 +99,7 @@ function createChessHub(manager) {
     }
   }, HEARTBEAT_MS).unref();
 
-  return {
-    handleUpgrade(req, socket, head) {
-      wss.handleUpgrade(req, socket, head, (ws) => wss.emit("connection", ws, req));
-    },
-  };
+  return { wss };
 }
 
 module.exports = { createChessHub };

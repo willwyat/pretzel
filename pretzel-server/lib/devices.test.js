@@ -2,7 +2,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { parseIpNeigh, parseProcArp, defaultRoute, isRandomMac } = require("../lib/devices");
+const { parseIpNeigh, parseProcArp, defaultRoute, isRandomMac } = require("./devices");
 
 test("parses ip neigh output", () => {
   const rows = parseIpNeigh(

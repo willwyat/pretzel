@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const { mkdtempSync, readFileSync } = require("fs");
 const { tmpdir } = require("os");
 const { join } = require("path");
-const { ChessManager, ABANDON_MS } = require("../lib/chess");
+const { ChessManager, ABANDON_MS } = require("./chess");
 
 const W = "white-client";
 const B = "black-client";

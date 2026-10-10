@@ -1,147 +1,214 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useNavigate } from "react-router-dom";
+import "../tetris.css";
 import "../chess.css";
-import { Board, kingSquare, PIECE_NAMES } from "../components/chess/Board";
-import { MoveList } from "../components/chess/MoveList";
+import { Board, kingSquare, parseFen, PIECE_NAMES } from "../components/chess/Board";
 import { PastGames } from "../components/chess/PastGames";
-import { Piece } from "../components/chess/Piece";
-import { PlayerPanel } from "../components/chess/PlayerPanel";
-import { MenuBar, MsgBox, WinWindow } from "../components/chess/win";
+import { Piece, type PieceType } from "../components/chess/Piece";
+import { PixelName } from "../components/chess/PixelName";
+import { Overlay } from "../components/tetris/Overlay";
 import { useChess, type ChessState, type Color } from "../lib/chessSocket";
+import { resultLine, seatStatus, TONE_LED, topReadout } from "../lib/chessStatus";
+import { enterFullscreen, exitFullscreen, useGameViewport } from "../lib/gameShell";
 
 const NAME_KEY = "pretzel_chess_name";
-const PREFS_KEY = "pretzel_chess_prefs";
+const FLIP_KEY = "pretzel_chess_flip";
+const ORDER: PieceType[] = ["q", "r", "b", "n", "p"];
+const VALUE: Record<PieceType, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
 
-type Prefs = { flip: boolean; coords: boolean; sound: boolean };
-const DEFAULT_PREFS: Prefs = { flip: false, coords: true, sound: true };
-
-function load<T>(key: string, fallback: T): T {
+function readLocal(key: string): string {
   try {
-    const raw = localStorage.getItem(key);
-    return raw ? { ...fallback, ...JSON.parse(raw) } : fallback;
+    return localStorage.getItem(key) ?? "";
   } catch {
-    return fallback;
+    return "";
   }
 }
-
-function save(key: string, value: unknown) {
+function writeLocal(key: string, value: string) {
   try {
-    localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
+    localStorage.setItem(key, value);
   } catch {
     /* private mode */
   }
 }
 
-const cap = (c: Color) => (c === "white" ? "White" : "Black");
-
-function resultText(s: ChessState): string {
-  if (s.result === "*") return "Game abandoned";
-  const who = s.result === "1-0" ? "White wins" : s.result === "0-1" ? "Black wins" : "Draw";
-  return `${who} — ${s.reason}`;
-}
-
-function statusText(s: ChessState): string {
-  if (s.status === "over") return resultText(s);
-  if (s.status === "waiting") {
-    if (s.you) return "Waiting for an opponent to sit down…";
-    return "Waiting for players…";
+/** Net material per side (surplus per piece type, so promotions never look like captures). */
+function material(fen: string) {
+  const count = { w: {} as Record<string, number>, b: {} as Record<string, number> };
+  let balance = 0;
+  for (const p of Object.values(parseFen(fen))) {
+    count[p.c][p.t] = (count[p.c][p.t] ?? 0) + 1;
+    balance += (p.c === "w" ? 1 : -1) * VALUE[p.t];
   }
-  const check = s.inCheck ? " — Check!" : "";
-  if (s.you === s.turn) return `Your move${check}`;
-  if (s.you) return `Waiting for ${s.players[s.turn]?.name ?? cap(s.turn)}…${check}`;
-  return `${cap(s.turn)} to move${check}`;
+  const surplus = (me: "w" | "b", them: "w" | "b") =>
+    ORDER.flatMap((t) => Array<PieceType>(Math.max(0, (count[me][t] ?? 0) - (count[them][t] ?? 0))).fill(t));
+  return { up: { white: surplus("w", "b"), black: surplus("b", "w") }, balance };
 }
 
-/** Short square-wave blip, like the PC speaker. */
-function beep(freq = 880, ms = 70) {
-  try {
-    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const ctx = new Ctx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "square";
-    osc.frequency.value = freq;
-    gain.gain.value = 0.05;
-    osc.connect(gain).connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + ms / 1000);
-    osc.onended = () => void ctx.close();
-  } catch {
-    /* no audio */
-  }
+function fmtClock(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
+
+/** Amber readout that ticks locally from the last server snapshot. */
+function Clock({ ms, running, since }: { ms: number; running: boolean; since: RefObject<number> }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!running) return;
+    const id = window.setInterval(() => tick((t) => t + 1), 250);
+    return () => window.clearInterval(id);
+  }, [running]);
+  const left = running ? ms - (Date.now() - since.current) : ms;
+  return (
+    <span className={`pretzel-readout pretzel-readout--lg chess-clock${left < 20_000 ? " chess-clock--low" : ""}`}>
+      {fmtClock(left)}
+    </span>
+  );
+}
+
+/** Name (Fraktur), clock, and the status line for one side of the board. */
+function SeatRow({ state, color, receivedAt }: { state: ChessState; color: Color; receivedAt: RefObject<number> }) {
+  const p = state.players[color];
+  const status = seatStatus(state, color);
+  const { up, balance } = material(state.fen);
+  const lead = color === "white" ? balance : -balance;
+  const name = p ? p.name : "Open seat";
+  return (
+    <div className={`chess-seat chess-seat--${status.tone}`}>
+      <div className="chess-seat__top">
+        <span className={`chess-seat__swatch chess-seat__swatch--${color}`} aria-label={color} />
+        <PixelName text={name} className={p ? "" : "chess-pixelname--empty"} />
+        {state.timeControl !== "untimed" ? (
+          <Clock ms={state.clocks[color]} running={state.clockRunning && state.turn === color} since={receivedAt} />
+        ) : null}
+      </div>
+      <div className="chess-seat__status" role="status">
+        <span className={TONE_LED[status.tone]} aria-hidden />
+        <span className="chess-seat__text">{status.text}</span>
+        <span className="chess-seat__material" aria-label="Material advantage">
+          {up[color].map((t, i) => (
+            <Piece key={i} type={t} color={color === "white" ? "b" : "w"} className="chess-piece chess-piece--tiny" />
+          ))}
+          {lead > 0 ? <span>+{lead}</span> : null}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Walnut strip at the bottom: clock choice before the first move, then the move list. */
+function MovesBar({ state, send }: { state: ChessState; send: ReturnType<typeof useChess>["send"] }) {
+  const strip = useRef<HTMLOListElement>(null);
+  useEffect(() => {
+    const el = strip.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [state.moves.length]);
+
+  let body;
+  if (state.can.setTimeControl) {
+    body = (
+      <div className="chess-tc" role="radiogroup" aria-label="Time control">
+        <span className="pretzel-text-group-label">Clock</span>
+        {state.timeControls.map((tc) => (
+          <button
+            key={tc.id}
+            type="button"
+            role="radio"
+            aria-checked={state.timeControl === tc.id}
+            className={`pretzel-btn-secondary chess-tc__key${state.timeControl === tc.id ? " pretzel-key--accent" : ""}`}
+            onClick={() => send({ type: "setTimeControl", id: tc.id })}
+          >
+            {tc.id === "untimed" ? "∞" : tc.id.replace("+0", "").replace("+", "|")}
+          </button>
+        ))}
+      </div>
+    );
+  } else if (state.moves.length === 0) {
+    body = (
+      <p className="chess-moves__empty">
+        {state.status === "waiting" ? "Waiting for two players…" : "White to start"}
+      </p>
+    );
+  } else {
+    body = (
+      <ol className="chess-moves" ref={strip} aria-label="Moves">
+        {state.moves.map((m, i) => (
+          <li key={i} className={i === state.moves.length - 1 ? "chess-moves__last" : undefined}>
+            {i % 2 === 0 ? <span className="chess-moves__no">{i / 2 + 1}.</span> : null}
+            {m.san}
+          </li>
+        ))}
+      </ol>
+    );
+  }
+  return <div className="chess-bar pretzel-nav-gradient">{<div className="pretzel-well chess-bar__well">{body}</div>}</div>;
+}
+
+type View = "menu" | "join" | "game";
 
 export function ChessPage() {
+  useGameViewport();
   const navigate = useNavigate();
   const { state, connected, error, clearError, receivedAt, send } = useChess();
-  const [name, setName] = useState(() => {
-    try {
-      return localStorage.getItem(NAME_KEY) ?? "";
-    } catch {
-      return "";
-    }
-  });
-  const [prefs, setPrefs] = useState<Prefs>(() => load(PREFS_KEY, DEFAULT_PREFS));
+  const [view, setView] = useState<View>("menu");
+  const [sheet, setSheet] = useState<null | "menu" | "past" | "help" | "resign">(null);
+  const [name, setName] = useState(() => readLocal(NAME_KEY));
+  const [flip, setFlip] = useState(() => readLocal(FLIP_KEY) === "1");
   const [selected, setSelected] = useState<string | null>(null);
   const [promo, setPromo] = useState<{ from: string; to: string } | null>(null);
-  const [dialog, setDialog] = useState<null | "resign" | "help" | "about" | "past">(null);
+  const [seenResult, setSeenResult] = useState<string | null>(null);
 
-  const setPref = (k: keyof Prefs) => {
-    const next = { ...prefs, [k]: !prefs[k] };
-    setPrefs(next);
-    save(PREFS_KEY, next);
-  };
+  const you = state?.you ?? null;
 
-  // Drop a stale selection whenever the position changes.
+  // Seated players (including after a reload) go straight to the board.
+  useEffect(() => {
+    if (you) setView("game");
+  }, [you]);
+
   useEffect(() => {
     setSelected(null);
     setPromo(null);
   }, [state?.fen]);
 
-  // Beep when the opponent moves (or the game ends) so you can look away.
+  // Buzz when the opponent moves, so the phone can sit on the table.
   const seenPly = useRef<number | null>(null);
   useEffect(() => {
     if (!state) return;
     const ply = state.moves.length;
     const prev = seenPly.current;
     seenPly.current = ply;
-    if (!prefs.sound || prev === null || ply <= prev || !state.you) return;
-    if (state.moves[ply - 1].color !== state.you) beep(state.inCheck ? 1200 : 880);
-  }, [state, prefs.sound]);
+    if (prev !== null && ply > prev && state.you && state.moves[ply - 1].color !== state.you) navigator.vibrate?.(40);
+  }, [state]);
 
-  // Title shows whose move it is, for when the tab is in the background.
   useEffect(() => {
     const prev = document.title;
-    document.title = state && state.status === "active" && state.you === state.turn ? "● Your move — Pretzel Chess" : "Pretzel Chess";
+    document.title = state?.status === "active" && you === state.turn ? "● Your move — Chess" : "Chess";
     return () => {
       document.title = prev;
     };
-  }, [state]);
+  }, [state, you]);
 
-  const you = state?.you ?? null;
   const myTurn = !!state && state.status === "active" && you === state.turn;
-  const flipped = (you === "black") !== prefs.flip;
-
   const targets = useMemo(() => {
     if (!state || !selected) return new Set<string>();
     return new Set(state.legalMoves.filter((m) => m.from === selected).map((m) => m.to));
   }, [state, selected]);
   const movable = useMemo(() => new Set(state?.legalMoves.map((m) => m.from) ?? []), [state]);
 
-  const close = () => navigate("/");
+  const exit = () => {
+    exitFullscreen();
+    navigate("/");
+  };
 
-  if (!state) {
-    return (
-      <div className="win-root win-desktop">
-        <WinWindow title="Pretzel Chess" className="win--dialog" onClose={close}>
-          <div className="win-dialog-body">{connected ? "Loading…" : "Connecting to Pretzel…"}</div>
-        </WinWindow>
-      </div>
-    );
-  }
+  const sit = (color: Color) => {
+    const n = name.trim();
+    if (!n) return;
+    writeLocal(NAME_KEY, n);
+    enterFullscreen();
+    send({ type: "sit", name: n, color });
+  };
 
   const onSquare = (sq: string) => {
-    if (!myTurn) return;
+    if (!state || !myTurn) return;
     if (selected && targets.has(sq)) {
       const cands = state.legalMoves.filter((m) => m.from === selected && m.to === sq);
       if (cands.some((m) => m.promotion)) setPromo({ from: selected, to: sq });
@@ -152,261 +219,290 @@ export function ChessPage() {
     setSelected(movable.has(sq) && sq !== selected ? sq : null);
   };
 
-  const sit = (color: Color) => {
-    const n = name.trim();
-    if (!n) return;
-    save(NAME_KEY, n);
-    send({ type: "sit", name: n, color });
-  };
-
-  const can = state.can;
+  const flipped = (you === "black") !== flip;
   const top: Color = flipped ? "white" : "black";
   const bottom: Color = flipped ? "black" : "white";
-  const offeredToYou = state.status === "active" && !!you && !!state.drawOffer && state.drawOffer !== you;
-  const youOffered = state.status === "active" && !!you && state.drawOffer === you;
-  const checkSq = state.inCheck && state.status !== "waiting" ? kingSquare(state.fen, state.turn) : null;
-  const shareUrl = `${location.host}/chess`;
+
+  // ── overlays: at most one, in priority order ──
+  let overlay = null;
+  if (!state) {
+    overlay = (
+      <Overlay title="Chess">
+        <p className="pretzel-text-panel-muted">{connected ? "Loading…" : "Connecting to Pretzel…"}</p>
+      </Overlay>
+    );
+  } else if (sheet === "past") {
+    overlay = <PastGames onClose={() => setSheet(null)} />;
+  } else if (sheet === "help") {
+    overlay = (
+      <Overlay title="How to play" onClose={() => setSheet(null)}>
+        <p className="pretzel-text-panel-body">
+          Open Chess on two phones. Each player taps Play, enters a name and takes a side; anyone else can watch.
+        </p>
+        <p className="pretzel-text-panel-body">
+          Tap a piece, then one of the marked squares. The Pi checks every move, runs the clocks and keeps finished
+          games under Past games. Leaving the page keeps your seat; come back on the same phone to continue.
+        </p>
+        <dl className="pretzel-well tetris-legend">
+          <dt>Green</dt>
+          <dd>That player's move.</dd>
+          <dt>Amber</dt>
+          <dd>Check, or a draw offer.</dd>
+          <dt>Red</dt>
+          <dd>Offline; their clock still runs.</dd>
+        </dl>
+      </Overlay>
+    );
+  } else if (view === "menu") {
+    const p = state.players;
+    overlay = (
+      <Overlay title="Chess">
+        <p className="pretzel-text-panel-muted">
+          {p.white?.name ?? "Open seat"} <span className="tetris-vs">vs</span> {p.black?.name ?? "Open seat"}
+          {state.status === "active" && state.moves.length > 0 ? " · in progress" : ""}
+        </p>
+        <div className="chess-menu">
+          <button type="button" className="pretzel-btn-secondary pretzel-key--accent" onClick={() => setView(you ? "game" : "join")}>
+            {you ? "Resume game" : "Play"}
+          </button>
+          <button type="button" className="pretzel-btn-secondary" onClick={() => setSheet("past")}>
+            Past games
+          </button>
+          <button type="button" className="pretzel-btn-secondary" onClick={exit}>
+            Exit
+          </button>
+        </div>
+      </Overlay>
+    );
+  } else if (view === "join") {
+    const can = state.can;
+    const seatOpen = can.sit.white || can.sit.black;
+    const named = !!name.trim();
+    overlay = (
+      <Overlay title="Join game" onClose={() => setView("menu")}>
+        {seatOpen ? (
+          <input
+            className="pretzel-input"
+            value={name}
+            maxLength={20}
+            placeholder="Your name"
+            aria-label="Your name"
+            autoComplete="nickname"
+            enterKeyHint="done"
+            onChange={(e) => setName(e.target.value)}
+          />
+        ) : (
+          <p className="pretzel-readout pretzel-readout--lg tetris-overlay__readout">
+            {state.status === "over" ? "GAME FINISHED" : "SEATS TAKEN"}
+          </p>
+        )}
+        <div className="chess-menu">
+          {can.sit.white ? (
+            <button type="button" className="pretzel-btn-secondary pretzel-key--accent" disabled={!named} onClick={() => sit("white")}>
+              <Piece type="k" color="w" className="chess-piece chess-piece--btn" /> Play White
+            </button>
+          ) : null}
+          {can.sit.black ? (
+            <button type="button" className="pretzel-btn-secondary pretzel-key--accent" disabled={!named} onClick={() => sit("black")}>
+              <Piece type="k" color="b" className="chess-piece chess-piece--btn" /> Play Black
+            </button>
+          ) : null}
+          {state.status === "over" && can.newGame ? (
+            <button type="button" className="pretzel-btn-secondary pretzel-key--accent" onClick={() => send({ type: "newGame" })}>
+              Set up a new board
+            </button>
+          ) : null}
+          <button type="button" className="pretzel-btn-secondary" onClick={() => setView("game")}>
+            Watch
+          </button>
+        </div>
+        {seatOpen && !named ? <p className="pretzel-text-panel-muted">Enter a name to take a seat.</p> : null}
+      </Overlay>
+    );
+  } else if (promo) {
+    overlay = (
+      <Overlay title="Promote to" onClose={() => setPromo(null)}>
+        <div className="chess-promo">
+          {(["q", "r", "b", "n"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              className="pretzel-btn-icon-wide chess-promo__key"
+              aria-label={`Promote to ${PIECE_NAMES[t]}`}
+              onClick={() => {
+                send({ type: "move", from: promo.from, to: promo.to, promotion: t });
+                setPromo(null);
+              }}
+            >
+              <Piece type={t} color={you === "black" ? "b" : "w"} />
+            </button>
+          ))}
+        </div>
+      </Overlay>
+    );
+  } else if (state.status === "active" && you && state.drawOffer && state.drawOffer !== you) {
+    overlay = (
+      <Overlay title="Draw offer">
+        <p className="pretzel-text-panel-body">{state.players[state.drawOffer]?.name ?? "Your opponent"} offers a draw.</p>
+        <div className="flex gap-2">
+          <button type="button" className="pretzel-btn-secondary pretzel-key--accent" onClick={() => send({ type: "respondDraw", accept: true })}>
+            Accept draw
+          </button>
+          <button type="button" className="pretzel-btn-secondary" onClick={() => send({ type: "respondDraw", accept: false })}>
+            Play on
+          </button>
+        </div>
+      </Overlay>
+    );
+  } else if (sheet === "resign") {
+    overlay = (
+      <Overlay title="Resign?" onClose={() => setSheet(null)}>
+        <p className="pretzel-text-panel-body">The game is recorded as a loss.</p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="pretzel-btn-secondary pretzel-key--danger"
+            onClick={() => {
+              send({ type: "resign" });
+              setSheet(null);
+            }}
+          >
+            Resign
+          </button>
+          <button type="button" className="pretzel-btn-secondary" onClick={() => setSheet(null)}>
+            Keep playing
+          </button>
+        </div>
+      </Overlay>
+    );
+  } else if (sheet === "menu") {
+    const can = state.can;
+    const youOffered = state.drawOffer === you && state.status === "active";
+    const act = (fn: () => void) => () => {
+      setSheet(null);
+      fn();
+    };
+    overlay = (
+      <Overlay title="Game" onClose={() => setSheet(null)}>
+        <div className="chess-menu">
+          {youOffered ? (
+            <button type="button" className="pretzel-btn-secondary" onClick={act(() => send({ type: "respondDraw", accept: false }))}>
+              Withdraw draw offer
+            </button>
+          ) : can.offerDraw ? (
+            <button type="button" className="pretzel-btn-secondary" onClick={act(() => send({ type: "offerDraw" }))}>
+              Offer draw
+            </button>
+          ) : null}
+          {can.resign && state.moves.length > 0 ? (
+            <button type="button" className="pretzel-btn-secondary pretzel-key--danger" onClick={() => setSheet("resign")}>
+              Resign…
+            </button>
+          ) : null}
+          {can.newGame ? (
+            <button type="button" className="pretzel-btn-secondary pretzel-key--accent" onClick={act(() => send({ type: "newGame" }))}>
+              {state.status === "over" ? (you ? "Rematch (swap colours)" : "New game") : "Swap colours"}
+            </button>
+          ) : null}
+          {can.stand ? (
+            <button type="button" className="pretzel-btn-secondary" onClick={act(() => send({ type: "stand" }))}>
+              Leave seat
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="pretzel-btn-secondary"
+            onClick={act(() => {
+              setFlip(!flip);
+              writeLocal(FLIP_KEY, flip ? "0" : "1");
+            })}
+          >
+            Flip board
+          </button>
+          <button type="button" className="pretzel-btn-secondary" onClick={() => setSheet("past")}>
+            Past games
+          </button>
+          <button type="button" className="pretzel-btn-secondary" onClick={act(() => setView("menu"))}>
+            Main menu
+          </button>
+        </div>
+      </Overlay>
+    );
+  } else if (state.status === "over" && you && seenResult !== state.id) {
+    const won = state.result === (you === "white" ? "1-0" : "0-1");
+    const drawn = state.result === "1/2-1/2";
+    overlay = (
+      <Overlay title={won ? "Victory" : drawn ? "Draw" : "Defeat"} onClose={() => setSeenResult(state.id)}>
+        <p className="pretzel-readout pretzel-readout--xl tetris-overlay__readout">
+          {won ? "YOU WIN!" : drawn ? "DRAW" : "GAME OVER"}
+        </p>
+        <p className="pretzel-text-panel-muted">{resultLine(state.result, state.reason)}</p>
+        <div className="flex flex-wrap gap-2">
+          {state.can.newGame ? (
+            <button type="button" className="pretzel-btn-secondary pretzel-key--accent" onClick={() => send({ type: "newGame" })}>
+              Rematch
+            </button>
+          ) : null}
+          <button type="button" className="pretzel-btn-secondary" onClick={() => setSeenResult(state.id)}>
+            View board
+          </button>
+        </div>
+      </Overlay>
+    );
+  }
+
+  const showCheck = !!state && state.inCheck && (state.status === "active" || state.reason === "checkmate");
+  const checkSq = showCheck ? kingSquare(state.fen, state.turn) : null;
 
   return (
-    <div className="win-root win-desktop">
-      <WinWindow
-        className="win--main"
-        title={
-          state.players.white || state.players.black
-            ? `Pretzel Chess — ${state.players.white?.name ?? "?"} vs ${state.players.black?.name ?? "?"}`
-            : "Pretzel Chess"
-        }
-        icon={<Piece type="n" color="b" className="win-title-piece" />}
-        onClose={close}
-      >
-        <MenuBar
-          menus={[
-            {
-              label: "Game",
-              items: [
-                { label: "New game", disabled: !can.newGame, onClick: () => send({ type: "newGame" }) },
-                { label: "Offer draw", disabled: !can.offerDraw, onClick: () => send({ type: "offerDraw" }) },
-                { label: "Resign…", disabled: !can.resign || state.moves.length === 0, onClick: () => setDialog("resign") },
-                { label: "Leave seat", disabled: !can.stand, onClick: () => send({ type: "stand" }) },
-                "separator",
-                { label: "Past games…", onClick: () => setDialog("past") },
-                "separator",
-                { label: "Exit", onClick: close },
-              ],
-            },
-            {
-              label: "Options",
-              items: [
-                { label: "Flip board", checked: prefs.flip, onClick: () => setPref("flip") },
-                { label: "Coordinates", checked: prefs.coords, onClick: () => setPref("coords") },
-                { label: "Sound", checked: prefs.sound, onClick: () => setPref("sound") },
-              ],
-            },
-            {
-              label: "Help",
-              items: [
-                { label: "How to play", onClick: () => setDialog("help") },
-                { label: "About Pretzel Chess", onClick: () => setDialog("about") },
-              ],
-            },
-          ]}
-        />
-
-        <div className="win-layout">
-          <div className="win-board-col">
-            <PlayerPanel state={state} color={top} receivedAt={receivedAt} />
-            <div className="win-board-wrap">
-              <Board
-                fen={state.fen}
-                flipped={flipped}
-                selected={selected}
-                targets={targets}
-                lastMove={state.lastMove}
-                checkSquare={checkSq}
-                coords={prefs.coords}
-                onSquare={myTurn ? onSquare : undefined}
-              />
-            </div>
-            <PlayerPanel state={state} color={bottom} receivedAt={receivedAt} />
-          </div>
-
-          <div className="win-side">
-            {can.sit.white || can.sit.black ? (
-              <fieldset className="win-group">
-                <legend>Join the game</legend>
-                <div className="win-row">
-                  <label htmlFor="chess-name">Name:</label>
-                  <input
-                    id="chess-name"
-                    className="win-input"
-                    maxLength={20}
-                    autoComplete="nickname"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                </div>
-                <div className="win-row">
-                  <button type="button" className="win-btn" disabled={!name.trim() || !can.sit.white} onClick={() => sit("white")}>
-                    Play White
-                  </button>
-                  <button type="button" className="win-btn" disabled={!name.trim() || !can.sit.black} onClick={() => sit("black")}>
-                    Play Black
-                  </button>
-                </div>
-              </fieldset>
-            ) : null}
-
-            {you && state.status === "waiting" ? (
-              <fieldset className="win-group">
-                <legend>Waiting</legend>
-                <p className="win-p">
-                  Open <b>{shareUrl}</b> on another device to play {cap(you === "white" ? "black" : "white")}.
-                </p>
-              </fieldset>
-            ) : null}
-
-            {can.setTimeControl ? (
-              <fieldset className="win-group">
-                <legend>Time control</legend>
-                <div className="win-radios">
-                  {state.timeControls.map((tc) => (
-                    <label key={tc.id} className="win-radio">
-                      <input
-                        type="radio"
-                        name="tc"
-                        checked={state.timeControl === tc.id}
-                        onChange={() => send({ type: "setTimeControl", id: tc.id })}
-                      />
-                      <span>{tc.label}</span>
-                    </label>
-                  ))}
-                </div>
-                <p className="win-hint">Clocks start after White's first move.</p>
-              </fieldset>
-            ) : null}
-
-            {state.status === "over" ? (
-              <fieldset className="win-group win-group--result">
-                <legend>Game over</legend>
-                <p className="win-p">
-                  <b>{resultText(state)}</b>
-                </p>
-                <button type="button" className="win-btn win-btn--default" disabled={!can.newGame} onClick={() => send({ type: "newGame" })}>
-                  {you ? "Rematch" : "New game"}
-                </button>
-              </fieldset>
-            ) : null}
-
-            {!you && state.status === "active" ? <p className="win-hint">You are watching this game.</p> : null}
-
-            <fieldset className="win-group win-group--moves">
-              <legend>Moves</legend>
-              <MoveList sans={state.moves.map((m) => m.san)} />
-            </fieldset>
-
-            {you && state.status === "active" && state.moves.length > 0 ? (
-              <div className="win-row win-actions">
-                {youOffered ? (
-                  <button type="button" className="win-btn" onClick={() => send({ type: "respondDraw", accept: false })}>
-                    Withdraw draw
-                  </button>
-                ) : (
-                  <button type="button" className="win-btn" disabled={!can.offerDraw} onClick={() => send({ type: "offerDraw" })}>
-                    Offer draw
-                  </button>
-                )}
-                <button type="button" className="win-btn" disabled={!can.resign} onClick={() => setDialog("resign")}>
-                  Resign
-                </button>
-              </div>
-            ) : null}
-          </div>
+    <div className="tetris-shell chess-shell">
+      <header className="tetris-top">
+        <button type="button" className="pretzel-btn-icon" aria-label="Exit" onClick={exit}>
+          ✕
+        </button>
+        <div className="tetris-top__mid">
+          <span className={`pretzel-led ${connected ? "pretzel-led--ok" : "pretzel-led--off"}`} aria-hidden />
+          <span className="pretzel-readout tetris-top__status" role="status">
+            {topReadout(state, connected)}
+          </span>
         </div>
+        <button
+          type="button"
+          className="pretzel-btn-icon"
+          aria-label={view === "game" ? "Game menu" : "How to play"}
+          onClick={() => setSheet(view === "game" ? "menu" : "help")}
+        >
+          {view === "game" ? "☰" : "?"}
+        </button>
+      </header>
 
-        <div className="win-statusbar" role="status">
-          <div className="win-status-cell win-status-cell--grow">
-            {youOffered ? "Draw offered — waiting for an answer…" : statusText(state)}
+      <div className="chess-stage">
+        <div className="chess-table">
+          {state ? <SeatRow state={state} color={top} receivedAt={receivedAt} /> : <div className="chess-seat" />}
+          <div className="chess-board-frame">
+          <Board
+            fen={state?.fen ?? "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"}
+            flipped={flipped}
+            selected={selected}
+            targets={targets}
+            lastMove={state?.lastMove ?? null}
+            checkSquare={checkSq}
+              onSquare={myTurn && view === "game" ? onSquare : undefined}
+            />
           </div>
-          <div className="win-status-cell">
-            {state.timeControls.find((t) => t.id === state.timeControl)?.label ?? ""}
-          </div>
-          <div className="win-status-cell">
-            <span className={`win-net${connected ? " win-net--on" : ""}`} aria-hidden />
-            {connected ? "Online" : "Offline"}
-          </div>
+          {state ? <SeatRow state={state} color={bottom} receivedAt={receivedAt} /> : <div className="chess-seat" />}
         </div>
-      </WinWindow>
+      </div>
 
-      {promo ? (
-        <MsgBox title="Promote pawn" buttons={[{ label: "Cancel", onClick: () => setPromo(null) }]}>
-          <p className="win-p">Promote to:</p>
-          <div className="win-promo">
-            {(["q", "r", "b", "n"] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                className="win-btn win-promo-btn"
-                aria-label={`Promote to ${PIECE_NAMES[t]}`}
-                onClick={() => {
-                  send({ type: "move", from: promo.from, to: promo.to, promotion: t });
-                  setPromo(null);
-                }}
-              >
-                <Piece type={t} color={you === "black" ? "b" : "w"} className="win-promo-piece" />
-              </button>
-            ))}
-          </div>
-        </MsgBox>
-      ) : null}
-
-      {dialog === "resign" ? (
-        <MsgBox
-          title="Resign"
-          icon="question"
-          buttons={[
-            { label: "Yes", primary: true, onClick: () => { send({ type: "resign" }); setDialog(null); } },
-            { label: "No", onClick: () => setDialog(null) },
-          ]}
-        >
-          Are you sure you want to resign this game?
-        </MsgBox>
-      ) : null}
-
-      {offeredToYou ? (
-        <MsgBox
-          title="Draw offer"
-          icon="question"
-          buttons={[
-            { label: "Accept", primary: true, onClick: () => send({ type: "respondDraw", accept: true }) },
-            { label: "Decline", onClick: () => send({ type: "respondDraw", accept: false }) },
-          ]}
-        >
-          {state.players[state.drawOffer!]?.name ?? "Your opponent"} offers a draw.
-        </MsgBox>
-      ) : null}
-
-      {dialog === "help" ? (
-        <MsgBox title="How to play" icon="info" buttons={[{ label: "OK", primary: true, onClick: () => setDialog(null) }]}>
-          <p className="win-p">Open this page on two devices on the Pretzel Wi‑Fi. Each player enters a name and takes a side; anyone else can watch.</p>
-          <p className="win-p">Tap a piece, then tap a highlighted square. The Pi checks every move, keeps the clocks and saves finished games under Game ▸ Past games.</p>
-          <p className="win-p">Checkmate, stalemate, repetition, the fifty-move rule, resignation, agreed draws and running out of time all end the game.</p>
-        </MsgBox>
-      ) : null}
-
-      {dialog === "about" ? (
-        <MsgBox title="About Pretzel Chess" icon="info" buttons={[{ label: "OK", primary: true, onClick: () => setDialog(null) }]}>
-          <p className="win-p"><b>Pretzel Chess</b></p>
-          <p className="win-p">Two-player chess refereed by the Pretzel Pi.</p>
-        </MsgBox>
-      ) : null}
+      {state ? <MovesBar state={state} send={send} /> : <div className="chess-bar pretzel-nav-gradient" />}
 
       {error ? (
-        <MsgBox title="Pretzel Chess" icon="warning" buttons={[{ label: "OK", primary: true, onClick: clearError }]}>
-          {error}
-        </MsgBox>
+        <button type="button" className="tetris-toast pretzel-text-alert" onClick={clearError}>
+          {error} ✕
+        </button>
       ) : null}
 
-      {dialog === "past" ? <PastGames onClose={() => setDialog(null)} /> : null}
+      {overlay}
     </div>
   );
 }
