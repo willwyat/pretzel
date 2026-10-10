@@ -13,6 +13,7 @@ const weather = require("./lib/weather");
 const { ChoresManager } = require("./lib/chores");
 const { RemindersScheduler } = require("./lib/reminders");
 const { ChessManager } = require("./lib/chess");
+const { createChessHub } = require("./lib/chessHub");
 const { TetrisManager } = require("./lib/tetris");
 const { Bulletin } = require("./lib/bulletin");
 const { listDevices } = require("./lib/devices");
@@ -934,102 +935,31 @@ app.post("/pretzel/admin/reload-chores", assertSettingsPass, (req, res) => {
   }
 });
 
-// ── LAN devices (operator) ──────────────────────────────────────
-const TV_IP = process.env.TV_IP || "192.168.1.186";
-app.get("/pretzel/admin/devices", assertSettingsPass, async (req, res) => {
-  try {
-    const result = await listDevices({
-      knownLabels: { [TV_IP]: "LG TV" },
-      force: req.query.refresh === "1",
-    });
-    res.json({ ok: true, ...result });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-// ── Chess (public on LAN; Pi is the referee) ────────────────────
+// ── Chess (public on LAN; the Pi is the referee) ────────────────
 const chessManager = new ChessManager({ dataDir });
+const chessHub = createChessHub(chessManager);
 
 app.get("/pretzel/chess/games", (req, res) => {
   res.json({ ok: true, games: chessManager.listGames() });
 });
 
 app.get("/pretzel/chess/games/:id", (req, res) => {
-  const g = chessManager.getGame(req.params.id);
-  if (!g) return res.status(404).json({ ok: false, error: "Not found" });
-  const { whiteIp, blackIp, ...pub } = g;
-  res.json({ ok: true, game: pub });
+  const game = chessManager.getGame(req.params.id);
+  if (!game) return res.status(404).json({ ok: false, error: "Not found" });
+  res.json({ ok: true, game });
 });
 
-function clientIpOf(req) {
-  const xff = req.headers["x-forwarded-for"];
-  const first = typeof xff === "string" ? xff.split(",")[0].trim() : "";
-  return (first || req.socket.remoteAddress || "").replace(/^::ffff:/, "");
-}
-
-const chessWss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
-/** ws -> { clientId } */
-const chessClients = new Map();
-
-function chessBroadcast() {
-  for (const [ws, info] of chessClients) {
-    if (ws.readyState === ws.OPEN && info.clientId) {
-      ws.send(JSON.stringify({ type: "state", state: chessManager.snapshot(info.clientId) }));
-    }
+// ── LAN devices (operator) ──────────────────────────────────────
+const TV_IP = process.env.TV_IP || "192.168.1.186";
+app.get("/pretzel/admin/devices", assertSettingsPass, async (req, res) => {
+  try {
+    const result = await listDevices({ force: req.query.refresh === "1" });
+    const labels = { [TV_IP]: "LG TV", ...chessManager.playerIps() };
+    const devices = result.devices.map((d) => ({ ...d, label: d.label || labels[d.ip] || null }));
+    res.json({ ok: true, ...result, devices });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
   }
-}
-chessManager.subscribe(chessBroadcast);
-// Keep clocks honest on screens even if nothing happens: clients tick locally.
-
-chessWss.on("connection", (ws, req) => {
-  const ip = clientIpOf(req);
-  const info = { clientId: null };
-  chessClients.set(ws, info);
-  ws.isAlive = true;
-  ws.on("pong", () => {
-    ws.isAlive = true;
-  });
-
-  ws.on("message", (data) => {
-    let msg;
-    try {
-      msg = JSON.parse(String(data));
-    } catch {
-      return;
-    }
-    if (!msg || typeof msg.type !== "string") return;
-    if (msg.type === "hello") {
-      if (typeof msg.clientId !== "string" || msg.clientId.length < 8 || msg.clientId.length > 64) return;
-      info.clientId = msg.clientId;
-      chessManager.setConnected(info.clientId, true);
-      ws.send(JSON.stringify({ type: "state", state: chessManager.snapshot(info.clientId) }));
-      return;
-    }
-    if (!info.clientId) return;
-    const id = info.clientId;
-    let r;
-    switch (msg.type) {
-      case "sit": r = chessManager.sit({ clientId: id, name: msg.name, color: msg.color, ip }); break;
-      case "stand": r = chessManager.stand({ clientId: id }); break;
-      case "move": r = chessManager.move({ clientId: id, from: msg.from, to: msg.to, promotion: msg.promotion }); break;
-      case "resign": r = chessManager.resign({ clientId: id }); break;
-      case "offerDraw": r = chessManager.offerDraw({ clientId: id }); break;
-      case "respondDraw": r = chessManager.respondDraw({ clientId: id, accept: !!msg.accept }); break;
-      case "newGame": r = chessManager.newGame({ clientId: id }); break;
-      case "setTimeControl": r = chessManager.setTimeControl({ clientId: id, id: msg.id }); break;
-      default: return;
-    }
-    if (!r.ok) ws.send(JSON.stringify({ type: "error", error: r.error }));
-  });
-
-  ws.on("close", () => {
-    chessClients.delete(ws);
-    const id = info.clientId;
-    if (id && ![...chessClients.values()].some((i) => i.clientId === id)) {
-      chessManager.setConnected(id, false);
-    }
-  });
 });
 
 // ── Tetris (2-player versus; clients simulate, Pi seats + relays) ──
@@ -1114,20 +1044,18 @@ tetrisWss.on("connection", (ws) => {
 });
 
 setInterval(() => {
-  for (const clients of [chessClients, tetrisClients]) {
-    for (const ws of clients.keys()) {
-      if (!ws.isAlive) {
-        ws.terminate();
-        continue;
-      }
-      ws.isAlive = false;
-      ws.ping();
+  for (const ws of tetrisClients.keys()) {
+    if (!ws.isAlive) {
+      ws.terminate();
+      continue;
     }
+    ws.isAlive = false;
+    ws.ping();
   }
 }, 30_000).unref();
 
 const wsRoutes = new Map([
-  ["/pretzel/chess/ws", chessWss],
+  ["/pretzel/chess/ws", chessHub.wss],
   ["/pretzel/tetris/ws", tetrisWss],
 ]);
 

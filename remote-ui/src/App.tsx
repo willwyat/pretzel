@@ -11,8 +11,9 @@ export default function App() {
   const [homeRoom, setHomeRoom] = useState<HomeRoomTab>("lounge");
   const { pathname } = useLocation();
 
-  // Tetris is a full-screen game mode: no app shell, no room navbar.
+  // Games are full-screen modes: no app shell, no room navbar.
   if (pathname === "/tetris" || pathname.startsWith("/tetris/")) return <TetrisPage />;
+  if (pathname === "/chess" || pathname.startsWith("/chess/")) return <ChessPage />;
 
   return (
     <>
@@ -23,7 +24,6 @@ export default function App() {
             element={<HomePage activeRoom={homeRoom} />}
           />
           <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/chess" element={<ChessPage />} />
         </Routes>
       </div>
       <Navbar activeRoom={homeRoom} onActiveRoomChange={setHomeRoom} />

@@ -3,12 +3,7 @@ import { clientId } from "./clientId";
 
 export type Color = "white" | "black";
 
-export type LegalMove = {
-  from: string;
-  to: string;
-  promotion: string | null;
-  san: string;
-};
+export type LegalMove = { from: string; to: string; promotion: string | null };
 
 export type MoveRecord = {
   san: string;
@@ -21,6 +16,7 @@ export type MoveRecord = {
 
 export type TimeControl = { id: string; label: string; baseMs: number; incMs: number };
 
+/** Per-client snapshot pushed by pretzel-server (see pretzel-server/lib/chess.js `snapshot`). */
 export type ChessState = {
   id: string;
   status: "waiting" | "active" | "over";
@@ -29,6 +25,7 @@ export type ChessState = {
   fen: string;
   turn: Color;
   inCheck: boolean;
+  /** Only filled for the player whose turn it is. */
   legalMoves: LegalMove[];
   moves: MoveRecord[];
   lastMove: { from: string; to: string } | null;
@@ -38,8 +35,16 @@ export type ChessState = {
   timeControls: TimeControl[];
   clocks: Record<Color, number>;
   clockRunning: boolean;
-  serverNow: number;
   drawOffer: Color | null;
+  /** What this client may do right now; the server owns the rules. */
+  can: {
+    sit: Record<Color, boolean>;
+    stand: boolean;
+    setTimeControl: boolean;
+    resign: boolean;
+    offerDraw: boolean;
+    newGame: boolean;
+  };
 };
 
 export type ClientMessage =
@@ -52,22 +57,26 @@ export type ClientMessage =
   | { type: "newGame" }
   | { type: "setTimeControl"; id: string };
 
-/** Live connection to the Pi's chess referee. Reconnects with backoff. */
+/**
+ * Live connection to the Pi's chess referee. Reconnects with backoff, and right
+ * away when a sleeping phone comes back to the foreground.
+ */
 export function useChess() {
   const [state, setState] = useState<ChessState | null>(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /** serverNow - Date.now() at the moment the state arrived */
-  const [receivedAt, setReceivedAt] = useState(0);
+  /** Local Date.now() when `state` arrived; clocks count down from there. */
+  const receivedAt = useRef(0);
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    let closed = false;
+    let disposed = false;
     let retry = 0;
     let timer: number | undefined;
     const id = clientId("pretzel_chess_client");
 
     const open = () => {
+      window.clearTimeout(timer);
       const proto = location.protocol === "https:" ? "wss:" : "ws:";
       const ws = new WebSocket(`${proto}//${location.host}/pretzel/chess/ws`);
       wsRef.current = ws;
@@ -77,38 +86,51 @@ export function useChess() {
         ws.send(JSON.stringify({ type: "hello", clientId: id }));
       };
       ws.onmessage = (ev) => {
+        let msg: { type?: string; state?: ChessState; error?: string };
         try {
-          const msg = JSON.parse(String(ev.data));
-          if (msg.type === "state") {
-            setState(msg.state);
-            setReceivedAt(Date.now());
-            setError(null);
-          } else if (msg.type === "error") {
-            setError(String(msg.error));
-          }
+          msg = JSON.parse(String(ev.data));
         } catch {
-          /* ignore malformed frames */
+          return;
+        }
+        if (msg.type === "state" && msg.state) {
+          receivedAt.current = Date.now();
+          setState(msg.state);
+        } else if (msg.type === "error") {
+          setError(String(msg.error));
         }
       };
       ws.onclose = () => {
+        if (wsRef.current !== ws) return;
+        wsRef.current = null;
         setConnected(false);
-        if (closed) return;
+        if (disposed) return;
         retry += 1;
-        timer = window.setTimeout(open, Math.min(8000, 500 * 2 ** retry));
+        timer = window.setTimeout(open, Math.min(8000, 400 * 2 ** retry));
       };
     };
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && !wsRef.current) open();
+    };
+    document.addEventListener("visibilitychange", onVisible);
     open();
     return () => {
-      closed = true;
+      disposed = true;
+      document.removeEventListener("visibilitychange", onVisible);
       window.clearTimeout(timer);
-      wsRef.current?.close();
+      const ws = wsRef.current;
+      wsRef.current = null;
+      ws?.close();
     };
   }, []);
 
   const send = useCallback((m: ClientMessage) => {
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(m));
+    else setError("Not connected to Pretzel. Reconnecting…");
   }, []);
 
-  return { state, connected, error, clearError: () => setError(null), receivedAt, send };
+  const clearError = useCallback(() => setError(null), []);
+
+  return { state, connected, error, clearError, receivedAt, send };
 }

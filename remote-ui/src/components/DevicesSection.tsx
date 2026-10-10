@@ -3,6 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 type Device = {
   ip: string;
   mac: string | null;
+  /** Locally administered ("private Wi-Fi address"): changes per network / over time. */
+  randomMac: boolean;
   hostname: string | null;
   state: string;
   online: boolean;
@@ -16,7 +18,8 @@ type FetchAdmin = (
 
 export function DevicesSection({ fetchAdmin }: { fetchAdmin: FetchAdmin }) {
   const [devices, setDevices] = useState<Device[] | null>(null);
-  const [iface, setIface] = useState<string | null>(null);
+  const [subnet, setSubnet] = useState<{ iface: string; cidr: string } | null>(null);
+  const [scannedAt, setScannedAt] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,11 +33,13 @@ export function DevicesSection({ fetchAdmin }: { fetchAdmin: FetchAdmin }) {
           ok?: boolean;
           error?: string;
           devices?: Device[];
-          subnet?: { iface: string } | null;
+          subnet?: { iface: string; cidr: string } | null;
+          scannedAt?: number;
         };
         if (!r.ok || !d.devices) throw new Error(d.error || `HTTP ${r.status}`);
         setDevices(d.devices);
-        setIface(d.subnet?.iface ?? null);
+        setSubnet(d.subnet ?? null);
+        setScannedAt(d.scannedAt ?? null);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Scan failed");
       } finally {
@@ -54,7 +59,9 @@ export function DevicesSection({ fetchAdmin }: { fetchAdmin: FetchAdmin }) {
         <div>
           <h2 className="pretzel-text-panel-title">Network devices</h2>
           <p className="pretzel-text-panel-subtle mt-1">
-            Devices the Pi can see on the LAN{iface ? ` (${iface})` : ""}. Sleeping devices may be missing.
+            Devices answering on the Pi's LAN{subnet ? ` (${subnet.cidr} via ${subnet.iface})` : ""}.
+            Sleeping devices may be missing.
+            {scannedAt ? ` Scanned ${new Date(scannedAt).toLocaleTimeString()}.` : ""}
           </p>
         </div>
         <button
@@ -81,7 +88,8 @@ export function DevicesSection({ fetchAdmin }: { fetchAdmin: FetchAdmin }) {
                   {d.label ?? d.hostname ?? "Unknown device"}
                 </span>
                 <span className="pretzel-text-panel-muted w-full font-mono text-xs">
-                  {d.mac ?? "—"} · {d.state.toLowerCase()}
+                  {d.mac ?? "—"}
+                  {d.randomMac ? " (private)" : ""} · {d.state.toLowerCase()}
                   {d.label && d.hostname ? ` · ${d.hostname}` : ""}
                 </span>
               </li>
