@@ -23,6 +23,8 @@ const STAGE_PAD_X = 16;
 const BOARD_GAP = 8;
 /** Narrowest the side column can be: the Lvl / Lns / Snt readouts need this much. */
 const SIDE_MIN = 96;
+/** Recessed screen bezel around each canvas (3px each side; see .tetris-screen). */
+const BEZEL = 6;
 
 /** Largest cell (CSS px) for which `fit(width, height)` of the element holds; follows resizes. */
 export function useFitCell(ref: RefObject<HTMLElement | null>, fit: (w: number, h: number) => number): number {
@@ -46,21 +48,22 @@ export function useFitCell(ref: RefObject<HTMLElement | null>, fit: (w: number, 
  */
 const fitPlayer = (w: number, h: number) => {
   const avail = w - STAGE_PAD_X - BOARD_GAP;
-  let byW = avail / (10 + 10 * OPP_SCALE);
-  if (10 * OPP_SCALE * byW < SIDE_MIN) byW = (avail - SIDE_MIN) / 10;
-  const byBoardH = (h - 8) / 20;
-  // next queue ~4.95c + opponent 8c, plus labels, readouts and gaps (~148px)
-  const bySideH = (h - 148) / (9 * QUEUE_SCALE + 20 * OPP_SCALE);
+  // Main screen is 10c + BEZEL wide; the side column is max(4c + BEZEL, SIDE_MIN).
+  let byW = (avail - 2 * BEZEL) / (10 + 10 * OPP_SCALE);
+  if (10 * OPP_SCALE * byW + BEZEL < SIDE_MIN) byW = (avail - BEZEL - SIDE_MIN) / 10;
+  const byBoardH = (h - 8 - BEZEL) / 20;
+  // next queue ~4.95c + opponent 8c, two bezels, plus labels, readouts and gaps (~148px)
+  const bySideH = (h - 148 - 2 * BEZEL) / (9 * QUEUE_SCALE + 20 * OPP_SCALE);
   return Math.min(byW, byBoardH, bySideH);
 };
 
 /** Opponent cell and side-column width for a main cell size (floored so it never overflows). */
 function sideLayout(cell: number) {
   const oppCell = Math.max(3, Math.floor(cell * OPP_SCALE));
-  return { oppCell, sideW: Math.max(oppCell * 10, SIDE_MIN) };
+  return { oppCell, sideW: Math.max(oppCell * 10 + BEZEL, SIDE_MIN) };
 }
 /** Two snapshot boards side by side. */
-const fitSpectator = (w: number, h: number) => Math.min((w - 40) / 20, (h - 30) / 20);
+const fitSpectator = (w: number, h: number) => Math.min((w - 40 - 2 * BEZEL) / 20, (h - 30 - BEZEL) / 20);
 
 /**
  * Walnut control panel with four Moog panel caps. Presses act on pointerdown
@@ -111,16 +114,16 @@ export function TouchPad({
       {glyph}
     </button>
   );
-  // Left thumb: ◀ ▶ on top with ▼ between and below them (a triangle).
-  // Right thumb: a larger rotate key on its own.
+  // Left thumb: a larger rotate key on its own.
+  // Right thumb: ◀ ▶ on top with ▼ between and below them (a triangle).
   return (
     <div className="tetris-pad pretzel-nav-gradient">
+      {key("cw", "⟳", "Rotate", true)}
       <div className="tetris-dpad">
         {key("left", "◀", "Move left")}
         {key("right", "▶", "Move right")}
         {key("down", "▼", "Soft drop (double-tap to hard drop)")}
       </div>
-      {key("cw", "⟳", "Rotate", true)}
     </div>
   );
 }
@@ -292,7 +295,9 @@ export function TetrisGame(props: Props) {
         <div className="tetris-boards">
           <div className="tetris-side" style={{ width: sideW }}>
             <div className="pretzel-text-group-label">Next</div>
-            <canvas ref={queueRef} className="tetris-canvas" aria-label="Next pieces" />
+            <div className="tetris-screen">
+              <canvas ref={queueRef} className="tetris-canvas" aria-label="Next pieces" />
+            </div>
             <dl className="tetris-stats">
               <dt className="pretzel-text-group-label">Lvl</dt>
               <dd className="pretzel-readout">{String(stats.level).padStart(2, "0")}</dd>
@@ -304,9 +309,13 @@ export function TetrisGame(props: Props) {
             <div className="pretzel-text-group-label tetris-label--opp" title={props.opponentName}>
               {props.opponentName}
             </div>
-            <canvas ref={oppRef} className="tetris-canvas" aria-label="Opponent board" />
+            <div className="tetris-screen">
+              <canvas ref={oppRef} className="tetris-canvas" aria-label="Opponent board" />
+            </div>
           </div>
-          <canvas ref={mainRef} className="tetris-canvas" aria-label="Your board" />
+          <div className="tetris-screen">
+            <canvas ref={mainRef} className="tetris-canvas" aria-label="Your board" />
+          </div>
         </div>
       </div>
       <TouchPad onPress={press} onRelease={release} />
@@ -327,7 +336,9 @@ export function IdleStage() {
       <div ref={stageRef} className="tetris-stage">
         <div className="tetris-boards">
           <div className="tetris-side" style={{ width: sideLayout(cell).sideW }} />
-          <canvas ref={mainRef} className="tetris-canvas" aria-hidden />
+          <div className="tetris-screen">
+            <canvas ref={mainRef} className="tetris-canvas" aria-hidden />
+          </div>
         </div>
       </div>
       <TouchPad disabled />
@@ -372,7 +383,9 @@ export function SpectatorStage({
           {refs.map((r, i) => (
             <div key={i} className="tetris-spectate-board">
               <div className="pretzel-text-group-label">{names[i]}</div>
-              <canvas ref={r} className="tetris-canvas" aria-label={`${names[i]} board`} />
+              <div className="tetris-screen">
+                <canvas ref={r} className="tetris-canvas" aria-label={`${names[i]} board`} />
+              </div>
             </div>
           ))}
         </div>
