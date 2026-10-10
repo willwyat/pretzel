@@ -328,13 +328,6 @@
     font-size: 0.875rem;
   }
 
-  .pretzel-vol-pct--center {
-    min-width: 3rem;
-    padding: 0.1rem 0.2rem;
-    text-align: center;
-    font-size: 0.8125rem;
-  }
-
   .pretzel-readout--lg {
     padding: 0.12rem 0.45rem;
     font-size: 1.7rem;
@@ -836,23 +829,20 @@
   }
 
   /**
-   * Vertical fader: rotate a normal range input -90° inside a fixed box, so
-   * touch dragging works everywhere without writing-mode support for ranges.
-   * The input's width equals the box height; top of the slot = 100%.
+   * The lit fill fades out past its level instead of stopping dead, like
+   * light spilling down the slot. The fade is capped by the fill itself so
+   * 0% stays fully dark.
    */
-  .pretzel-range-vertical {
-    position: relative;
-    width: 2.5rem;
-    height: 6.5rem;
-    flex-shrink: 0;
-  }
-
-  .pretzel-range-vertical > .pretzel-range {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 6.5rem;
-    transform: translate(-50%, -50%) rotate(-90deg);
+  .pretzel-range--fade {
+    background:
+      linear-gradient(
+        90deg,
+        var(--lit) 0,
+        var(--lit) max(0%, calc(var(--fill) - 2.5rem)),
+        color-mix(in srgb, var(--lit) 55%, transparent) var(--fill),
+        transparent calc(var(--fill) + min(2rem, var(--fill)))
+      ),
+      var(--pretzel-slot);
   }
 
   /* ── VU meter ─────────────────────────────────────────────────── */
@@ -1157,6 +1147,139 @@
     box-shadow: var(--pretzel-well-shadow);
   }
 
+  /* ── Light rocker: an ivory wall plate whose paddle rocks top/bottom ─
+   * Top pressed in = on (the pilot lamp glows in the bulb's color), bottom
+   * pressed in = off. The raised half catches the light, the sunken half
+   * falls into shadow. */
+  .pretzel-light-rocker {
+    --rock: -16deg;
+    --shade-top: rgba(255, 255, 255, 0.28);
+    --shade-bottom: rgba(0, 0, 0, 0.3);
+    position: relative;
+    flex-shrink: 0;
+    width: 2.875rem;
+    height: 4.5rem;
+    padding: 0;
+    border: 1px solid var(--pretzel-nav-key-edge);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    background-image: linear-gradient(
+      180deg,
+      var(--pretzel-nav-key-top) 0%,
+      var(--pretzel-nav-key-bottom) 100%
+    );
+    box-shadow:
+      inset 0 1px 0 var(--pretzel-nav-key-highlight),
+      inset 0 -2px 0 rgba(0, 0, 0, 0.12),
+      0 3px 0 var(--pretzel-nav-key-side),
+      0 5px 9px rgba(0, 0, 0, 0.55);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .pretzel-light-rocker--on {
+    --rock: 16deg;
+    --shade-top: rgba(0, 0, 0, 0.3);
+    --shade-bottom: rgba(255, 255, 255, 0.28);
+  }
+
+  .pretzel-light-rocker__well {
+    position: absolute;
+    inset: 0.32rem;
+    display: block;
+    border-radius: 0.3rem;
+    background: linear-gradient(180deg, #050505, #141413);
+    box-shadow:
+      inset 0 2px 4px #000,
+      0 1px 0 rgba(255, 255, 255, 0.5);
+    perspective: 110px;
+  }
+
+  .pretzel-light-rocker__paddle {
+    position: absolute;
+    inset: 0.14rem;
+    display: block;
+    border-radius: 0.22rem;
+    transform: rotateX(var(--rock));
+    transform-origin: 50% 50%;
+    transition:
+      transform 0.16s cubic-bezier(0.3, 1.4, 0.5, 1);
+    background-image:
+      linear-gradient(
+        180deg,
+        var(--shade-top) 0%,
+        transparent 46%,
+        rgba(0, 0, 0, 0.18) 50%,
+        transparent 54%,
+        var(--shade-bottom) 100%
+      ),
+      linear-gradient(
+        180deg,
+        var(--pretzel-nav-key-top) 0%,
+        var(--pretzel-nav-key-bottom) 100%
+      );
+    box-shadow:
+      inset 0 1px 0 var(--pretzel-nav-key-highlight),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+      0 2px 3px rgba(0, 0, 0, 0.6);
+  }
+
+  /* Neon pilot window on the top half. */
+  .pretzel-light-rocker__pilot {
+    position: absolute;
+    left: 50%;
+    top: 0.3rem;
+    width: 0.75rem;
+    height: 0.2rem;
+    transform: translateX(-50%);
+    border-radius: 9999px;
+    background: #3a2f27;
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.7);
+    transition:
+      background-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .pretzel-light-rocker--on .pretzel-light-rocker__pilot {
+    background: var(--accent, var(--pretzel-accent));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      0 0 6px 1px var(--accent, var(--pretzel-accent));
+  }
+
+  /* Silkscreen: I on the top half, O on the bottom half. */
+  .pretzel-light-rocker__mark {
+    position: absolute;
+    left: 50%;
+    display: block;
+    transform: translateX(-50%);
+    opacity: 0.55;
+  }
+
+  .pretzel-light-rocker__mark--on {
+    top: 0.85rem;
+    width: 2px;
+    height: 0.45rem;
+    border-radius: 1px;
+    background: var(--pretzel-nav-key-fg);
+  }
+
+  .pretzel-light-rocker__mark--off {
+    bottom: 0.6rem;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 9999px;
+    border: 2px solid var(--pretzel-nav-key-fg);
+  }
+
+  .pretzel-light-rocker:active .pretzel-light-rocker__paddle {
+    filter: brightness(0.95);
+  }
+
+  .pretzel-light-rocker:focus-visible {
+    outline: 2px solid var(--pretzel-accent);
+    outline-offset: 3px;
+  }
+
   /* Bulb toggle: a glass lamp lens (lit color comes from the kelvin class). */
   .pretzel-lamp-lens {
     border: 2px solid rgba(0, 0, 0, 0.5);
@@ -1358,6 +1481,8 @@
   .pretzel-rocker__cap,
   .pretzel-rocker__cap::before,
   .pretzel-rocker__cap::after,
+  .pretzel-light-rocker__paddle,
+  .pretzel-light-rocker__pilot,
   .pretzel-range,
   .pretzel-vu__seg,
   .pretzel-nav-lamp {
