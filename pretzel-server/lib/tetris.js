@@ -46,6 +46,8 @@ class TetrisManager {
     this.reason = null;
     /** Names as they were when the match started (a seat may empty before the result is read). */
     this.matchNames = null;
+    /** Client ids seated when the current/last match started. */
+    this.matchClients = null;
     this.countdownTimer = null;
     this.graceTimers = [null, null];
   }
@@ -85,6 +87,8 @@ class TetrisManager {
       winner: this.winner,
       reason: this.reason,
       matchNames: this.matchNames,
+      /** Whether this client played the current/last match (newcomers don't see its result). */
+      playedLast: !!clientId && !!this.matchClients && this.matchClients.includes(clientId),
       players: this.seats.map((s) => (s ? { name: s.name, connected: s.connected, ready: s.ready } : null)),
       you: this.seatOf(clientId),
     };
@@ -112,8 +116,7 @@ class TetrisManager {
     const s = this.seatOf(clientId);
     if (s === null) return { ok: false, error: "You are not seated" };
     if (this._inMatch()) this._finish(1 - s, "left the game");
-    this._clearGrace(s);
-    this.seats[s] = null;
+    this._freeSeat(s);
     this._emit();
     return { ok: true };
   }
@@ -140,11 +143,33 @@ class TetrisManager {
         const seat = this.seats[s];
         if (!seat || seat.clientId !== clientId || seat.connected) return;
         if (this._inMatch()) this._finish(1 - s, "disconnected");
-        this.seats[s] = null;
+        this._freeSeat(s);
         this._emit();
       }, this.graceMs);
     }
     this._emit();
+  }
+
+  /** Empty a seat; once nobody from a finished match is left, the lobby starts fresh. */
+  _freeSeat(s) {
+    this._clearGrace(s);
+    this.seats[s] = null;
+    const stillHere = this.seats.some((x) => x && this.matchClients && this.matchClients.includes(x.clientId));
+    if (this.status === "over" && !stillHere) this._reset();
+  }
+
+  _reset() {
+    this.status = "waiting";
+    this.matchId = null;
+    this.seed = null;
+    this.startsAt = null;
+    this.winner = null;
+    this.reason = null;
+    this.matchNames = null;
+    this.matchClients = null;
+    // A newcomer who sat down while the old result was showing is ready to play.
+    for (const x of this.seats) if (x) x.ready = true;
+    this._maybeStart();
   }
 
   _clearGrace(s) {
@@ -166,6 +191,7 @@ class TetrisManager {
     this.winner = null;
     this.reason = null;
     this.matchNames = this.seats.map((s) => s.name);
+    this.matchClients = this.seats.map((s) => s.clientId);
     if (this.countdownTimer) this.clearTimer(this.countdownTimer);
     this.countdownTimer = this.setTimer(() => {
       this.countdownTimer = null;
@@ -187,6 +213,7 @@ class TetrisManager {
   _matchSeat(clientId, matchId) {
     const s = this.seatOf(clientId);
     if (s === null || !this.matchId || matchId !== this.matchId) return null;
+    if (!this.matchClients || !this.matchClients.includes(clientId)) return null;
     return s;
   }
 

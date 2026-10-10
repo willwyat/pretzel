@@ -26,7 +26,7 @@ const ATTACK = [0, 0, 1, 2, 4];
 
 /** Piece ids 1..7 = I J L O S T Z (also their colour index). */
 export type PieceId = 1 | 2 | 3 | 4 | 5 | 6 | 7;
-export type Action = "left" | "right" | "soft" | "cw" | "ccw" | "hard";
+export type Action = "left" | "right" | "soft" | "cw" | "hard";
 type Cell = readonly [number, number];
 
 /** Spawn orientation, (x, y) with y pointing down, inside an n×n box. */
@@ -223,10 +223,7 @@ export class Game {
         this.held.soft = true;
         break;
       case "cw":
-        this.rotate(1);
-        break;
-      case "ccw":
-        this.rotate(-1);
+        this.rotate();
         break;
       case "hard":
         this.hardDrop();
@@ -266,10 +263,11 @@ export class Game {
     return true;
   }
 
-  private rotate(dir: 1 | -1) {
+  /** Clockwise only (the pad has a single rotate key). */
+  private rotate() {
     if (!this.piece || this.piece.id === 4) return;
     const from = this.piece.rot;
-    const to = (from + dir + 4) % 4;
+    const to = (from + 1) % 4;
     const table = this.piece.id === 1 ? KICKS_I : KICKS_JLSTZ;
     for (const [kx, ky] of table[`${from}${to}`]) {
       const p = { ...this.piece, rot: to, x: this.piece.x + kx, y: this.piece.y - ky };

@@ -14,6 +14,8 @@ export type TetrisState = {
   reason: string | null;
   /** Names when the current/last match started. */
   matchNames: [string, string] | null;
+  /** Whether you played the current/last match (a newcomer doesn't see its result). */
+  playedLast: boolean;
   players: ({ name: string; connected: boolean; ready: boolean } | null)[];
   you: 0 | 1 | null;
 };
