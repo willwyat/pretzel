@@ -171,9 +171,12 @@ export function TetrisGame(props: Props) {
     const game = new Game(seed, {
       onBoard: (cells) => send({ type: "board", matchId, cells }),
       onAttack: (lines) => send({ type: "attack", matchId, lines }),
+      onClear: (lines) => soundtrack.playClear(lines),
       onTopOut: () => send({ type: "topout", matchId }),
     });
     gameRef.current = game;
+    // Dev server only (stripped from production builds): lets tests stage exact line clears.
+    if (import.meta.env.DEV) (window as unknown as { __tetrisGame?: Game }).__tetrisGame = game;
     let oppCells: string | null = null;
 
     const unsub = subscribe((e) => {

@@ -114,6 +114,8 @@ export type GameEvents = {
   onBoard?: (cells: string) => void;
   /** Lines to send to the opponent after cancelling queued garbage. */
   onAttack?: (lines: number) => void;
+  /** Lines cleared by one lock (1..4), before garbage cancelling. */
+  onClear?: (lines: number) => void;
   onTopOut?: () => void;
 };
 
@@ -362,6 +364,7 @@ export class Game {
       cleared++;
     }
     this.linesCleared += cleared;
+    if (cleared > 0) this.events.onClear?.(cleared);
 
     let ok = true;
     if (cleared > 0) {
