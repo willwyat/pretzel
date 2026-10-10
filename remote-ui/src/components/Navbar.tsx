@@ -67,11 +67,17 @@ export function Navbar({ activeRoom, onActiveRoomChange }: NavbarProps) {
       aria-label="Rooms"
     >
       <div className="mx-auto flex max-w-lg justify-between gap-2 px-3">
-        {ROOMS.map(({ id, label, icon }) => (
+        {ROOMS.map(({ id, label, icon }, index) => (
           <button
             key={id}
             type="button"
-            className={`${navBtnBase} ${activeRoom === id ? "pretzel-nav-tab-active" : ""}`.trim()}
+            className={`${navBtnBase} ${
+              index === 0
+                ? "nav-button-start"
+                : index === ROOMS.length - 1
+                  ? "nav-button-end"
+                  : "nav-button-center"
+            } ${activeRoom === id ? "pretzel-nav-tab-active" : ""}`.trim()}
             aria-pressed={activeRoom === id}
             onClick={() => onActiveRoomChange(id)}
           >

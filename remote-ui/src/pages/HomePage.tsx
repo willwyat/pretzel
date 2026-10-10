@@ -118,7 +118,7 @@ export function HomePage({ activeRoom }: HomePageProps) {
             <div className="pretzel-text-sun-time">{sunTimeFormatted}</div>
           </div>
           <div className="pretzel-text-sun-block">
-            <div className="pretzel-text-sun-title">Outside temp</div>
+            <div className="pretzel-text-sun-title">Outside</div>
             <button
               type="button"
               className="pretzel-text-sun-time"
@@ -129,7 +129,23 @@ export function HomePage({ activeRoom }: HomePageProps) {
                   : `Outside temperature ${temperature} degrees ${unit === "C" ? "Celsius" : "Fahrenheit"}`
               }
             >
-              {temperature === null ? "--" : `${temperature}${unit}`}
+              {temperature === null ? (
+                "--"
+              ) : (
+                <>
+                  {temperature}
+                  <span
+                    style={{
+                      fontSize: "0.975rem",
+                      verticalAlign: "middle",
+                      letterSpacing: "1px",
+                    }}
+                  >
+                    °
+                  </span>
+                  {unit}
+                </>
+              )}
             </button>
           </div>
         </div>
