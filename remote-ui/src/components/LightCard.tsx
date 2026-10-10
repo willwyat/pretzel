@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import type { Light } from "../types/lifx";
-import { LightbulbIcon } from "./LightbulbIcon";
 
 interface LightCardProps {
   light: Light;
@@ -52,14 +51,6 @@ function isSwatchActive(swatch: ColorSwatch, light: Light): boolean {
     return Math.min(diff, 360 - diff) < 20;
   }
   return false;
-}
-
-function kelvinToTailwind(kelvin: number): string {
-  if (kelvin <= 2500) return "bg-orange-400";
-  if (kelvin <= 3000) return "bg-amber-300";
-  if (kelvin <= 4000) return "bg-yellow-200";
-  if (kelvin <= 5000) return "bg-yellow-100";
-  return "bg-blue-100";
 }
 
 /** Approximate on-screen color of a white at the given color temperature. */
@@ -148,19 +139,6 @@ export function LightCard({
       style={{ "--accent": accent } as CSSProperties}
     >
       <div className="flex items-start gap-3 p-4">
-        <button
-          type="button"
-          onClick={() => onToggle(light)}
-          className={`mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition ${
-            isOn
-              ? `${kelvinToTailwind(kelvin)} pretzel-lamp-lens text-gray-900`
-              : "pretzel-toggle-bulb-off"
-          }`}
-          title={isOn ? "Turn off" : "Turn on"}
-        >
-          <LightbulbIcon className="h-[18px] w-[18px] select-none" />
-        </button>
-
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <h3
@@ -181,6 +159,30 @@ export function LightCard({
             {light.product?.name || "LIFX Light"}
             {isOn && ` · ${kelvinLabel(kelvin)}`}
           </p>
+
+          {isOn && (
+            <div className="mt-3 flex items-center gap-3">
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={brightnessPct}
+                aria-label={`${light.label} brightness`}
+                onChange={(e) => {
+                  const val = Number(e.target.value) / 100;
+                  setLocalBrightness(val);
+                  setDragging(true);
+                }}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
+                onKeyUp={endDrag}
+                onBlur={endDrag}
+                className="pretzel-range pretzel-range--accent pretzel-range--fade"
+                style={{ "--fill": `${confirmedPct}%` } as CSSProperties}
+              />
+              <span className="pretzel-vol-pct">{brightnessPct}%</span>
+            </div>
+          )}
 
           {isOn && (
             <div className="mt-3 flex flex-wrap gap-1.5">
@@ -208,34 +210,27 @@ export function LightCard({
           )}
         </div>
 
-        {isOn && (
-          <div className="flex w-12 flex-shrink-0 flex-col items-center gap-2">
-            <span className="pretzel-vol-pct pretzel-vol-pct--center">
-              {brightnessPct}%
+        {/* Wall-plate rocker: top pressed in = on, bottom pressed in = off.
+            It rocks up/down, across the horizontal brightness fader. */}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={isOn}
+          aria-label={`${light.label} power`}
+          title={isOn ? "Turn off" : "Turn on"}
+          onClick={() => onToggle(light)}
+          className={`pretzel-light-rocker self-center ${
+            isOn ? "pretzel-light-rocker--on" : ""
+          }`}
+        >
+          <span className="pretzel-light-rocker__well" aria-hidden>
+            <span className="pretzel-light-rocker__paddle">
+              <span className="pretzel-light-rocker__pilot" />
+              <span className="pretzel-light-rocker__mark pretzel-light-rocker__mark--on" />
+              <span className="pretzel-light-rocker__mark pretzel-light-rocker__mark--off" />
             </span>
-            <div className="pretzel-range-vertical">
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={brightnessPct}
-                aria-label={`${light.label} brightness`}
-                onChange={(e) => {
-                  const val = Number(e.target.value) / 100;
-                  setLocalBrightness(val);
-                  setDragging(true);
-                }}
-                onPointerUp={endDrag}
-                onPointerCancel={endDrag}
-                onKeyUp={endDrag}
-                onBlur={endDrag}
-                className="pretzel-range pretzel-range--accent"
-                style={{ "--fill": `${confirmedPct}%` } as CSSProperties}
-              />
-            </div>
-            <span className="pretzel-text-group-label">Brt</span>
-          </div>
-        )}
+          </span>
+        </button>
       </div>
     </div>
   );
