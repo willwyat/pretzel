@@ -22,6 +22,8 @@ html.tetris-lock body {
   inset: 0;
   height: 100dvh;
   display: grid;
+  /* One column pinned to the screen: content can never widen the grid past the edge. */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
   color: var(--pretzel-fg-heading);
@@ -35,6 +37,7 @@ html.tetris-lock body {
 }
 
 .tetris-top {
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -67,14 +70,19 @@ html.tetris-lock body {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 0;
   min-height: 0;
-  padding: 4px 0.75rem;
+  overflow: hidden;
+  padding: 4px 0.5rem;
   touch-action: none;
 }
+/* Info panel on the left, your board on the right. */
 .tetris-boards {
   display: flex;
   align-items: stretch;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
 }
 .tetris-canvas {
   display: block;
@@ -82,6 +90,7 @@ html.tetris-lock body {
   box-shadow: var(--pretzel-well-shadow);
 }
 .tetris-side {
+  flex: none;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -90,6 +99,7 @@ html.tetris-lock body {
 }
 .tetris-label--opp {
   margin-top: auto;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -101,7 +111,7 @@ html.tetris-lock body {
   gap: 4px 6px;
   margin: 4px 0;
 }
-.tetris-stats dd { margin: 0; font-size: 0.9rem; }
+.tetris-stats dd { margin: 0; font-size: 0.8rem; }
 
 .tetris-spectate {
   display: flex;
@@ -112,25 +122,36 @@ html.tetris-lock body {
 
 /* ── Walnut control panel (pretzel-nav-gradient) with four Moog caps ── */
 .tetris-pad {
+  /* Key size: 64px, shrinking on very small phones so the d-pad and rotate key always fit. */
+  --tk: min(4rem, calc((100vw - 4rem) / 4.4));
   position: relative;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0.875rem 1rem calc(0.875rem + env(safe-area-inset-bottom, 0px));
   touch-action: none;
 }
-.tetris-pad--label { justify-content: center; min-height: calc(5.75rem + env(safe-area-inset-bottom, 0px)); }
-.tetris-pad__cluster {
-  display: flex;
-  gap: 0.5rem;
+.tetris-pad--label { justify-content: center; min-height: calc(8.25rem + env(safe-area-inset-bottom, 0px)); }
+/*
+ * Triangle: ◀ and ▶ on top, ▼ centred between and below them. Rows overlap by
+ * 40% of a key so the thumb only rocks sideways or pulls down a short way.
+ */
+.tetris-dpad {
+  display: grid;
+  grid-template-columns: repeat(3, var(--tk));
+  grid-template-rows: calc(var(--tk) * 0.6) calc(var(--tk) * 0.4) calc(var(--tk) * 0.6);
+  column-gap: 0.25rem;
 }
+.tetris-dpad > [data-key="left"] { grid-column: 1; grid-row: 1 / 3; }
+.tetris-dpad > [data-key="right"] { grid-column: 3; grid-row: 1 / 3; }
+.tetris-dpad > [data-key="down"] { grid-column: 2; grid-row: 2 / 4; }
 /* Finger-sized caps; theme supplies the material. No transition: presses must feel instant. */
 .tetris-key.pretzel-btn-icon-wide {
   flex: none;
-  /* 68px, narrowing on very small phones so a thumb gap always separates the clusters. */
-  width: min(4.25rem, calc((100vw - 4.75rem) / 4));
-  height: 4rem;
-  min-height: 4rem;
+  width: var(--tk);
+  height: var(--tk);
+  min-height: 0;
   padding: 0;
   font-size: 1.5rem;
   line-height: 1;
@@ -141,6 +162,12 @@ html.tetris-lock body {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
+}
+/* Rotate gets the right thumb to itself: a larger amber cap. */
+.tetris-key.pretzel-btn-icon-wide[data-key="cw"] {
+  width: calc(var(--tk) * 1.2);
+  height: calc(var(--tk) * 1.2);
+  font-size: 1.875rem;
 }
 /* No sticky hover on touch screens. */
 .tetris-key.pretzel-btn-icon-wide:hover:not(:disabled) { filter: none; }

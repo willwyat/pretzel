@@ -18,6 +18,11 @@ const KEYS: Record<string, PadKey> = {
 /** Opponent board and next queue, relative to the main board's cell. */
 const OPP_SCALE = 0.4;
 const QUEUE_SCALE = 0.55;
+/** Stage layout: side column (info + opponent) | gap | main board. */
+const STAGE_PAD_X = 16;
+const BOARD_GAP = 8;
+/** Narrowest the side column can be: the Lvl / Lns / Snt readouts need this much. */
+const SIDE_MIN = 96;
 
 /** Largest cell (CSS px) for which `fit(width, height)` of the element holds; follows resizes. */
 export function useFitCell(ref: RefObject<HTMLElement | null>, fit: (w: number, h: number) => number): number {
@@ -34,8 +39,26 @@ export function useFitCell(ref: RefObject<HTMLElement | null>, fit: (w: number, 
   return cell;
 }
 
-/** Main board (10 cells) plus a side column about 4 cells wide, 20 cells tall. */
-const fitPlayer = (w: number, h: number) => Math.min((w - 28) / 14.2, (h - 8) / 20);
+/**
+ * Largest cell for which the main board (10 x 20 cells) and the side column fit the
+ * stage. The side column is the opponent board (4 cells) but never narrower than
+ * SIDE_MIN, and its stack (next queue, readouts, opponent board) must fit the height too.
+ */
+const fitPlayer = (w: number, h: number) => {
+  const avail = w - STAGE_PAD_X - BOARD_GAP;
+  let byW = avail / (10 + 10 * OPP_SCALE);
+  if (10 * OPP_SCALE * byW < SIDE_MIN) byW = (avail - SIDE_MIN) / 10;
+  const byBoardH = (h - 8) / 20;
+  // next queue ~4.95c + opponent 8c, plus labels, readouts and gaps (~148px)
+  const bySideH = (h - 148) / (9 * QUEUE_SCALE + 20 * OPP_SCALE);
+  return Math.min(byW, byBoardH, bySideH);
+};
+
+/** Opponent cell and side-column width for a main cell size (floored so it never overflows). */
+function sideLayout(cell: number) {
+  const oppCell = Math.max(3, Math.floor(cell * OPP_SCALE));
+  return { oppCell, sideW: Math.max(oppCell * 10, SIDE_MIN) };
+}
 /** Two snapshot boards side by side. */
 const fitSpectator = (w: number, h: number) => Math.min((w - 40) / 20, (h - 30) / 20);
 
@@ -88,16 +111,16 @@ export function TouchPad({
       {glyph}
     </button>
   );
+  // Left thumb: ◀ ▶ on top with ▼ between and below them (a triangle).
+  // Right thumb: a larger rotate key on its own.
   return (
     <div className="tetris-pad pretzel-nav-gradient">
-      <div className="tetris-pad__cluster">
+      <div className="tetris-dpad">
         {key("left", "◀", "Move left")}
         {key("right", "▶", "Move right")}
-      </div>
-      <div className="tetris-pad__cluster">
         {key("down", "▼", "Soft drop (double-tap to hard drop)")}
-        {key("cw", "⟳", "Rotate", true)}
       </div>
+      {key("cw", "⟳", "Rotate", true)}
     </div>
   );
 }
@@ -128,6 +151,7 @@ export function TetrisGame(props: Props) {
   const gameRef = useRef<Game | null>(null);
   const lastDownRef = useRef(0);
   const cell = useFitCell(stageRef, fitPlayer);
+  const { sideW } = sideLayout(cell);
   const [stats, setStats] = useState({ level: 1, lines: 0, sent: 0 });
 
   // Latest props for the animation loop without restarting it.
@@ -169,7 +193,7 @@ export function TetrisGame(props: Props) {
         L.status !== "over" && !game.started ? String(Math.max(1, Math.ceil((L.startsAt - serverNow) / 1000))) : null;
       if (mainRef.current) drawGame(mainRef.current, game, L.cell, countdown);
       if (queueRef.current) drawQueue(queueRef.current, game.nextPieces(3), Math.round(L.cell * QUEUE_SCALE));
-      if (oppRef.current) drawSnapshot(oppRef.current, oppCells, Math.round(L.cell * OPP_SCALE));
+      if (oppRef.current) drawSnapshot(oppRef.current, oppCells, sideLayout(L.cell).oppCell);
 
       if (game.level !== shown.level || game.linesCleared !== shown.lines || game.linesSent !== shown.sent) {
         shown = { level: game.level, lines: game.linesCleared, sent: game.linesSent };
@@ -266,8 +290,7 @@ export function TetrisGame(props: Props) {
     <>
       <div ref={stageRef} className="tetris-stage">
         <div className="tetris-boards">
-          <canvas ref={mainRef} className="tetris-canvas" aria-label="Your board" />
-          <div className="tetris-side">
+          <div className="tetris-side" style={{ width: sideW }}>
             <div className="pretzel-text-group-label">Next</div>
             <canvas ref={queueRef} className="tetris-canvas" aria-label="Next pieces" />
             <dl className="tetris-stats">
@@ -278,15 +301,12 @@ export function TetrisGame(props: Props) {
               <dt className="pretzel-text-group-label">Snt</dt>
               <dd className="pretzel-readout">{String(stats.sent).padStart(3, "0")}</dd>
             </dl>
-            <div
-              className="pretzel-text-group-label tetris-label--opp"
-              style={{ maxWidth: cell * 10 * OPP_SCALE }}
-              title={props.opponentName}
-            >
+            <div className="pretzel-text-group-label tetris-label--opp" title={props.opponentName}>
               {props.opponentName}
             </div>
             <canvas ref={oppRef} className="tetris-canvas" aria-label="Opponent board" />
           </div>
+          <canvas ref={mainRef} className="tetris-canvas" aria-label="Your board" />
         </div>
       </div>
       <TouchPad onPress={press} onRelease={release} />
@@ -305,7 +325,10 @@ export function IdleStage() {
   return (
     <>
       <div ref={stageRef} className="tetris-stage">
-        <canvas ref={mainRef} className="tetris-canvas" aria-hidden />
+        <div className="tetris-boards">
+          <div className="tetris-side" style={{ width: sideLayout(cell).sideW }} />
+          <canvas ref={mainRef} className="tetris-canvas" aria-hidden />
+        </div>
       </div>
       <TouchPad disabled />
     </>
