@@ -23,6 +23,8 @@ type LightsSectionProps = {
 export function LightsSection({ room, heading }: LightsSectionProps) {
   const [lights, setLights] = useState<Light[]>([]);
   const [loading, setLoading] = useState(true);
+  /** Any request in flight, including refreshes; drives the flashing LED. */
+  const [fetching, setFetching] = useState(true);
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** Avoid stale closure in fetchLights (useCallback []); used for initial vs refetch loading UX */
@@ -31,6 +33,7 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
 
   const fetchLights = useCallback(async () => {
     setError(null);
+    setFetching(true);
     if (lightsCountRef.current === 0) {
       setLoading(true);
     }
@@ -69,6 +72,7 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
       setError("Could not reach Pretzel");
     } finally {
       setLoading(false);
+      setFetching(false);
     }
   }, []);
 
@@ -157,47 +161,30 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
     }, {});
   }, [lightsInRoom]);
 
-  const showInitialLoad = loading && lights.length === 0;
-  const statusDot =
-    offline || error
+  const statusDot = fetching
+    ? "pretzel-led--loading"
+    : offline || error
       ? "pretzel-led--off"
-      : !showInitialLoad
-        ? "pretzel-led--ok"
-        : "";
+      : "pretzel-led--ok";
 
   return (
     <section className="pretzel-panel">
       <div className="pretzel-panel__header">
-        <div className="flex min-w-0 flex-1 items-start gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <span
-            className={`pretzel-led mt-1.5 ${statusDot}`}
+            className={`pretzel-led ${statusDot}`}
             title={
-              offline
-                ? "Could not reach Pi"
-                : error
-                  ? "LIFX or configuration issue"
-                  : showInitialLoad
-                    ? "Loading…"
+              fetching
+                ? "Loading…"
+                : offline
+                  ? "Could not reach Pi"
+                  : error
+                    ? "LIFX or configuration issue"
                     : "Connected"
             }
             aria-hidden
           />
-          <div className="min-w-0">
-            <h2 className="pretzel-text-panel-title">{heading}</h2>
-            <p className="pretzel-text-panel-muted">
-              {loading && lights.length === 0
-                ? "Loading…"
-                : offline
-                  ? "Could not reach Pretzel"
-                  : error
-                    ? "See error below"
-                    : lights.length === 0
-                      ? "No lights in account"
-                      : lightsInRoom.length === 0
-                        ? `No lights in group or location “${room}” (names are case-insensitive)`
-                        : `${lightsInRoom.length} light${lightsInRoom.length === 1 ? "" : "s"} in ${room}`}
-            </p>
-          </div>
+          <h2 className="pretzel-text-panel-title min-w-0">{heading}</h2>
         </div>
         {!loading && (
           <button

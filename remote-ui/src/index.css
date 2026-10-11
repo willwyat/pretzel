@@ -384,6 +384,14 @@
     --led-glow: rgba(255, 60, 40, 0.7);
   }
 
+  /* Loading: amber-yellow, flashing until the first response lands. */
+  .pretzel-led--loading {
+    --led-core: #ffe14d;
+    --led-mid: #b89a0c;
+    --led-glow: rgba(255, 220, 60, 0.65);
+    animation: pretzel-led-pulse 0.9s ease-in-out infinite;
+  }
+
   /* ── Rocker: one ivory cap, same face as the navbar keys ───────
    * It tilts on its center seam. Left down = on, right down = off. */
   .pretzel-rocker {
@@ -942,9 +950,11 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* The outer keys sit in the screen's rounded corners, so their outer
+     corners follow the curve top and bottom. */
   .nav-button-start {
     padding-left: 1rem;
-    border-radius: 0.375rem 0.375rem 0.375rem 2.5rem;
+    border-radius: 1.25rem 0.375rem 0.375rem 2.5rem;
   }
 
   .nav-button-center {
@@ -954,7 +964,7 @@
 
   .nav-button-end {
     padding-right: 1rem;
-    border-radius: 0.375rem 0.375rem 2.5rem 0.375rem;
+    border-radius: 0.375rem 1.25rem 2.5rem 0.375rem;
   }
 
   .nav-button:active,
@@ -1160,6 +1170,24 @@
   .pretzel-light-card--off {
     background-color: var(--pretzel-well-bg);
     box-shadow: var(--pretzel-well-shadow);
+  }
+
+  /* Off: the fader and swatches stay put but go dark, like an unpowered panel. */
+  .pretzel-light-card--off .pretzel-range:disabled {
+    cursor: default;
+    opacity: 0.55;
+  }
+
+  .pretzel-light-card--off .pretzel-vol-pct {
+    opacity: 0.4;
+  }
+
+  .pretzel-light-card--off .pretzel-swatch {
+    filter: saturate(0.35) brightness(0.45);
+  }
+
+  .pretzel-swatch:disabled {
+    cursor: default;
   }
 
   /* ── Light rocker: an ivory wall plate whose paddle rocks top/bottom ─
