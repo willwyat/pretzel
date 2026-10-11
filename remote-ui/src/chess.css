@@ -16,19 +16,11 @@
   font-style: normal;
   font-display: block;
 }
-/* Perfect DOS VGA 437 (Zeh Fernando, free to redistribute; see
-   PerfectDOSVGA437-LICENSE.txt). The "Win" cut: the plain one maps · and …
-   to codepage-437 glyphs. An 8×16 bitmap face, crisp only at multiples of
-   16px, and it has no … glyph, so DOS text writes "..." instead. */
-@font-face {
-  font-family: "Perfect DOS VGA 437";
-  src: url("/fonts/PerfectDOSVGA437Win.ttf") format("truetype");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-/* Pixelta (Blankids Studio, personal use only): not in git, copy to
-   public/fonts/Pixelta.ttf by hand. Falls back to Outfit without it. */
+/* Pixelta (Blankids Studio): status lines, menus, dialogs and board
+   coordinates. Not in git until it is licensed for redistribution; copy it to
+   public/fonts/Pixelta.ttf by hand. Falls back to Outfit without it. Its
+   pixel grid is 0.03em, so sizes are multiples of 3.33px (16.67px = half a
+   CSS px per font pixel). */
 @font-face {
   font-family: "Pixelta";
   src: url("/fonts/Pixelta.ttf") format("truetype");
@@ -52,20 +44,18 @@
   --paper-mid: #d3a572;
   --paper-light: #f2dab3;
   --roll-h: calc(10 * var(--px));
-  --dos: "Perfect DOS VGA 437", ui-monospace, Menlo, monospace;
+  --pixelta: "Pixelta", Outfit, sans-serif;
   grid-template-rows: auto minmax(0, 1fr) auto;
 }
-/* DOS text on the scroll: native 16px, in the names' ink and hard shadow. */
-.chess-dos {
-  font-family: var(--dos);
-  font-size: 16px;
+/* Pixelta text on the scroll, in the names' ink and hard shadow. */
+.chess-pixelta {
+  font-family: var(--pixelta);
+  font-size: 16.67px;
   font-weight: 400;
-  line-height: 16px;
+  line-height: 1;
   letter-spacing: 0;
   color: var(--ink);
   text-shadow: 1px 1px 0 var(--paper-mid);
-  -webkit-font-smoothing: none;
-  font-smooth: never;
 }
 
 /* Top bar (Moog, shared with Tetris): game name, LED + readout, quit. */
@@ -181,10 +171,9 @@
   display: inline-block;
   margin: 2px;
   padding: 0.3rem 0.6rem 0.25rem;
-  font-family: var(--dos);
-  font-size: 16px;
-  line-height: 16px;
-  -webkit-font-smoothing: none;
+  font-family: var(--pixelta);
+  font-size: 16.67px;
+  line-height: 1;
   color: var(--ink);
   background: var(--paper);
   box-shadow:
@@ -672,11 +661,10 @@
   border-radius: 0;
   color: var(--ink);
   background: var(--face);
-  font-family: var(--dos);
-  font-size: 16px;
-  line-height: 16px;
+  font-family: var(--pixelta);
+  font-size: 16.67px;
+  line-height: 1;
   text-shadow: 1px 1px 0 var(--text-shadow, var(--pixel-shadow));
-  -webkit-font-smoothing: none;
   box-shadow:
     inset var(--bv) var(--bv) 0 var(--hi),
     inset calc(-1 * var(--bv)) calc(-1 * var(--bv)) 0 var(--lo),
@@ -810,11 +798,10 @@
 .chess-dialog .pretzel-text-alert,
 .chess-legend {
   margin: 0;
-  font-family: var(--dos);
-  font-size: 16px;
+  font-family: var(--pixelta);
+  font-size: 16.67px;
   line-height: 20px;
   color: var(--ink);
-  -webkit-font-smoothing: none;
 }
 .chess-dialog .pretzel-text-panel-muted {
   color: var(--ink-muted);
@@ -826,9 +813,8 @@
   color: var(--ink-faint);
 }
 .chess-dialog .pretzel-input {
-  font-family: var(--dos);
-  font-size: 16px;
-  -webkit-font-smoothing: none;
+  font-family: var(--pixelta);
+  font-size: 16.67px;
   border: 0;
   border-radius: 0;
   padding: 0.6rem 0.75rem 0.5rem;

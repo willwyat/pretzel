@@ -35,7 +35,7 @@ export function ScrollDialog({
 }
 
 /**
- * Bevelled pixel button with a DOS VGA label. Tones: plain parchment, gold for
+ * Bevelled pixel button with a Pixelta label. Tones: plain parchment, gold for
  * the main action, wax red for destructive ones, wood for the scroll's own key.
  */
 export function ScrollButton({

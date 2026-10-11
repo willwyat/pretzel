@@ -4,7 +4,7 @@ import type { ChessState, Color } from "./chessSocket";
  * Status line under each player's name. Read from the viewer's side:
  *
  *   tone   gem      meaning
- *   turn   emerald  it is this player's move ("Your turn", "Thinking...", "To move")
+ *   turn   emerald  it is this player's move ("Your turn", "Thinking…", "To move")
  *   alert  topaz    needs attention: check, a draw offer, low on time
  *   off    ruby     player is offline (their clock still runs)
  *   wait   iron     not this player's move ("Waiting on you", "Waiting on Bob")
@@ -60,9 +60,9 @@ export function seatStatus(s: ChessState, color: Color): SeatStatus {
   if (s.drawOffer === color) return { text: mine ? "You offered a draw" : "Offers a draw", tone: "alert" };
 
   if (theirMove) {
-    if (s.inCheck) return { text: mine ? "Your turn · Check!" : "In check · thinking...", tone: "alert" };
+    if (s.inCheck) return { text: mine ? "Your turn · Check!" : "In check · thinking…", tone: "alert" };
     if (mine) return { text: s.moves.length === 0 ? "Your turn · you start" : "Your turn", tone: "turn" };
-    return { text: watching ? "To move" : "Thinking...", tone: "turn" };
+    return { text: watching ? "To move" : "Thinking…", tone: "turn" };
   }
 
   if (mine) return { text: `Waiting on ${opp?.name ?? "opponent"}`, tone: "wait" };
