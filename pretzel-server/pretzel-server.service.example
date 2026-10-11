@@ -5,9 +5,10 @@
 # Listens on :3001 (see index.js). Start before remote-ui; tv-relay is independent.
 # Optional LIFX HTTP API proxy: /lifx/* (set token below).
 # WiZ bulbs on the LAN: /pretzel/wiz/* (see WIZ_LIGHTS below).
+# Tuya smart switches via Tuya Cloud: /pretzel/tuya/* (see TUYA_* below).
 
 [Unit]
-Description=Pretzel Pi API (TTS, volume, weather, LIFX proxy, WiZ on :3001)
+Description=Pretzel Pi API (TTS, volume, weather, LIFX proxy, WiZ, Tuya on :3001)
 After=network-online.target
 Wants=network-online.target
 
@@ -20,7 +21,7 @@ Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
 # Optional: match repo root VERSION after deploy (see README).
-# Environment=PRETZEL_STACK_VERSION=1.22.0
+# Environment=PRETZEL_STACK_VERSION=1.23.0
 # Optional: Settings page / curl admin — must match header from UI or client.
 # Environment=PRETZEL_SETTINGS_PASSCODE=change_me
 # Optional: git pull repo root (default: parent of this directory).
@@ -31,6 +32,13 @@ Environment=NODE_ENV=production
 # WiZ bulbs, comma-separated ip:label:room (room = Lounge or Bedroom).
 # Default is the lounge bulb below; set to empty to disable WiZ.
 # Environment="WIZ_LIGHTS=192.168.1.182:Onion:Lounge"
+# Tuya switches (Tuya IoT cloud project credentials, same as wyat-ai's TUYA_*).
+# TUYA_SWITCHES is comma-separated deviceId:label:room[:ip]; ip only labels the
+# device list. TUYA_API_BASE defaults to https://openapi.tuyaus.com.
+# Environment=TUYA_CLIENT_ID=your_access_id
+# Environment=TUYA_CLIENT_SECRET=your_access_secret
+# Environment=TUYA_API_BASE=https://openapi.tuyaus.com
+# Environment="TUYA_SWITCHES=your_device_id:Switch:Lounge:192.168.1.188"
 
 [Install]
 WantedBy=multi-user.target
