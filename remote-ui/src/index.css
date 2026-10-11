@@ -1177,14 +1177,11 @@
     box-shadow: var(--pretzel-well-shadow);
   }
 
-  /* Off: the fader and swatches stay put but go dark, like an unpowered panel. */
+  /* Off: the fader and swatches stay put but go dark, like an unpowered panel.
+     Nothing fades; the slot is simply unlit and the readout says OFF. */
   .pretzel-light-card--off .pretzel-range:disabled {
     cursor: default;
-    opacity: 0.55;
-  }
-
-  .pretzel-light-card--off .pretzel-vol-pct {
-    opacity: 0.4;
+    opacity: 1;
   }
 
   .pretzel-light-card--off .pretzel-swatch {
@@ -1326,14 +1323,6 @@
   .pretzel-light-rocker:focus-visible {
     outline: 2px solid var(--pretzel-accent);
     outline-offset: 3px;
-  }
-
-  .pretzel-text-card-name-on {
-    color: var(--pretzel-fg-heading);
-  }
-
-  .pretzel-text-card-name-off {
-    color: var(--pretzel-fg-subtle);
   }
 
   .pretzel-icon-muted {

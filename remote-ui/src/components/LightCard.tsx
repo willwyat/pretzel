@@ -87,14 +87,6 @@ function lightAccent(light: Light): string {
   return kelvinToCss(light.color?.kelvin ?? 4000);
 }
 
-function kelvinLabel(kelvin: number): string {
-  if (kelvin <= 2500) return "Candlelight";
-  if (kelvin <= 3000) return "Warm";
-  if (kelvin <= 4000) return "Neutral";
-  if (kelvin <= 5000) return "Cool White";
-  return "Daylight";
-}
-
 export function LightCard({
   light,
   onToggle,
@@ -119,7 +111,6 @@ export function LightCard({
     [light, onBrightness],
   );
 
-  const kelvin = light.color?.kelvin ?? 4000;
   /** Where the user put the cap (desired level). */
   const brightnessPct = Math.round(localBrightness * 100);
   /** Last level the bulb confirmed; the lit fill catches up to the cap from here. */
@@ -146,24 +137,13 @@ export function LightCard({
       <div className="flex items-start gap-3 p-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <h3
-              className={`pretzel-text-card-name truncate ${
-                isOn
-                  ? "pretzel-text-card-name-on"
-                  : "pretzel-text-card-name-off"
-              }`}
-            >
+            <h3 className="pretzel-text-card-name truncate">
               {light.label}
             </h3>
             {!light.connected && (
               <span className="pretzel-tag--alert">Offline</span>
             )}
           </div>
-
-          {/* Height is reserved while off so the card doesn't jump on toggle. */}
-          <p className="pretzel-text-panel-muted min-h-4 truncate text-xs">
-            {isOn && kelvinLabel(kelvin)}
-          </p>
 
           {/* The fader and swatches stay mounted when the light is off (dark and
               inert) so the card keeps the same height, like a real panel. */}
@@ -189,7 +169,9 @@ export function LightCard({
                 { "--fill": `${isOn ? confirmedPct : 0}%` } as CSSProperties
               }
             />
-            <span className="pretzel-vol-pct">{brightnessPct}%</span>
+            <span className="pretzel-vol-pct">
+              {isOn ? `${brightnessPct}%` : "OFF"}
+            </span>
           </div>
 
           {swatches.length > 0 && (
