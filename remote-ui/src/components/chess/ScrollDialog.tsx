@@ -1,6 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { PixelName } from "./PixelName";
-import { PixelText } from "./PixelText";
 
 /**
  * Chess's version of the Tetris Overlay: the same dimmed full-screen sheet,
@@ -36,7 +35,7 @@ export function ScrollDialog({
 }
 
 /**
- * Bevelled pixel button with a bitmap label. Tones: plain parchment, gold for
+ * Bevelled pixel button with a DOS VGA label. Tones: plain parchment, gold for
  * the main action, wax red for destructive ones, wood for the scroll's own key.
  */
 export function ScrollButton({
@@ -54,7 +53,7 @@ export function ScrollButton({
   return (
     <button type="button" className={cls} {...rest}>
       {icon}
-      <PixelText text={label} />
+      <span className="chess-btn__label">{label}</span>
     </button>
   );
 }

@@ -106,7 +106,7 @@ function SeatRow({ state, color, receivedAt }: { state: ChessState; color: Color
             <Clock ms={state.clocks[color]} running={state.clockRunning && state.turn === color} since={receivedAt} />
           ) : null}
         </div>
-        <div className="chess-seat__status" role="status">
+        <div className="chess-seat__status chess-dos" role="status">
           <span className={TONE_GEM[status.tone]} aria-hidden />
           <span className="chess-seat__text">{status.text}</span>
           <span className="chess-seat__material" role="img" aria-label={takenLabel}>
@@ -272,7 +272,7 @@ export function ChessPage() {
   if (!state) {
     overlay = (
       <ScrollDialog title="Chess">
-        <p className="pretzel-text-panel-muted">{connected ? "Loading…" : "Connecting to Pretzel…"}</p>
+        <p className="pretzel-text-panel-muted">{connected ? "Loading..." : "Connecting to Pretzel..."}</p>
       </ScrollDialog>
     );
   } else if (sheet === "past") {
@@ -468,7 +468,7 @@ export function ChessPage() {
           {can.stand ? <ScrollButton label="Leave seat" onClick={act(() => send({ type: "stand" }))} /> : null}
           <ScrollButton label="Main menu" onClick={act(() => setView("menu"))} />
           {can.resign && state.moves.length > 0 ? (
-            <ScrollButton tone="danger" label="Resign…" onClick={() => setSheet("resign")} />
+            <ScrollButton tone="danger" label="Resign..." onClick={() => setSheet("resign")} />
           ) : null}
         </div>
       </ScrollDialog>
