@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { fetchJson } from "../../lib/fetchJson";
 import { resultLine } from "../../lib/chessStatus";
-import { Overlay } from "../tetris/Overlay";
 import { Board } from "./Board";
+import { PixelText } from "./PixelText";
+import { ScrollButton, ScrollDialog } from "./ScrollDialog";
 
 type Summary = {
   id: string;
@@ -58,40 +59,28 @@ export function PastGames({ onClose }: { onClose: () => void }) {
     const last = ply > 0 ? game.moves[ply - 1] : null;
     const moveNo = ply === 0 ? "Start" : `${Math.ceil(ply / 2)}${ply % 2 ? "." : "…"} ${last?.san}`;
     return (
-      <Overlay title={`${game.white ?? "?"} vs ${game.black ?? "?"}`} onClose={onClose}>
-        <div className="chess-replay-board">
+      <ScrollDialog title={`${game.white ?? "?"} vs ${game.black ?? "?"}`} onClose={onClose}>
+        <div className="chess-board-frame">
           <Board fen={game.fens[ply]} flipped={flip} lastMove={last} />
         </div>
         <div className="chess-replay-nav">
-          <button type="button" className="pretzel-btn-icon" aria-label="Start" disabled={ply === 0} onClick={() => setPly(0)}>
-            ⏮
-          </button>
-          <button type="button" className="pretzel-btn-icon" aria-label="Back" disabled={ply === 0} onClick={() => setPly(ply - 1)}>
-            ◀
-          </button>
-          <span className="pretzel-readout chess-replay-ply">{moveNo}</span>
-          <button type="button" className="pretzel-btn-icon" aria-label="Forward" disabled={ply === n} onClick={() => setPly(ply + 1)}>
-            ▶
-          </button>
-          <button type="button" className="pretzel-btn-icon" aria-label="End" disabled={ply === n} onClick={() => setPly(n)}>
-            ⏭
-          </button>
+          <ScrollButton label="|<" aria-label="Start" className="chess-btn--icon" disabled={ply === 0} onClick={() => setPly(0)} />
+          <ScrollButton label="<" aria-label="Back" className="chess-btn--icon" disabled={ply === 0} onClick={() => setPly(ply - 1)} />
+          <span className="chess-plaque chess-replay-ply">{moveNo}</span>
+          <ScrollButton label=">" aria-label="Forward" className="chess-btn--icon" disabled={ply === n} onClick={() => setPly(ply + 1)} />
+          <ScrollButton label=">|" aria-label="End" className="chess-btn--icon" disabled={ply === n} onClick={() => setPly(n)} />
         </div>
         <p className="pretzel-text-panel-muted">{resultLine(game.result, game.reason)}</p>
-        <div className="flex gap-2">
-          <button type="button" className="pretzel-btn-secondary" onClick={() => setGame(null)}>
-            All games
-          </button>
-          <button type="button" className="pretzel-btn-secondary" onClick={() => setFlip(!flip)}>
-            Flip board
-          </button>
+        <div className="chess-btn-row">
+          <ScrollButton label="All games" onClick={() => setGame(null)} />
+          <ScrollButton label="Flip board" onClick={() => setFlip(!flip)} />
         </div>
-      </Overlay>
+      </ScrollDialog>
     );
   }
 
   return (
-    <Overlay title="Past games" onClose={onClose}>
+    <ScrollDialog title="Past games" onClose={onClose}>
       {err ? <p className="pretzel-text-alert text-sm">{err}</p> : null}
       {list === null && !err ? <p className="pretzel-text-panel-muted">Loading…</p> : null}
       {list?.length === 0 ? <p className="pretzel-text-panel-muted">No finished games yet.</p> : null}
@@ -99,11 +88,13 @@ export function PastGames({ onClose }: { onClose: () => void }) {
         <ul className="chess-history">
           {list.map((g) => (
             <li key={g.id}>
-              <button type="button" className="pretzel-well pretzel-well--row chess-history__row" onClick={() => open(g.id)}>
+              <button type="button" className="chess-btn chess-history__row" onClick={() => open(g.id)}>
                 <span className="chess-history__names">
                   {g.white ?? "?"} <span className="tetris-vs">vs</span> {g.black ?? "?"}
                 </span>
-                <span className="pretzel-readout">{score(g.result)}</span>
+                <span className="chess-banner">
+                  <PixelText text={score(g.result)} />
+                </span>
                 <span className="chess-history__meta">
                   {g.reason ?? ""} · {Math.ceil(g.moveCount / 2)} moves
                   {g.endedAt ? ` · ${new Date(g.endedAt).toLocaleDateString()}` : ""}
@@ -113,6 +104,6 @@ export function PastGames({ onClose }: { onClose: () => void }) {
           ))}
         </ul>
       ) : null}
-    </Overlay>
+    </ScrollDialog>
   );
 }
