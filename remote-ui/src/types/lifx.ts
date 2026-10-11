@@ -16,6 +16,8 @@ export interface LightColor {
 
 export interface Light {
   id: string;
+  /** Which backend controls it; LIFX lights come back without one. */
+  provider?: "lifx" | "wiz";
   uuid?: string;
   label: string;
   connected: boolean;

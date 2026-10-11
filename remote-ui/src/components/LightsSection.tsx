@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchJson } from "../lib/fetchJson";
-import { lifxStatePath } from "../lib/lifxPaths";
+import { lightStatePath } from "../lib/lifxPaths";
 import type { LifxRoom } from "../types/homeRoom";
 import type { Light } from "../types/lifx";
 import { LightCard } from "./LightCard";
@@ -13,6 +13,56 @@ function lightMatchesLifxRoom(light: Light, room: LifxRoom): boolean {
   const g = light.group?.name?.trim().toLowerCase() ?? "";
   const loc = light.location?.name?.trim().toLowerCase() ?? "";
   return g === room || loc === room;
+}
+
+type ProviderResult = {
+  lights: Light[];
+  error: string | null;
+  /** The request itself failed (Pi unreachable), as opposed to an error reply. */
+  unreachable: boolean;
+};
+
+async function loadLights(
+  url: string,
+  provider: "lifx" | "wiz",
+): Promise<ProviderResult> {
+  const name = provider === "lifx" ? "LIFX" : "WiZ";
+  try {
+    const res = await fetchJson(url);
+    if (!res.ok) {
+      const raw =
+        res.data &&
+        typeof res.data === "object" &&
+        res.data !== null &&
+        "error" in res.data &&
+        typeof (res.data as { error: unknown }).error === "string"
+          ? (res.data as { error: string }).error
+          : null;
+      return {
+        lights: [],
+        error:
+          raw ??
+          (provider === "lifx" && res.status === 500
+            ? "LIFX not configured on Pi (set LIFX_API_TOKEN)"
+            : `${name} request failed (${res.status})`),
+        unreachable: false,
+      };
+    }
+    if (!isLightArray(res.data)) {
+      return {
+        lights: [],
+        error: `Unexpected ${name} response from Pi`,
+        unreachable: false,
+      };
+    }
+    return {
+      lights: res.data.map((l) => ({ ...l, provider })),
+      error: null,
+      unreachable: false,
+    };
+  } catch {
+    return { lights: [], error: null, unreachable: true };
+  }
 }
 
 type LightsSectionProps = {
@@ -38,38 +88,22 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
       setLoading(true);
     }
     try {
-      const res = await fetchJson("/lifx/lights/all");
-      if (!res.ok) {
-        setOffline(false);
-        const raw =
-          res.data &&
-          typeof res.data === "object" &&
-          res.data !== null &&
-          "error" in res.data &&
-          typeof (res.data as { error: unknown }).error === "string"
-            ? (res.data as { error: string }).error
-            : null;
-        setError(
-          raw ??
-            (res.status === 500
-              ? "LIFX not configured on Pi (set LIFX_API_TOKEN)"
-              : `Request failed (${res.status})`),
-        );
+      // One provider failing (e.g. no LIFX token) must not
+      // hide the other's lights.
+      const results = await Promise.all([
+        loadLights("/lifx/lights/all", "lifx"),
+        loadLights("/pretzel/wiz/lights", "wiz"),
+      ]);
+      if (results.every((r) => r.unreachable)) {
+        setOffline(true);
         setLights([]);
-        return;
-      }
-      if (!isLightArray(res.data)) {
-        setOffline(false);
-        setError("Unexpected response from Pi");
-        setLights([]);
+        setError("Could not reach Pretzel");
         return;
       }
       setOffline(false);
-      setLights(res.data);
-    } catch {
-      setOffline(true);
-      setLights([]);
-      setError("Could not reach Pretzel");
+      setLights(results.flatMap((r) => r.lights));
+      const errors = results.flatMap((r) => (r.error ? [r.error] : []));
+      setError(errors.length > 0 ? errors.join(" · ") : null);
     } finally {
       setLoading(false);
       setFetching(false);
@@ -83,7 +117,7 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
   const handleToggle = useCallback(async (light: Light) => {
     const newPower = light.power === "on" ? "off" : "on";
     try {
-      const res = await fetchJson(lifxStatePath(light.id), {
+      const res = await fetchJson(lightStatePath(light), {
         method: "PUT",
         body: JSON.stringify({ power: newPower }),
       });
@@ -99,7 +133,7 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
   const handleBrightness = useCallback(
     async (light: Light, brightness: number) => {
       try {
-        await fetchJson(lifxStatePath(light.id), {
+        await fetchJson(lightStatePath(light), {
           method: "PUT",
           body: JSON.stringify({ brightness, duration: 0.3 }),
         });
@@ -115,7 +149,7 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
 
   const handleColor = useCallback(async (light: Light, color: string) => {
     try {
-      await fetchJson(lifxStatePath(light.id), {
+      await fetchJson(lightStatePath(light), {
         method: "PUT",
         body: JSON.stringify({ color, duration: 0.5 }),
       });
@@ -179,7 +213,7 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
                 : offline
                   ? "Could not reach Pi"
                   : error
-                    ? "LIFX or configuration issue"
+                    ? "Light provider or configuration issue"
                     : "Connected"
             }
             aria-hidden
@@ -242,7 +276,9 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
             <p className="py-8 text-center text-sm pretzel-text-panel-subtle">
               No lights assigned to this room. In the LIFX app, use group or
               location names <span className="font-mono">Lounge</span> or{" "}
-              <span className="font-mono">Bedroom</span> (case-insensitive).
+              <span className="font-mono">Bedroom</span> (case-insensitive);
+              WiZ bulbs take their room from{" "}
+              <span className="font-mono">WIZ_LIGHTS</span> on the Pi.
             </p>
           )}
       </div>
