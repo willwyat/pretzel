@@ -147,7 +147,7 @@ export function LightCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <h3
-              className={`truncate text-sm font-medium ${
+              className={`pretzel-text-card-name truncate ${
                 isOn
                   ? "pretzel-text-card-name-on"
                   : "pretzel-text-card-name-off"
@@ -160,9 +160,9 @@ export function LightCard({
             )}
           </div>
 
-          <p className="pretzel-text-panel-muted truncate text-xs">
-            {light.product?.name || "LIFX Light"}
-            {isOn && ` · ${kelvinLabel(kelvin)}`}
+          {/* Height is reserved while off so the card doesn't jump on toggle. */}
+          <p className="pretzel-text-panel-muted min-h-4 truncate text-xs">
+            {isOn && kelvinLabel(kelvin)}
           </p>
 
           {/* The fader and swatches stay mounted when the light is off (dark and
