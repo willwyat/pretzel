@@ -274,6 +274,11 @@
 
   .pretzel-text-sun-title {
     margin-bottom: 0.25rem;
+  }
+
+  /* Light card name shares the plate's sun / outside label lettering. */
+  .pretzel-text-sun-title,
+  .pretzel-text-card-name {
     font-size: 0.6875rem;
     font-weight: 800;
     text-transform: uppercase;
