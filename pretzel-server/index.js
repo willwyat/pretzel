@@ -17,6 +17,7 @@ const { createChessHub } = require("./lib/chessHub");
 const { TetrisManager } = require("./lib/tetris");
 const { Bulletin } = require("./lib/bulletin");
 const { listDevices } = require("./lib/devices");
+const { parseWizLights, getWizLight, setWizState } = require("./lib/wiz");
 const { WebSocketServer } = require("ws");
 
 const PORT =
@@ -392,6 +393,26 @@ app.post("/lifx/lights/:selector/state/delta", async (req, res) => {
     await lifxForwardJson(res, upstream);
   } catch (e) {
     res.status(502).json({ error: `Request failed: ${e.message}` });
+  }
+});
+
+// ── WiZ bulbs (local UDP, LIFX-shaped JSON) ─────────────────────
+const WIZ_LIGHTS = parseWizLights(process.env.WIZ_LIGHTS);
+
+app.get("/pretzel/wiz/lights", async (req, res) => {
+  res.json(await Promise.all(WIZ_LIGHTS.map(getWizLight)));
+});
+
+// `:id` is the bulb's IP; only bulbs listed in WIZ_LIGHTS are reachable.
+app.put("/pretzel/wiz/lights/:id/state", async (req, res) => {
+  const cfg = WIZ_LIGHTS.find((l) => l.ip === req.params.id);
+  if (!cfg) return res.status(404).json({ error: "Unknown WiZ light" });
+  try {
+    const sent = await setWizState(cfg, req.body);
+    if (!sent) return res.status(400).json({ error: "Nothing to change" });
+    res.json({ results: [{ id: cfg.ip, label: cfg.label, status: "ok" }] });
+  } catch (e) {
+    res.status(504).json({ error: e.message });
   }
 });
 
@@ -954,7 +975,11 @@ const TV_IP = process.env.TV_IP || "192.168.1.186";
 app.get("/pretzel/admin/devices", assertSettingsPass, async (req, res) => {
   try {
     const result = await listDevices({ force: req.query.refresh === "1" });
-    const labels = { [TV_IP]: "LG TV", ...chessManager.playerIps() };
+    const labels = {
+      [TV_IP]: "LG TV",
+      ...Object.fromEntries(WIZ_LIGHTS.map((l) => [l.ip, `WiZ ${l.label}`])),
+      ...chessManager.playerIps(),
+    };
     const devices = result.devices.map((d) => ({ ...d, label: d.label || labels[d.ip] || null }));
     res.json({ ok: true, ...result, devices });
   } catch (e) {

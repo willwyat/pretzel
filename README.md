@@ -1,12 +1,12 @@
 # Pretzel
 
-Node services and scripts that run on the **Pretzel** Pi: LG TV relay, Pi speaker API (TTS, volume, weather, LIFX proxy), and a LAN guest UI (**Vite + React**, built to `remote-ui/dist/`) that proxies to them.
+Node services and scripts that run on the **Pretzel** Pi: LG TV relay, Pi speaker API (TTS, volume, weather, LIFX proxy, WiZ bulbs), and a LAN guest UI (**Vite + React**, built to `remote-ui/dist/`) that proxies to them.
 
 ## Components
 
 | Area | Path | Role | Default port | Systemd example |
 |------|------|------|--------------|-----------------|
-| Pi speaker / TTS / volume / weather / LIFX proxy | [pretzel-server/](pretzel-server/) | Express (`/pretzel/*`, `/lifx/*`, operator **`/pretzel/admin/*`** on **3001**) | **3001** | [pretzel-server/pretzel-server.service.example](pretzel-server/pretzel-server.service.example) |
+| Pi speaker / TTS / volume / weather / LIFX proxy / WiZ bulbs | [pretzel-server/](pretzel-server/) | Express (`/pretzel/*` incl. **`/pretzel/wiz/*`**, `/lifx/*`, operator **`/pretzel/admin/*`** on **3001**) | **3001** | [pretzel-server/pretzel-server.service.example](pretzel-server/pretzel-server.service.example) |
 | LG TV relay (HTTP + WebSocket to TV) | [tv-relay/](tv-relay/) | Express + `ws`; `GET /tv/status` adds `screenOn` via LG `getPowerState` when the main socket is up (standby can leave the socket open) | **3000** | [tv-relay/tv-relay.service.example](tv-relay/tv-relay.service.example) |
 | Guest LAN UI + reverse proxy | [remote-ui/](remote-ui/) | Vite + React → `dist/`; `/` home, **`/settings`** operator page, **`/chess`** two-player chess, **`/tetris`** two-player versus Tetris; `/tv` → 3000, `/pretzel` and `/lifx` → 3001; **PWA** (manifest + service worker after `npm run build`) | **8080** | [remote-ui/remote-ui.service.example](remote-ui/remote-ui.service.example) |
 | Shell helpers | [scripts/](scripts/) | `speak.sh TEXT [INSTRUCTIONS]` → OpenAI speech; no instructions uses **tts-1**, non-empty instructions use **gpt-4o-mini-tts** (see `SPEAK_SCRIPT` in pretzel-server) | — | — |
@@ -14,6 +14,8 @@ Node services and scripts that run on the **Pretzel** Pi: LG TV relay, Pi speake
 Ports for pretzel-server and tv-relay are set in their `index.js` files unless you add env-based configuration later.
 
 **LIFX (optional):** Set `LIFX_API_TOKEN` on the Pi for `/lifx/*` on pretzel-server (**3001**). Optional `LIFX_API_URL` defaults to `https://api.lifx.com/v1`. Guests on **8080** use the same-origin path `/lifx/*` (proxied to **3001** by `remote-ui`).
+
+**WiZ (Philips WiZ bulbs, optional):** pretzel-server talks to WiZ bulbs directly on the LAN (JSON over UDP **38899**; no cloud or token). Each bulb needs **Allow local communication** on in the WiZ app (Settings → Security) and a fixed IP (DHCP reservation on the router). List bulbs in **`WIZ_LIGHTS`** as comma-separated `ip:label:room`, where room is `Lounge` or `Bedroom` (default `192.168.1.182:Onion:Lounge`; empty disables WiZ). `GET /pretzel/wiz/lights` returns them in the LIFX light shape, so they appear in the same lights panels; `PUT /pretzel/wiz/lights/:ip/state` takes the same body as LIFX (`power`, `brightness`, `color`; `duration` is ignored, since WiZ fades are set in the app). Only IPs in `WIZ_LIGHTS` can be controlled. An unreachable bulb (e.g. wall switch off) shows as **Offline**. They are also labelled in the `/settings` network-device list. Quick check from the Pi: `echo '{"method":"getPilot","params":{}}' | nc -u -w 2 192.168.1.182 38899`.
 
 **TV power:** the **POWER** key in the LG TV panel calls `POST /tv/power/on` on tv-relay, which needs **`TV_WOL_MAC`** (the TV's MAC) to wake it from full off via Wake-on-LAN; from standby it also works over the open WebSocket. If neither is possible the panel shows the relay's error. Turning off needs a second tap to confirm.
 
@@ -110,6 +112,7 @@ curl -sS http://127.0.0.1:3001/pretzel/status
 curl -sS http://127.0.0.1:8080/tv/status
 curl -sS http://127.0.0.1:8080/pretzel/status
 curl -sS http://127.0.0.1:8080/lifx/scenes
+curl -sS http://127.0.0.1:8080/pretzel/wiz/lights
 ```
 
 If **8080** refuses connections: confirm `remote-ui` is running (`systemctl status remote-ui`), that you ran `npm run build` in `remote-ui` (so `dist/index.html` exists), and read logs: `journalctl -u remote-ui -n 40 --no-pager`. Foreground check: `sudo systemctl stop remote-ui` first if 8080 is busy, then `cd ~/pretzel/remote-ui && node server.cjs` (Ctrl+C to stop). If your unit still says `server.js`, update **ExecStart** to `node server.cjs` after pull.
