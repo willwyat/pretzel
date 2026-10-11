@@ -1,0 +1,7 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "pretzel-server", "runtimeExecutable": "node", "runtimeArgs": ["pretzel-server/index.js"], "port": 3001 },
+    { "name": "remote-ui", "runtimeExecutable": "npm", "runtimeArgs": ["--prefix", "remote-ui", "run", "dev"], "port": 5173 }
+  ]
+}

@@ -3,13 +3,13 @@ import type { ChessState, Color } from "./chessSocket";
 /**
  * Status line under each player's name. Read from the viewer's side:
  *
- *   tone   LED     meaning
- *   turn   green   it is this player's move ("Your turn", "Thinking…", "To move")
- *   alert  amber   needs attention: check, a draw offer, low on time
- *   off    red     player is offline (their clock still runs)
- *   wait   dim     not this player's move ("Waiting on you", "Waiting on Bob")
- *   done   dim     game over line ("Won by checkmate", "Checkmated", "Draw · stalemate")
- *   idle   dim     empty seat / not started
+ *   tone   gem      meaning
+ *   turn   emerald  it is this player's move ("Your turn", "Thinking…", "To move")
+ *   alert  topaz    needs attention: check, a draw offer, low on time
+ *   off    ruby     player is offline (their clock still runs)
+ *   wait   iron     not this player's move ("Waiting on you", "Waiting on Bob")
+ *   done   iron     game over line ("Won by checkmate", "Checkmated", "Draw · stalemate")
+ *   idle   iron     empty seat / not started
  *
  * First matching rule wins: empty seat → game over → offline → draw offer →
  * check → whose turn.
@@ -69,16 +69,17 @@ export function seatStatus(s: ChessState, color: Color): SeatStatus {
   return { text: watching ? "Waiting" : "Waiting on you", tone: "wait" };
 }
 
-export const TONE_LED: Record<Tone, string> = {
-  turn: "pretzel-led pretzel-led--ok",
-  alert: "pretzel-led pretzel-led--warn",
-  off: "pretzel-led pretzel-led--off",
-  wait: "pretzel-led",
-  done: "pretzel-led",
-  idle: "pretzel-led",
+/** Status gem per tone (sprite frames in public/sprites/scroll/gems.svg; lit ones twinkle). */
+export const TONE_GEM: Record<Tone, string> = {
+  turn: "chess-gem chess-gem--emerald",
+  alert: "chess-gem chess-gem--topaz",
+  off: "chess-gem chess-gem--ruby",
+  wait: "chess-gem",
+  done: "chess-gem",
+  idle: "chess-gem",
 };
 
-/** Short amber readout for the top bar. */
+/** Short bitmap banner text for the top bar. */
 export function topReadout(s: ChessState | null, connected: boolean): string {
   if (!s) return connected ? "LOADING" : "CONNECTING";
   if (s.status === "over") return "GAME OVER";
