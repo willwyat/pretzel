@@ -125,6 +125,11 @@ export function LightCard({
   /** Last level the bulb confirmed; the lit fill catches up to the cap from here. */
   const confirmedPct = Math.round((light.brightness ?? 0) * 100);
   const accent = lightAccent(light);
+  const swatches = light.product?.capabilities?.has_color
+    ? COLOR_SWATCHES
+    : light.product?.capabilities?.has_variable_color_temp
+      ? KELVIN_SWATCHES
+      : [];
   const endDrag = () => {
     if (!dragging) return;
     setDragging(false);
@@ -155,51 +160,50 @@ export function LightCard({
             )}
           </div>
 
-          <p className="pretzel-text-panel-muted text-xs">
+          <p className="pretzel-text-panel-muted truncate text-xs">
             {light.product?.name || "LIFX Light"}
             {isOn && ` · ${kelvinLabel(kelvin)}`}
           </p>
 
-          {isOn && (
-            <div className="mt-3 flex items-center gap-3">
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={brightnessPct}
-                aria-label={`${light.label} brightness`}
-                onChange={(e) => {
-                  const val = Number(e.target.value) / 100;
-                  setLocalBrightness(val);
-                  setDragging(true);
-                }}
-                onPointerUp={endDrag}
-                onPointerCancel={endDrag}
-                onKeyUp={endDrag}
-                onBlur={endDrag}
-                className="pretzel-range pretzel-range--accent pretzel-range--fade"
-                style={{ "--fill": `${confirmedPct}%` } as CSSProperties}
-              />
-              <span className="pretzel-vol-pct">{brightnessPct}%</span>
-            </div>
-          )}
+          {/* The fader and swatches stay mounted when the light is off (dark and
+              inert) so the card keeps the same height, like a real panel. */}
+          <div className="mt-3 flex items-center gap-3">
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={brightnessPct}
+              disabled={!isOn}
+              aria-label={`${light.label} brightness`}
+              onChange={(e) => {
+                const val = Number(e.target.value) / 100;
+                setLocalBrightness(val);
+                setDragging(true);
+              }}
+              onPointerUp={endDrag}
+              onPointerCancel={endDrag}
+              onKeyUp={endDrag}
+              onBlur={endDrag}
+              className="pretzel-range pretzel-range--accent pretzel-range--fade"
+              style={
+                { "--fill": `${isOn ? confirmedPct : 0}%` } as CSSProperties
+              }
+            />
+            <span className="pretzel-vol-pct">{brightnessPct}%</span>
+          </div>
 
-          {isOn && (
+          {swatches.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
-              {(light.product?.capabilities?.has_color
-                ? COLOR_SWATCHES
-                : light.product?.capabilities?.has_variable_color_temp
-                  ? KELVIN_SWATCHES
-                  : []
-              ).map((swatch) => {
-                const active = isSwatchActive(swatch, light);
+              {swatches.map((swatch) => {
+                const active = isOn && isSwatchActive(swatch, light);
                 return (
                   <button
                     key={swatch.label}
                     type="button"
                     title={swatch.label}
+                    disabled={!isOn}
                     onClick={() => onColor(light, swatch.color)}
-                    className={`pretzel-swatch h-6 w-6 rounded-full transition-transform hover:scale-110 ${
+                    className={`pretzel-swatch h-6 w-6 rounded-full transition-transform enabled:hover:scale-110 ${
                       active ? "pretzel-swatch-active" : ""
                     }`}
                     style={{ background: swatch.bg }}
