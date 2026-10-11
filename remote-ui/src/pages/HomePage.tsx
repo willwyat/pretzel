@@ -4,6 +4,7 @@ import { BulletinSection } from "../components/BulletinSection";
 import { ChoresSection } from "../components/ChoresSection";
 import { GamesSection } from "../components/GamesSection";
 import { PretzelSection } from "../components/PretzelSection";
+import { SonosSection } from "../components/SonosSection";
 import { TvSection } from "../components/TvSection";
 import { useCallback, useEffect, useState } from "react";
 import { fetchJson } from "../lib/fetchJson";
@@ -165,7 +166,10 @@ export function HomePage({ activeRoom }: HomePageProps) {
           </>
         ) : null}
         {activeRoom === "lounge" ? (
-          <LightsSection room="lounge" heading="Lounge lights" />
+          <>
+            <LightsSection room="lounge" heading="Lounge lights" />
+            <SonosSection />
+          </>
         ) : null}
         {activeRoom === "bedroom" ? (
           <LightsSection room="bedroom" heading="Bedroom lights" />

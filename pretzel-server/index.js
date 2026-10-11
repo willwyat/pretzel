@@ -18,6 +18,7 @@ const { TetrisManager } = require("./lib/tetris");
 const { Bulletin } = require("./lib/bulletin");
 const { listDevices } = require("./lib/devices");
 const { parseWizLights, getWizLight, setWizState } = require("./lib/wiz");
+const { createWyatSonos, createSonosRouter } = require("./lib/sonos");
 const { WebSocketServer } = require("ws");
 
 const PORT =
@@ -415,6 +416,12 @@ app.put("/pretzel/wiz/lights/:id/state", async (req, res) => {
     res.status(504).json({ error: e.message });
   }
 });
+
+// ── Sonos (through the Wyat backend, which holds the Sonos tokens) ──
+app.use(
+  "/pretzel/sonos",
+  createSonosRouter(createWyatSonos({ baseUrl: process.env.WYAT_API_URL })),
+);
 
 app.get("/pretzel/weather", async (req, res) => {
   const now = new Date();
