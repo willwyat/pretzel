@@ -9,9 +9,10 @@ Input: <n>_neutral.png plus <n>_{thinking,shocked,smug,victorious,loss}.jpeg per
 character. They are pixel art that was upscaled (blurred, or JPEG at 2048 px),
 so each image is put back on its native ~62-cell grid: find the cell size and
 phase from edge energy, take the median colour of each cell's centre, repaint
-the backdrop one exact colour, then quantize all six frames of a character to
-one shared palette. Output: <n>.png, a 372×62 strip in EXPRESSIONS order (the
-frame order must match remote-ui/src/lib/chessAvatars.ts).
+the backdrop one exact colour, box-resample each frame down to OUT_CELLS for a
+chunkier look, then quantize all six frames of a character to one shared
+palette. Output: <n>.png, a 288×48 strip in EXPRESSIONS order (the frame order
+must match remote-ui/src/lib/chessAvatars.ts).
 """
 import os
 import sys
@@ -20,7 +21,8 @@ import numpy as np
 from PIL import Image
 
 EXPRESSIONS = ["neutral", "thinking", "shocked", "smug", "victorious", "loss"]
-CELLS = 62
+CELLS = 62  # the source art's native grid
+OUT_CELLS = 48  # shipped size; chess.css shows it at 64px (4 device px per cell at 3x)
 COLOURS = 48
 
 
@@ -91,7 +93,11 @@ def main(src, dst):
         if bg is None:  # every character shares the first one's backdrop
             bg = np.round(np.median(border(frames[0]), axis=0))
         frames = [repaint_backdrop(f, bg) for f in frames]
-        strip = Image.fromarray(np.clip(np.concatenate(frames, axis=1), 0, 255).astype(np.uint8))
+        frames = [
+            np.asarray(Image.fromarray(np.clip(f, 0, 255).astype(np.uint8)).resize((OUT_CELLS, OUT_CELLS), Image.BOX))
+            for f in frames
+        ]
+        strip = Image.fromarray(np.concatenate(frames, axis=1))
         strip = strip.quantize(colors=COLOURS, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
         strip.convert("RGB").save(os.path.join(dst, f"{n}.png"), optimize=True)
         print(f"{n}.png")

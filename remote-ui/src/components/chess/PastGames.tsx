@@ -57,7 +57,7 @@ export function PastGames({ onClose }: { onClose: () => void }) {
   if (game) {
     const n = game.moves.length;
     const last = ply > 0 ? game.moves[ply - 1] : null;
-    const moveNo = ply === 0 ? "Start" : `${Math.ceil(ply / 2)}${ply % 2 ? "." : "…"} ${last?.san}`;
+    const moveNo = ply === 0 ? "Start" : `${Math.ceil(ply / 2)}${ply % 2 ? "." : "..."} ${last?.san}`;
     return (
       <ScrollDialog title={`${game.white ?? "?"} vs ${game.black ?? "?"}`} onClose={onClose}>
         <div className="chess-board-frame">
@@ -82,7 +82,7 @@ export function PastGames({ onClose }: { onClose: () => void }) {
   return (
     <ScrollDialog title="Past games" onClose={onClose}>
       {err ? <p className="pretzel-text-alert text-sm">{err}</p> : null}
-      {list === null && !err ? <p className="pretzel-text-panel-muted">Loading…</p> : null}
+      {list === null && !err ? <p className="pretzel-text-panel-muted">Loading...</p> : null}
       {list?.length === 0 ? <p className="pretzel-text-panel-muted">No finished games yet.</p> : null}
       {list && list.length > 0 ? (
         <ul className="chess-history">

@@ -1,7 +1,7 @@
 import type { ChessState, Color } from "./chessSocket";
 
 /**
- * Player portraits. Each avatar is one 62×62-per-frame strip in
+ * Player portraits. Each avatar is one 48×48-per-frame strip in
  * public/avatars/chess/<id>.png, frames in EXPRESSIONS order (built by
  * scripts/chess-avatars.py; keep the two in sync).
  */

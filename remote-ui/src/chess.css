@@ -16,6 +16,17 @@
   font-style: normal;
   font-display: block;
 }
+/* Perfect DOS VGA 437 (Zeh Fernando, free to redistribute; see
+   PerfectDOSVGA437-LICENSE.txt). The "Win" cut: the plain one maps · and …
+   to codepage-437 glyphs. An 8×16 bitmap face, crisp only at multiples of
+   16px, and it has no … glyph, so DOS text writes "..." instead. */
+@font-face {
+  font-family: "Perfect DOS VGA 437";
+  src: url("/fonts/PerfectDOSVGA437Win.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 /* Pixelta (Blankids Studio, personal use only): not in git, copy to
    public/fonts/Pixelta.ttf by hand. Falls back to Outfit without it. */
 @font-face {
@@ -41,7 +52,20 @@
   --paper-mid: #d3a572;
   --paper-light: #f2dab3;
   --roll-h: calc(10 * var(--px));
+  --dos: "Perfect DOS VGA 437", ui-monospace, Menlo, monospace;
   grid-template-rows: auto minmax(0, 1fr) auto;
+}
+/* DOS text on the scroll: native 16px, in the names' ink and hard shadow. */
+.chess-dos {
+  font-family: var(--dos);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 16px;
+  letter-spacing: 0;
+  color: var(--ink);
+  text-shadow: 1px 1px 0 var(--paper-mid);
+  -webkit-font-smoothing: none;
+  font-smooth: never;
 }
 
 /* Top bar (Moog, shared with Tetris): game name, LED + readout, quit. */
@@ -156,10 +180,11 @@
 .chess-plaque {
   display: inline-block;
   margin: 2px;
-  padding: 0.3rem 0.6rem 0.2rem;
-  font-family: "Pixelta", Outfit, sans-serif;
-  font-size: 16.67px;
-  line-height: 1;
+  padding: 0.3rem 0.6rem 0.25rem;
+  font-family: var(--dos);
+  font-size: 16px;
+  line-height: 16px;
+  -webkit-font-smoothing: none;
   color: var(--ink);
   background: var(--paper);
   box-shadow:
@@ -327,15 +352,6 @@
   align-items: center;
   gap: 0.625rem;
   min-height: 1.25rem;
-  /* Pixelta's grid is 0.03em: 16.67px = half a CSS px per font pixel */
-  font-family: "Pixelta", Outfit, sans-serif;
-  font-size: 16.67px;
-  font-weight: 400;
-  line-height: 1;
-  color: var(--ink-muted);
-}
-.chess-seat--turn .chess-seat__text {
-  color: var(--ink);
 }
 .chess-seat--alert .chess-seat__text {
   color: var(--ink-alert);
@@ -369,13 +385,13 @@
   margin-left: 0.125rem;
 }
 
-/* ── Avatars: one frame of a 6-frame strip (lib/chessAvatars.ts). 62px = one
-   CSS px per art pixel, so phones get whole device pixels per cell. ── */
+/* ── Avatars: one frame of a 6-frame 48×48 strip (lib/chessAvatars.ts). 64px
+   = 4/3 CSS px per art pixel: whole device pixels (4) per cell on 3x phones. ── */
 .chess-avatar {
   display: block;
   flex: none;
-  width: 62px;
-  height: 62px;
+  width: 64px;
+  height: 64px;
   border-radius: 3px;
   background-color: #8e7f6c; /* the strips' backdrop */
   background-repeat: no-repeat;
@@ -656,12 +672,17 @@
   border-radius: 0;
   color: var(--ink);
   background: var(--face);
+  font-family: var(--dos);
+  font-size: 16px;
+  line-height: 16px;
+  text-shadow: 1px 1px 0 var(--text-shadow, var(--pixel-shadow));
+  -webkit-font-smoothing: none;
   box-shadow:
     inset var(--bv) var(--bv) 0 var(--hi),
     inset calc(-1 * var(--bv)) calc(-1 * var(--bv)) 0 var(--lo),
     0 0 0 var(--bv) var(--wood-dark),
     calc(2 * var(--bv)) calc(2 * var(--bv)) 0 var(--bv) rgba(59, 31, 12, 0.35);
-  font: inherit;
+  font-weight: 400;
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -682,6 +703,9 @@
   opacity: 0.45;
   filter: grayscale(0.7);
 }
+.chess-btn__label {
+  white-space: nowrap;
+}
 .chess-btn--gold {
   --face: #f2c14e;
   --hi: #fff0b8;
@@ -693,6 +717,7 @@
   --hi: #e0604a;
   --lo: #651008;
   --pixel-shadow: #4a0a05;
+  --text-shadow: #4a0a05;
   color: #fbe7c6;
 }
 .chess-btn--wood {
@@ -700,6 +725,7 @@
   --hi: var(--wood-light);
   --lo: var(--wood-dark);
   --pixel-shadow: #3b1f0c;
+  --text-shadow: #3b1f0c;
   color: #f2c14e;
   background:
     url("/sprites/scroll/rivet.svg") left calc(2 * var(--bv)) center / calc(4 * var(--bv)) no-repeat,
@@ -784,10 +810,11 @@
 .chess-dialog .pretzel-text-alert,
 .chess-legend {
   margin: 0;
-  font-family: "Pixelta", Outfit, sans-serif;
-  font-size: 16.67px;
-  line-height: 1.35;
+  font-family: var(--dos);
+  font-size: 16px;
+  line-height: 20px;
   color: var(--ink);
+  -webkit-font-smoothing: none;
 }
 .chess-dialog .pretzel-text-panel-muted {
   color: var(--ink-muted);
@@ -799,8 +826,9 @@
   color: var(--ink-faint);
 }
 .chess-dialog .pretzel-input {
-  font-family: "Pixelta", Outfit, sans-serif;
-  font-size: 16.67px;
+  font-family: var(--dos);
+  font-size: 16px;
+  -webkit-font-smoothing: none;
   border: 0;
   border-radius: 0;
   padding: 0.6rem 0.75rem 0.5rem;
@@ -916,9 +944,7 @@
   width: calc(100% - 4px);
   padding: 0.625rem 0.75rem;
   text-align: left;
-  font-family: "Pixelta", Outfit, sans-serif;
-  font-size: 16.67px;
-  line-height: 1.2;
+  line-height: 20px;
 }
 .chess-history__names {
   overflow: hidden;
@@ -927,6 +953,5 @@
 }
 .chess-history__meta {
   grid-column: 1 / -1;
-  font-size: 13.33px;
   color: var(--ink-muted);
 }
