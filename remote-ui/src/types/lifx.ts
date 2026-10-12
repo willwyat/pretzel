@@ -17,7 +17,7 @@ export interface LightColor {
 export interface Light {
   id: string;
   /** Which backend controls it; LIFX lights come back without one. */
-  provider?: "lifx" | "wiz";
+  provider?: "lifx" | "wiz" | "tuya";
   uuid?: string;
   label: string;
   connected: boolean;
@@ -33,6 +33,8 @@ export interface Light {
     capabilities: {
       has_color: boolean;
       has_variable_color_temp: boolean;
+      /** Only Tuya switches send false: on/off only, no fader. */
+      has_brightness?: boolean;
       min_kelvin: number;
       max_kelvin: number;
     };

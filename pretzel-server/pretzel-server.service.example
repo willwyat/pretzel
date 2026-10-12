@@ -5,10 +5,11 @@
 # Listens on :3001 (see index.js). Start before remote-ui; tv-relay is independent.
 # Optional LIFX HTTP API proxy: /lifx/* (set token below).
 # WiZ bulbs on the LAN: /pretzel/wiz/* (see WIZ_LIGHTS below).
+# Tuya smart switches on the LAN (tinytuya) or via Tuya Cloud: /pretzel/tuya/*.
 # Sonos through the Wyat backend: /pretzel/sonos/* (see WYAT_API_URL below).
 
 [Unit]
-Description=Pretzel Pi API (TTS, volume, weather, LIFX proxy, WiZ, Sonos on :3001)
+Description=Pretzel Pi API (TTS, volume, weather, LIFX proxy, WiZ, Tuya, Sonos on :3001)
 After=network-online.target
 Wants=network-online.target
 
@@ -21,7 +22,7 @@ Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
 # Optional: match repo root VERSION after deploy (see README).
-# Environment=PRETZEL_STACK_VERSION=1.23.0
+# Environment=PRETZEL_STACK_VERSION=1.24.0
 # Optional: Settings page / curl admin — must match header from UI or client.
 # Environment=PRETZEL_SETTINGS_PASSCODE=change_me
 # Optional: git pull repo root (default: parent of this directory).
@@ -32,6 +33,17 @@ Environment=NODE_ENV=production
 # WiZ bulbs, comma-separated ip:label:room (room = Lounge or Bedroom).
 # Default is the lounge bulb below; set to empty to disable WiZ.
 # Environment="WIZ_LIGHTS=192.168.1.182:Onion:Lounge"
+# Tuya switches. Local control: run the tinytuya wizard in ~/tuya (venv in
+# ~/tuya/venv); the defaults below then find it. Cloud credentials (same as
+# wyat-ai's TUYA_*) are the fallback and can be left out.
+# Environment=TUYA_LOCAL_DEVICES=/home/pi/tuya/devices.json
+# Environment=TUYA_LOCAL_PYTHON=/home/pi/tuya/venv/bin/python
+# TUYA_SWITCHES is comma-separated deviceId:label:room[:ip]; ip is used for local
+# control and the device list. TUYA_API_BASE defaults to https://openapi.tuyaus.com.
+# Environment=TUYA_CLIENT_ID=your_access_id
+# Environment=TUYA_CLIENT_SECRET=your_access_secret
+# Environment=TUYA_API_BASE=https://openapi.tuyaus.com
+# Environment="TUYA_SWITCHES=your_device_id:Switch:Lounge:192.168.1.188"
 # Sonos goes through Wyat, which holds the Sonos tokens and lets the home IP in
 # (HOME_PUBLIC_IP on Wyat). Default https://api.wyat.ai.
 # Environment=WYAT_API_URL=https://api.wyat.ai

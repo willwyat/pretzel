@@ -18,6 +18,18 @@ const { TetrisManager } = require("./lib/tetris");
 const { Bulletin } = require("./lib/bulletin");
 const { listDevices } = require("./lib/devices");
 const { parseWizLights, getWizLight, setWizState } = require("./lib/wiz");
+const {
+  parseTuyaSwitches,
+  loadTuyaConfig,
+  createTuyaClient,
+  getTuyaSwitch,
+  setTuyaSwitch,
+} = require("./lib/tuya");
+const {
+  loadTuyaLocalConfig,
+  createTuyaLocalClient,
+  createTuyaClientWithFallback,
+} = require("./lib/tuyaLocal");
 const { createWyatSonos, createSonosRouter } = require("./lib/sonos");
 const { WebSocketServer } = require("ws");
 
@@ -417,6 +429,47 @@ app.put("/pretzel/wiz/lights/:id/state", async (req, res) => {
   }
 });
 
+// ── Tuya switches (LAN via tinytuya, else Tuya Cloud) ───────────
+const TUYA_SWITCHES = parseTuyaSwitches(process.env.TUYA_SWITCHES);
+const tuyaConfig = loadTuyaConfig();
+const tuyaLocalConfig = loadTuyaLocalConfig();
+const tuyaClient =
+  tuyaConfig || tuyaLocalConfig
+    ? createTuyaClientWithFallback(
+        tuyaLocalConfig &&
+          createTuyaLocalClient(tuyaLocalConfig, {
+            ipFor: (id) => TUYA_SWITCHES.find((s) => s.id === id)?.ip ?? null,
+          }),
+        tuyaConfig && createTuyaClient(tuyaConfig),
+      )
+    : null;
+
+app.get("/pretzel/tuya/switches", async (req, res) => {
+  if (TUYA_SWITCHES.length === 0) return res.json([]);
+  if (!tuyaClient) {
+    return res
+      .status(500)
+      .json({
+        error:
+          "Tuya not configured on Pi (run the tinytuya wizard in ~/tuya, or set TUYA_CLIENT_ID and TUYA_CLIENT_SECRET)",
+      });
+  }
+  res.json(await Promise.all(TUYA_SWITCHES.map((s) => getTuyaSwitch(tuyaClient, s))));
+});
+
+// `:id` is the Tuya device id; only switches listed in TUYA_SWITCHES are reachable.
+app.put("/pretzel/tuya/switches/:id/state", async (req, res) => {
+  const cfg = TUYA_SWITCHES.find((s) => s.id === req.params.id);
+  if (!cfg) return res.status(404).json({ error: "Unknown Tuya switch" });
+  if (!tuyaClient) return res.status(500).json({ error: "Tuya not configured on Pi" });
+  try {
+    const sent = await setTuyaSwitch(tuyaClient, cfg, req.body);
+    if (!sent) return res.status(400).json({ error: "Nothing to change" });
+    res.json({ results: [{ id: cfg.id, label: cfg.label, status: "ok" }] });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
 // ── Sonos (through the Wyat backend, which holds the Sonos tokens) ──
 app.use(
   "/pretzel/sonos",
@@ -985,6 +1038,9 @@ app.get("/pretzel/admin/devices", assertSettingsPass, async (req, res) => {
     const labels = {
       [TV_IP]: "LG TV",
       ...Object.fromEntries(WIZ_LIGHTS.map((l) => [l.ip, `WiZ ${l.label}`])),
+      ...Object.fromEntries(
+        TUYA_SWITCHES.filter((s) => s.ip).map((s) => [s.ip, `Tuya ${s.label}`]),
+      ),
       ...chessManager.playerIps(),
     };
     const devices = result.devices.map((d) => ({ ...d, label: d.label || labels[d.ip] || null }));

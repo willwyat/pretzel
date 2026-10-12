@@ -116,6 +116,7 @@ export function LightCard({
   /** Last level the bulb confirmed; the lit fill catches up to the cap from here. */
   const confirmedPct = Math.round((light.brightness ?? 0) * 100);
   const accent = lightAccent(light);
+  const dimmable = light.product?.capabilities?.has_brightness !== false;
   const swatches = light.product?.capabilities?.has_color
     ? COLOR_SWATCHES
     : light.product?.capabilities?.has_variable_color_temp
@@ -147,32 +148,38 @@ export function LightCard({
 
           {/* The fader and swatches stay mounted when the light is off (dark and
               inert) so the card keeps the same height, like a real panel. */}
-          <div className="mt-3 flex items-center gap-3">
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={brightnessPct}
-              disabled={!isOn}
-              aria-label={`${light.label} brightness`}
-              onChange={(e) => {
-                const val = Number(e.target.value) / 100;
-                setLocalBrightness(val);
-                setDragging(true);
-              }}
-              onPointerUp={endDrag}
-              onPointerCancel={endDrag}
-              onKeyUp={endDrag}
-              onBlur={endDrag}
-              className="pretzel-range pretzel-range--accent pretzel-range--fade"
-              style={
-                { "--fill": `${isOn ? confirmedPct : 0}%` } as CSSProperties
-              }
-            />
-            <span className="pretzel-vol-pct">
-              {isOn ? `${brightnessPct}%` : "OFF"}
+          {dimmable ? (
+            <div className="mt-3 flex items-center gap-3">
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={brightnessPct}
+                disabled={!isOn}
+                aria-label={`${light.label} brightness`}
+                onChange={(e) => {
+                  const val = Number(e.target.value) / 100;
+                  setLocalBrightness(val);
+                  setDragging(true);
+                }}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
+                onKeyUp={endDrag}
+                onBlur={endDrag}
+                className="pretzel-range pretzel-range--accent pretzel-range--fade"
+                style={
+                  { "--fill": `${isOn ? confirmedPct : 0}%` } as CSSProperties
+                }
+              />
+              <span className="pretzel-vol-pct">
+                {isOn ? `${brightnessPct}%` : "OFF"}
+              </span>
+            </div>
+          ) : (
+            <span className="pretzel-vol-pct mt-3 block">
+              {isOn ? "ON" : "OFF"}
             </span>
-          </div>
+          )}
 
           {swatches.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
