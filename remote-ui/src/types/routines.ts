@@ -91,6 +91,8 @@ export type LightNextChange = {
   brightness: number | null;
   kelvin: number | null;
   onlyIfOff: boolean;
+  /** Fade length in seconds; 0 or absent = instant. */
+  fadeS?: number;
   summary: string;
 };
 

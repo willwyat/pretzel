@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { fetchJson } from "../lib/fetchJson";
+import { LedRefresh } from "./LedRefresh";
+import { PixelMarquee } from "./PixelMarquee";
 import { VuMeter } from "./VuMeter";
 
 /** Track and play state change on their own; re-read them while the tab is open. */
@@ -32,7 +34,14 @@ function errorOf(data: unknown, fallback: string): string {
 const groupPath = (id: string) =>
   `/pretzel/sonos/groups/${encodeURIComponent(id)}`;
 
-function SonosGroupCard({ group }: { group: SonosGroup }) {
+function SonosGroupCard({
+  group,
+  showName,
+}: {
+  group: SonosGroup;
+  /** Only worth printing when the tab holds more than one group. */
+  showName: boolean;
+}) {
   const [status, setStatus] = useState<GroupStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [localVolume, setLocalVolume] = useState(0);
@@ -121,31 +130,27 @@ function SonosGroupCard({ group }: { group: SonosGroup }) {
 
   const ready = status !== null;
   const shownVolume = dragging ? localVolume : (status?.volume ?? 0);
-  const nowPlaying =
-    status?.track ??
-    status?.source ??
-    (!ready ? "Loading…" : isPlaying ? "Playing" : "Paused");
-  const subline = status?.track ? status.artist : null;
+  const nowPlaying = status?.track
+    ? status.artist
+      ? `${status.track} - ${status.artist}`
+      : status.track
+    : (status?.source ??
+      (!ready ? "Loading…" : isPlaying ? "Playing" : "Paused"));
 
   return (
-    <div className="pretzel-well space-y-3">
+    // Sits straight on the panel plate: track lamp and transport in one row,
+    // then the meter and fader. No inner card.
+    <div className="space-y-2.5">
+      {showName && <h3 className="pretzel-text-card-name">{group.name}</h3>}
       <div className="flex items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <h3 className="pretzel-text-card-name truncate">{group.name}</h3>
-          <p className="pretzel-readout mt-1.5 block truncate">{nowPlaying}</p>
-          {subline && (
-            <p className="pretzel-text-panel-muted mt-1 truncate text-xs">
-              {subline}
-            </p>
-          )}
-        </div>
+        <PixelMarquee text={nowPlaying} className="min-w-0 flex-1" />
         <button
           type="button"
           disabled={!ready || busy}
           onClick={() => void togglePlay()}
           title={isPlaying ? "Pause" : "Play"}
           aria-label={`${group.name} ${isPlaying ? "pause" : "play"}`}
-          className={`pretzel-btn-icon flex h-14 w-14 flex-shrink-0 items-center justify-center ${
+          className={`pretzel-btn-icon flex h-12 w-12 flex-shrink-0 items-center justify-center ${
             isPlaying ? "pretzel-key--accent" : ""
           }`}
         >
@@ -236,30 +241,25 @@ export function SonosSection() {
     <section className="pretzel-panel">
       <div className="pretzel-panel__header">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <span
-            className={`pretzel-led ${led}`}
-            title={loading ? "Loading…" : (error ?? "Connected")}
-            aria-hidden
+          <LedRefresh
+            ledClass={led}
+            status={loading ? "Loading…" : (error ?? "Connected")}
+            disabled={loading}
+            onRefresh={() => void loadGroups()}
           />
           <h2 className="pretzel-text-panel-title min-w-0">Sonos</h2>
         </div>
-        {!loading && (
-          <button
-            type="button"
-            onClick={() => void loadGroups()}
-            className="pretzel-btn-ghost"
-          >
-            Refresh
-          </button>
-        )}
       </div>
 
-      <div className="pretzel-panel__body space-y-3">
-        {error && (
-          <div className="pretzel-well pretzel-text-alert text-sm">{error}</div>
-        )}
-        {groups.map((g) => (
-          <SonosGroupCard key={`${g.id}:${generation}`} group={g} />
+      <div className="pretzel-panel__body">
+        {error && <p className="pretzel-text-alert text-sm">{error}</p>}
+        {groups.map((g, i) => (
+          <div
+            key={`${g.id}:${generation}`}
+            className={i > 0 ? "pretzel-panel__block-bordered" : ""}
+          >
+            <SonosGroupCard group={g} showName={groups.length > 1} />
+          </div>
         ))}
         {!loading && !error && groups.length === 0 && (
           <p className="py-8 text-center text-sm pretzel-text-panel-subtle">

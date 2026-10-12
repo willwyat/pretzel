@@ -5,6 +5,7 @@ import { isLightsNextResponse } from "../lib/routines";
 import type { LifxRoom } from "../types/homeRoom";
 import type { Light } from "../types/lifx";
 import type { LightsNextResponse } from "../types/routines";
+import { LedRefresh } from "./LedRefresh";
 import { LightCard } from "./LightCard";
 
 /** Scheduled changes shift as routines run, so refresh them more often than the lights. */
@@ -228,9 +229,14 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
     <section className="pretzel-panel">
       <div className="pretzel-panel__header">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <span
-            className={`pretzel-led ${statusDot}`}
-            title={
+          <LedRefresh
+            ledClass={statusDot}
+            disabled={loading}
+            onRefresh={() => {
+              void fetchLights();
+              void fetchNextChanges();
+            }}
+            status={
               fetching
                 ? "Loading…"
                 : offline
@@ -239,22 +245,9 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
                     ? "Light provider or configuration issue"
                     : "Connected"
             }
-            aria-hidden
           />
           <h2 className="pretzel-text-panel-title min-w-0">{heading}</h2>
         </div>
-        {!loading && (
-          <button
-            type="button"
-            onClick={() => {
-              void fetchLights();
-              void fetchNextChanges();
-            }}
-            className="pretzel-btn-ghost"
-          >
-            Refresh
-          </button>
-        )}
       </div>
 
       <div className="pretzel-panel__body">
