@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
-import { dayWord, lightChangeLabel, lightChangeShort } from "../lib/routines";
+import { dayWord, lightChangeLabel } from "../lib/routines";
 import type { Light } from "../types/lifx";
 import { Icon } from "./Icon";
 import type { LightNextChange } from "../types/routines";
@@ -158,7 +158,7 @@ export function LightCard({
                 title={`${tz && dayWord(nextChange.at, tz) ? `${dayWord(nextChange.at, tz)} · ` : ""}${nextChange.routineName} · ${lightChangeLabel(nextChange)}`}
               >
                 <Icon name="schedule" className="pretzel-light-next__icon" />
-                {lightChangeShort(nextChange)}
+                {nextChange.time}
               </span>
             ) : null}
           </div>

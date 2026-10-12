@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { type FetchJsonResult, fetchJson } from "../lib/fetchJson";
 import { countdown, isUpcomingResponse } from "../lib/routines";
-import type { RoutineCycle, UpcomingResponse, UpcomingRoutine } from "../types/routines";
+import type {
+  RoutineCycle,
+  UpcomingResponse,
+  UpcomingRoutine,
+  UpcomingStep,
+} from "../types/routines";
+import { Icon, type IconName } from "./Icon";
 
 const POLL_MS = 60_000;
 /** Re-render for countdowns between polls. */
@@ -19,6 +25,22 @@ function routineStatus(r: UpcomingRoutine, isNext: boolean, now: number): Status
   if (isNext) return { label: countdown(r.at, now), tone: "next" };
   if (r.override?.time) return { label: "Moved", tone: "moved" };
   return null;
+}
+
+function stepIcon(s: UpcomingStep): IconName | null {
+  if (s.type === "speak") return "notifications_active";
+  if (s.type === "lights") return s.power === "off" ? "light_off" : "lightbulb";
+  return null;
+}
+
+/** One glyph per kind of action the routine runs, in order of first use. */
+function actionIcons(r: UpcomingRoutine): IconName[] {
+  const out: IconName[] = [];
+  for (const s of r.steps) {
+    const icon = stepIcon(s);
+    if (icon && !out.includes(icon)) out.push(icon);
+  }
+  return out;
 }
 
 function weekdayLabel(cycle: RoutineCycle): string {
@@ -62,21 +84,31 @@ function RoutineRow({ routine: r, cycleDate, isNext, now, expanded, busy, onTogg
         aria-expanded={expanded}
         onClick={onToggle}
       >
-        <span className={`pretzel-readout pretzel-sched-time${r.skipped ? " line-through" : ""}`}>
-          {r.time}
+        <span className="pretzel-text-card-name min-w-0 flex-1 truncate">{r.name}</span>
+        {/* One lamp: what the routine does, then when it runs. */}
+        <span className="pretzel-readout pretzel-sched-time">
+          {actionIcons(r).map((icon) => (
+            <Icon key={icon} name={icon} className="pretzel-sched-time__icon" />
+          ))}
+          <span className={r.skipped ? "line-through" : undefined}>{r.time}</span>
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="pretzel-text-card-name block truncate">{r.name}</span>
-          {/* A plain clock time is already on the readout; show where other times come from. */}
-          {r.source !== r.time && (
-            <span className="pretzel-text-panel-subtle block truncate text-xs">{r.source}</span>
-          )}
-        </span>
-        {status && <span className={`pretzel-sched-tag pretzel-sched-tag--${status.tone}`}>{status.label}</span>}
       </button>
 
       {expanded && (
         <div className="mt-3 flex flex-col gap-3">
+          {(status || r.source !== r.time) && (
+            <div className="flex items-center gap-2">
+              {status && (
+                <span className={`pretzel-sched-tag pretzel-sched-tag--${status.tone}`}>
+                  {status.label}
+                </span>
+              )}
+              {/* A plain clock time is already on the lamp; show where other times come from. */}
+              {r.source !== r.time && (
+                <span className="pretzel-text-panel-subtle min-w-0 truncate text-xs">{r.source}</span>
+              )}
+            </div>
+          )}
           <ul className="flex flex-col gap-1.5">
             {r.steps.map((s) => (
               <li key={s.idx} className="flex items-start gap-2 text-xs">

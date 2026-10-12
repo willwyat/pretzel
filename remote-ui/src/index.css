@@ -1514,7 +1514,7 @@
     background-color: var(--pretzel-well-bg);
     box-shadow: var(--pretzel-well-shadow);
     border: 1px solid transparent;
-    padding: 0.625rem 0.75rem;
+    padding: 1rem;
   }
 
   .pretzel-sched-row--next {
@@ -1528,10 +1528,27 @@
     opacity: 0.55;
   }
 
+  /* Routine lamp: action glyphs, then the run time at sun-time size. Sized
+     to its content so rows line up on the right without dead glass. */
   .pretzel-sched-time {
-    min-width: 3.9rem;
-    text-align: center;
-    font-size: 1.125rem;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.12rem 0.4rem;
+    font-size: 1.375rem;
+  }
+
+  .pretzel-sched-time__icon {
+    width: 1.375rem;
+    height: 1.375rem;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 3px var(--pretzel-readout-glow))
+      drop-shadow(0 0 1px var(--pretzel-readout-glow));
+  }
+
+  .pretzel-sched-time__icon:last-of-type {
+    margin-right: 0.25rem;
   }
 
   .pretzel-sched-tag,
