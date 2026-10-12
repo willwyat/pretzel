@@ -1,8 +1,6 @@
 const express = require("express");
 const { execFile, spawn } = require("child_process");
 const {
-  readFileSync,
-  writeFileSync,
   renameSync,
   existsSync,
   rmSync,
@@ -11,13 +9,22 @@ const {
 const { join, dirname } = require("path");
 const weather = require("./lib/weather");
 const { ChoresManager } = require("./lib/chores");
-const { RemindersScheduler } = require("./lib/reminders");
+const { RoutineStore, RoutineEngine } = require("./lib/routines");
+const { createLights, createSpeaker } = require("./lib/routineActions");
+const { createRoutinesRouter } = require("./lib/routinesRouter");
+const { sunTimes } = require("./lib/sun");
+const { hmInTz } = require("./lib/tztime");
 const { ChessManager } = require("./lib/chess");
 const { createChessHub } = require("./lib/chessHub");
 const { TetrisManager } = require("./lib/tetris");
 const { Bulletin } = require("./lib/bulletin");
 const { listDevices } = require("./lib/devices");
-const { parseWizLights, getWizLight, setWizState } = require("./lib/wiz");
+const {
+  parseWizLights,
+  getWizLight,
+  setWizState,
+  wizRequest,
+} = require("./lib/wiz");
 const { createWyatSonos, createSonosRouter } = require("./lib/sonos");
 const { WebSocketServer } = require("ws");
 
@@ -35,11 +42,12 @@ const MPG123_DEVICE =
     ? process.env.PRETZEL_MPG123_DEVICE.trim()
     : "hw:2,0";
 
+/** Operator passcode; with none set, admin routes answer 503 (there is no default). */
 const PRETZEL_SETTINGS_PASSCODE =
   typeof process.env.PRETZEL_SETTINGS_PASSCODE === "string" &&
-  process.env.PRETZEL_SETTINGS_PASSCODE !== ""
-    ? process.env.PRETZEL_SETTINGS_PASSCODE
-    : "Asdf1234";
+  process.env.PRETZEL_SETTINGS_PASSCODE.trim() !== ""
+    ? process.env.PRETZEL_SETTINGS_PASSCODE.trim()
+    : null;
 
 const PRETZEL_REPO_ROOT =
   typeof process.env.PRETZEL_REPO_ROOT === "string" &&
@@ -145,7 +153,7 @@ function normalizeSpeakText(s) {
     .trim();
 }
 
-/** Passed to `speak.sh` for scheduled reminders + speak-weather (gpt-4o-mini-tts + `instructions`). */
+/** Passed to `speak.sh` for routine speech + speak-weather (gpt-4o-mini-tts + `instructions`). */
 const SPEAK_INSTRUCTIONS_REMINDERS =
   "Personality/affect: a high-energy cheerleader helping with administrative tasks.\n\n" +
   "Voice: Enthusiastic, and bubbly, with an uplifting and motivational quality.\n\n" +
@@ -194,7 +202,7 @@ function speakAsync(text, instructions) {
 }
 
 /**
- * Short beep before TTS for scheduled reminders and speak-weather.
+ * Short beep before TTS for routine speech and speak-weather.
  * @param {string} [instructions] — defaults to {@link SPEAK_INSTRUCTIONS_REMINDERS}; pass `""` for neutral tts-1.
  */
 async function speakWithReminderSfx(
@@ -215,19 +223,17 @@ choresManager.reload();
 const bulletin = new Bulletin(dataDir);
 bulletin.load();
 
-const scheduler = new RemindersScheduler({
-  dataDir,
-  tz: weather.TZ,
-  speakWithSfx: speakWithReminderSfx,
-  fetchWeather: weather.fetchWeather,
-  buildWeatherContext: weather.buildWeatherContext,
-  choresManager,
-});
-
-function atomicWriteJson(filePath, obj) {
-  const tmp = `${filePath}.tmp`;
-  writeFileSync(tmp, JSON.stringify(obj, null, 2), "utf8");
-  renameSync(tmp, filePath);
+/** Like {@link speakWithReminderSfx}, but rejects when the speak script fails (routines log it). */
+async function speakForRoutine(text, style) {
+  try {
+    await playReminderSfx(REMINDER_BEEP_MP3);
+  } catch (e) {
+    console.error("routine beep:", e.message);
+  }
+  const instructions = style === "plain" ? "" : SPEAK_INSTRUCTIONS_REMINDERS;
+  await execFileAsync(SPEAK_SCRIPT, speakScriptArgs(text, instructions), {
+    timeout: 120_000,
+  });
 }
 
 const speakHint =
@@ -630,19 +636,14 @@ app.post("/pretzel/chores/:id/uncomplete", (req, res) => {
   res.json(r);
 });
 
-app.get("/pretzel/reminders", (req, res) => {
-  try {
-    const raw = JSON.parse(
-      readFileSync(join(dataDir, "reminders.json"), "utf8"),
-    );
-    res.json({ ok: true, ...raw });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
 // ── Operator admin (LAN + header secret; not strong auth) ───────
 function assertSettingsPass(req, res, next) {
+  if (!PRETZEL_SETTINGS_PASSCODE) {
+    return res.status(503).json({
+      ok: false,
+      error: "PRETZEL_SETTINGS_PASSCODE is not set on the Pi",
+    });
+  }
   const got = req.headers["x-pretzel-settings-passcode"];
   if (typeof got !== "string" || got !== PRETZEL_SETTINGS_PASSCODE) {
     return res.status(403).json({ ok: false, error: "Forbidden" });
@@ -914,46 +915,6 @@ app.post("/pretzel/admin/rebuild/remote-ui", assertSettingsPass, (req, res) => {
   res.status(202).json({ ok: true, ...remoteUiRebuild });
 });
 
-app.put("/pretzel/reminders/:id", assertSettingsPass, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const pathRem = join(dataDir, "reminders.json");
-    const raw = JSON.parse(readFileSync(pathRem, "utf8"));
-    const idx = (raw.reminders || []).findIndex((r) => r.id === id);
-    if (idx === -1) {
-      return res.status(404).json({ ok: false, error: "Unknown reminder" });
-    }
-    const allow = [
-      "enabled",
-      "time",
-      "label",
-      "template",
-      "includeChores",
-    ];
-    for (const k of allow) {
-      if (req.body[k] !== undefined) raw.reminders[idx][k] = req.body[k];
-    }
-    atomicWriteJson(pathRem, raw);
-    await scheduler.reload();
-    res.json({ ok: true, reminder: raw.reminders[idx] });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-app.post(
-  "/pretzel/admin/reload-reminders",
-  assertSettingsPass,
-  async (req, res) => {
-    try {
-      await scheduler.reload();
-      res.json({ ok: true });
-    } catch (e) {
-      res.status(500).json({ ok: false, error: e.message });
-    }
-  },
-);
-
 app.post("/pretzel/admin/reload-chores", assertSettingsPass, (req, res) => {
   try {
     choresManager.reload();
@@ -962,6 +923,67 @@ app.post("/pretzel/admin/reload-chores", assertSettingsPass, (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
+// ── Routines (lights + speech on a daily cycle; see lib/routines.js) ──
+const lifxToken = () => {
+  const t = process.env.LIFX_API_TOKEN;
+  return typeof t === "string" && t.trim() !== "" ? t.trim() : null;
+};
+const routineLights = createLights({
+  wizLights: WIZ_LIGHTS,
+  getWizLight,
+  wizRequest,
+  lifxToken,
+  lifxBase: LIFX_API_BASE,
+});
+const sunToday = () => {
+  const t = sunTimes(weather.ymdInTz(new Date(), weather.TZ), weather.LAT, weather.LON, weather.TZ);
+  return {
+    sunrise: t.sunrise ? hmInTz(t.sunrise, weather.TZ) : null,
+    sunset: t.sunset ? hmInTz(t.sunset, weather.TZ) : null,
+  };
+};
+const routineSpeaker = createSpeaker({
+  speak: speakForRoutine,
+  weather,
+  sunToday,
+  choresManager,
+  tz: weather.TZ,
+});
+const routineEngine = new RoutineEngine({
+  store: new RoutineStore(dataDir),
+  tz: weather.TZ,
+  lat: weather.LAT,
+  lon: weather.LON,
+  actions: { lights: routineLights.apply, speak: routineSpeaker.apply },
+});
+app.use(
+  "/pretzel/routines",
+  createRoutinesRouter({
+    engine: routineEngine,
+    listLights: routineLights.list,
+    requirePasscode: assertSettingsPass,
+  }),
+);
+
+// Daily chores upkeep (back up state, reload definitions) once a day after 06:00.
+let choresUpkeepDay = null;
+function choresUpkeep() {
+  const now = new Date();
+  const today = weather.ymdInTz(now, weather.TZ);
+  const hour = Number(
+    now.toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: weather.TZ }),
+  ) % 24;
+  if (hour < 6 || choresUpkeepDay === today) return;
+  choresUpkeepDay = today;
+  try {
+    choresManager.backupState();
+    choresManager.reload();
+  } catch (e) {
+    console.error("chores upkeep:", e.message);
+  }
+}
+setInterval(choresUpkeep, 60_000).unref();
 
 // ── Chess (public on LAN; the Pi is the referee) ────────────────
 const chessManager = new ChessManager({ dataDir });
@@ -1092,10 +1114,9 @@ const wsRoutes = new Map([
 ]);
 
 (async () => {
-  try {
-    await scheduler.reload();
-  } catch (e) {
-    console.error("Reminder scheduler init error:", e.message);
+  routineEngine.start();
+  if (!PRETZEL_SETTINGS_PASSCODE) {
+    console.warn("PRETZEL_SETTINGS_PASSCODE is not set: /pretzel/admin/* and routine edits are off");
   }
   const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Pretzel server listening on ${PORT}`);

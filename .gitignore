@@ -8,3 +8,7 @@ pretzel-server/data/chess-games.json
 pretzel-server/data/bulletin.json
 # Pixelta font is personal-use only; keep it out of this public repo (copy to the Pi by hand)
 remote-ui/public/fonts/Pixelta.ttf
+# Routines saved from the UI, one-off changes and the run log (defaults live in lib/routines.js)
+pretzel-server/data/routines.json
+pretzel-server/data/routine-overrides.json
+pretzel-server/data/routine-runs.json

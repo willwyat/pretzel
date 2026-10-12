@@ -1,8 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { DevicesSection } from "./DevicesSection";
 
-const SETTINGS_PASSCODE = "Asdf1234";
-const SESSION_UNLOCK_KEY = "pretzel_settings_unlocked";
+/** The passcode lives on the Pi (`PRETZEL_SETTINGS_PASSCODE`); this tab keeps what was typed. */
+const SESSION_PASSCODE_KEY = "pretzel_settings_passcode";
+
+let settingsPasscode = "";
+
+function readStoredPasscode(): string {
+  try {
+    return sessionStorage.getItem(SESSION_PASSCODE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
 
 type ServiceStamp = {
   activeEnterTimestamp: string | null;
@@ -86,7 +96,7 @@ async function adminFetchJson(
     ...init,
     headers: {
       Accept: "application/json",
-      "X-Pretzel-Settings-Passcode": SETTINGS_PASSCODE,
+      "X-Pretzel-Settings-Passcode": settingsPasscode,
       ...(init?.body ? { "Content-Type": "application/json" } : {}),
       ...init?.headers,
     },
@@ -106,7 +116,8 @@ async function adminFetchJson(
 export function SettingsSection() {
   const [unlocked, setUnlocked] = useState(false);
   const [passInput, setPassInput] = useState("");
-  const [unlockError, setUnlockError] = useState(false);
+  const [unlockError, setUnlockError] = useState<string | null>(null);
+  const [unlockBusy, setUnlockBusy] = useState(false);
 
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusBody, setStatusBody] = useState<AdminStatusBody | null>(null);
@@ -125,12 +136,10 @@ export function SettingsSection() {
   const [reloadReady, setReloadReady] = useState(false);
 
   useEffect(() => {
-    try {
-      if (sessionStorage.getItem(SESSION_UNLOCK_KEY) === "1") {
-        setUnlocked(true);
-      }
-    } catch {
-      /* private mode */
+    const stored = readStoredPasscode();
+    if (stored) {
+      settingsPasscode = stored;
+      setUnlocked(true);
     }
   }, []);
 
@@ -138,6 +147,17 @@ export function SettingsSection() {
     setStatusLoading(true);
     try {
       const res = await adminFetchJson("/pretzel/admin/status");
+      if (res.status === 403) {
+        // The passcode changed on the Pi since this tab unlocked.
+        settingsPasscode = "";
+        try {
+          sessionStorage.removeItem(SESSION_PASSCODE_KEY);
+        } catch {
+          /* ignore */
+        }
+        setUnlocked(false);
+        return;
+      }
       setStatusBody(res.data as AdminStatusBody);
     } catch {
       setStatusBody({ ok: false, error: "Network error" });
@@ -150,25 +170,43 @@ export function SettingsSection() {
     if (unlocked) void loadStatus();
   }, [unlocked, loadStatus]);
 
-  const tryUnlock = () => {
-    if (passInput === SETTINGS_PASSCODE) {
-      setUnlockError(false);
-      setUnlocked(true);
-      try {
-        sessionStorage.setItem(SESSION_UNLOCK_KEY, "1");
-      } catch {
-        /* ignore */
+  // The Pi checks the passcode: a 200 from admin/status means it matched.
+  const tryUnlock = async () => {
+    if (unlockBusy || passInput === "") return;
+    setUnlockBusy(true);
+    settingsPasscode = passInput;
+    try {
+      const res = await adminFetchJson("/pretzel/admin/status");
+      if (res.ok) {
+        setUnlockError(null);
+        setStatusBody(res.data as AdminStatusBody);
+        setUnlocked(true);
+        try {
+          sessionStorage.setItem(SESSION_PASSCODE_KEY, passInput);
+        } catch {
+          /* private mode */
+        }
+        setPassInput("");
+      } else {
+        settingsPasscode = "";
+        const err = (res.data as { error?: string }).error;
+        setUnlockError(
+          res.status === 403 ? "Incorrect passcode." : err || `Failed (${res.status})`,
+        );
       }
-      setPassInput("");
-    } else {
-      setUnlockError(true);
+    } catch {
+      settingsPasscode = "";
+      setUnlockError("Network error");
+    } finally {
+      setUnlockBusy(false);
     }
   };
 
   const lock = () => {
     setUnlocked(false);
+    settingsPasscode = "";
     try {
-      sessionStorage.removeItem(SESSION_UNLOCK_KEY);
+      sessionStorage.removeItem(SESSION_PASSCODE_KEY);
     } catch {
       /* ignore */
     }
@@ -388,23 +426,24 @@ export function SettingsSection() {
                 value={passInput}
                 onChange={(e) => {
                   setPassInput(e.target.value);
-                  setUnlockError(false);
+                  setUnlockError(null);
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") tryUnlock();
+                  if (e.key === "Enter") void tryUnlock();
                 }}
                 className="pretzel-input"
               />
               {unlockError && (
-                <p className="pretzel-text-alert mt-1 text-xs">Incorrect passcode.</p>
+                <p className="pretzel-text-alert mt-1 text-xs">{unlockError}</p>
               )}
             </div>
             <button
               type="button"
-              onClick={tryUnlock}
+              onClick={() => void tryUnlock()}
+              disabled={unlockBusy}
               className="pretzel-btn-secondary pretzel-key--accent px-5"
             >
-              Unlock
+              {unlockBusy ? "Checking…" : "Unlock"}
             </button>
           </div>
         ) : (
