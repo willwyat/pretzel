@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
-import { dayWord, lightChangeLabel, lightChangeShort } from "../lib/routines";
+import { dayWord, lightChangeLabel } from "../lib/routines";
 import type { Light } from "../types/lifx";
 import { Icon } from "./Icon";
 import type { LightNextChange } from "../types/routines";
@@ -145,8 +145,8 @@ export function LightCard({
     >
       <div className="flex items-start gap-3 p-4">
         <div className="min-w-0 flex-1">
-          {/* Name left, next scheduled change right on its own lamp. */}
-          <div className="flex min-h-[1.375rem] items-center justify-between gap-2">
+          {/* Name, then the next scheduled change on its own lamp beside it. */}
+          <div className="flex min-h-[1.375rem] items-center justify-start gap-2">
             <h3 className="pretzel-text-card-name min-w-0 truncate">
               {light.label}
             </h3>
@@ -158,7 +158,7 @@ export function LightCard({
                 title={`${tz && dayWord(nextChange.at, tz) ? `${dayWord(nextChange.at, tz)} · ` : ""}${nextChange.routineName} · ${lightChangeLabel(nextChange)}`}
               >
                 <Icon name="schedule" className="pretzel-light-next__icon" />
-                {lightChangeShort(nextChange)}
+                {nextChange.time}
               </span>
             ) : null}
           </div>

@@ -122,8 +122,7 @@
     font-display: swap;
   }
 
-  /* Zpix (SolidZORO): 12px bitmap CJK font, free for personal use. Draw it
-     at whole multiples of 12px so pixels stay square. */
+  /* Zpix (SolidZORO): 12px bitmap CJK font, free for personal use. */
   @font-face {
     font-family: Zpix;
     src: url("/fonts/zpix.woff2") format("woff2");
@@ -337,7 +336,7 @@
   }
 
   /* Outside lamp: glowing Material Symbols Sharp weather glyph, then the
-     temperature in a fixed three-digit field (-10, 100). */
+     temperature. */
   .pretzel-wx-readout {
     display: inline-flex;
     align-items: center;
@@ -353,28 +352,23 @@
       drop-shadow(0 0 1px var(--pretzel-readout-glow));
   }
 
-  .pretzel-wx-temp {
-    display: inline-block;
-    width: calc(3ch + 3 * 0.12em);
-    text-align: right;
-  }
 
   .pretzel-wx-deg {
     font-size: 0.975rem;
     letter-spacing: 1px;
   }
 
-  /* Pixel-font lamp (Sonos now playing). 24px = Zpix at 2x, about the size
-     of the sun-time digits; height is the glyph box plus even padding. */
+  /* Pixel-font lamp (Sonos now playing); height is the glyph box plus even
+     padding. */
   .pretzel-pixel-readout {
     display: block;
     overflow: hidden;
     box-sizing: content-box;
-    height: 24px;
-    padding: 6px 8px;
+    height: 18px;
+    padding: 7px 8px;
     font-family: Zpix, ui-monospace, monospace;
-    font-size: 24px;
-    line-height: 24px;
+    font-size: 18px;
+    line-height: 18px;
     letter-spacing: 0;
     -webkit-font-smoothing: none;
     font-smooth: never;
@@ -1249,6 +1243,7 @@
   /* ── Light cards: a plate of the panel's own textured black, raised
    * off the base. When on, the bulb's light seeps out from under its edges
    * and radiates onto the panel around it; the face itself stays unlit. */
+  .pretzel-plate,
   .pretzel-light-card {
     position: relative;
     overflow: hidden;
@@ -1276,6 +1271,7 @@
       0 0 34px 8px color-mix(in srgb, var(--accent, #f0922a) 16%, transparent);
   }
 
+  .pretzel-plate,
   .pretzel-light-card--off {
     box-shadow:
       var(--plate-edge),
@@ -1518,7 +1514,7 @@
     background-color: var(--pretzel-well-bg);
     box-shadow: var(--pretzel-well-shadow);
     border: 1px solid transparent;
-    padding: 0.625rem 0.75rem;
+    padding: 1rem;
   }
 
   .pretzel-sched-row--next {
@@ -1532,10 +1528,30 @@
     opacity: 0.55;
   }
 
+  /* Routine lamp: action glyphs on the left, run time at sun-time size on
+     the right. One fixed width (room for all three glyph kinds) so every
+     row's lamp, glyph column and time line up. */
   .pretzel-sched-time {
-    min-width: 3.9rem;
-    text-align: center;
-    font-size: 1.125rem;
+    width: 9.25rem;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.12rem 0.4rem;
+    font-size: 1.375rem;
+  }
+
+  .pretzel-sched-time__icon {
+    width: 1.125rem;
+    height: 1.125rem;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 3px var(--pretzel-readout-glow))
+      drop-shadow(0 0 1px var(--pretzel-readout-glow));
+  }
+
+  .pretzel-sched-time__clock {
+    margin-left: auto;
+    padding-left: 0.25rem;
   }
 
   .pretzel-sched-tag,
@@ -1585,12 +1601,15 @@
     color: var(--pretzel-readout-fg);
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
+    justify-content: center;
+    gap: 0.25rem;
+    /* Same lamp on every card, whatever the digits. */
+    width: 4.25rem;
   }
 
   .pretzel-light-next__icon {
-    width: 0.875rem;
-    height: 0.875rem;
+    width: 0.75rem;
+    height: 0.75rem;
     flex-shrink: 0;
     filter: drop-shadow(0 0 2px var(--pretzel-readout-glow));
   }

@@ -144,8 +144,7 @@ export function HomePage({ activeRoom }: HomePageProps) {
           </div>
           <div className="pretzel-text-sun-block">
             <div className="pretzel-text-sun-title">Outside</div>
-            {/* One lamp: weather glyph, then the temperature in a fixed
-                three-digit field so -10 or 100 never shifts the layout. */}
+            {/* One lamp: weather glyph, then the temperature. */}
             <button
               type="button"
               className="pretzel-text-sun-time pretzel-wx-readout"
@@ -158,9 +157,7 @@ export function HomePage({ activeRoom }: HomePageProps) {
               }
             >
               {glyph ? <Icon name={glyph} className="pretzel-wx-icon" /> : null}
-              <span className="pretzel-wx-temp">
-                {temperature === null ? "--" : temperature}
-              </span>
+              {temperature === null ? "--" : temperature}
               <span className="pretzel-wx-deg">°</span>
               {unit}
             </button>

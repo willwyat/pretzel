@@ -43,6 +43,9 @@ export type UpcomingStep = {
   idx: number;
   at: string;
   time: string;
+  /** Action kind and, for lights, the power it sets (null = level only). */
+  type?: RoutineAction["type"];
+  power?: "on" | "off" | null;
   summary: string;
   run: StepRun | null;
 };
@@ -91,8 +94,6 @@ export type LightNextChange = {
   brightness: number | null;
   kelvin: number | null;
   onlyIfOff: boolean;
-  /** Fade length in seconds; 0 or absent = instant. */
-  fadeS?: number;
   summary: string;
 };
 

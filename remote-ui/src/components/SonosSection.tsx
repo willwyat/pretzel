@@ -138,11 +138,11 @@ function SonosGroupCard({
       (!ready ? "Loading…" : isPlaying ? "Playing" : "Paused"));
 
   return (
-    // Sits straight on the panel plate: track lamp and transport in one row,
-    // then the meter and fader. No inner card.
-    <div className="space-y-2.5">
-      {showName && <h3 className="pretzel-text-card-name">{group.name}</h3>}
-      <div className="flex items-center gap-3">
+    // Same raised plate as an unlit light card: track lamp and transport in
+    // one row, then the meter and fader.
+    <div className="pretzel-plate px-4 pb-6 pt-4">
+      {showName && <h3 className="pretzel-text-card-name mb-3">{group.name}</h3>}
+      <div className="flex items-center gap-4">
         <PixelMarquee text={nowPlaying} className="min-w-0 flex-1" />
         <button
           type="button"
@@ -166,8 +166,10 @@ function SonosGroupCard({
         </button>
       </div>
 
-      <VuMeter value={ready && isPlaying && !status.muted ? shownVolume : 0} />
-      <div className="flex items-center gap-3">
+      <div className="mt-5">
+        <VuMeter value={ready && isPlaying && !status.muted ? shownVolume : 0} />
+      </div>
+      <div className="mt-4 flex items-center gap-3">
         <span className="pretzel-text-group-label" aria-hidden>
           Vol
         </span>
@@ -194,7 +196,7 @@ function SonosGroupCard({
         </span>
       </div>
 
-      {error && <p className="pretzel-text-alert text-sm">{error}</p>}
+      {error && <p className="pretzel-text-alert mt-3 text-sm">{error}</p>}
     </div>
   );
 }
@@ -251,15 +253,14 @@ export function SonosSection() {
         </div>
       </div>
 
-      <div className="pretzel-panel__body">
+      <div className="pretzel-panel__body space-y-3">
         {error && <p className="pretzel-text-alert text-sm">{error}</p>}
-        {groups.map((g, i) => (
-          <div
+        {groups.map((g) => (
+          <SonosGroupCard
             key={`${g.id}:${generation}`}
-            className={i > 0 ? "pretzel-panel__block-bordered" : ""}
-          >
-            <SonosGroupCard group={g} showName={groups.length > 1} />
-          </div>
+            group={g}
+            showName={groups.length > 1}
+          />
         ))}
         {!loading && !error && groups.length === 0 && (
           <p className="py-8 text-center text-sm pretzel-text-panel-subtle">
