@@ -168,13 +168,13 @@ export function HomePage({ activeRoom }: HomePageProps) {
           </>
         ) : null}
         {activeRoom === "lounge" ? (
-          <>
-            <LightsSection room="lounge" heading="Lounge lights" />
-            <SonosSection />
-          </>
+          <LightsSection room="lounge" heading="Lounge lights" />
         ) : null}
         {activeRoom === "bedroom" ? (
-          <LightsSection room="bedroom" heading="Bedroom lights" />
+          <>
+            <LightsSection room="bedroom" heading="Bedroom lights" />
+            <SonosSection />
+          </>
         ) : null}
       </div>
     </div>
