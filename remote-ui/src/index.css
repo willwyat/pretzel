@@ -122,8 +122,7 @@
     font-display: swap;
   }
 
-  /* Zpix (SolidZORO): 12px bitmap CJK font, free for personal use. Draw it
-     at whole multiples of 12px so pixels stay square. */
+  /* Zpix (SolidZORO): 12px bitmap CJK font, free for personal use. */
   @font-face {
     font-family: Zpix;
     src: url("/fonts/zpix.woff2") format("woff2");
@@ -337,7 +336,7 @@
   }
 
   /* Outside lamp: glowing Material Symbols Sharp weather glyph, then the
-     temperature in a fixed three-digit field (-10, 100). */
+     temperature. */
   .pretzel-wx-readout {
     display: inline-flex;
     align-items: center;
@@ -353,28 +352,23 @@
       drop-shadow(0 0 1px var(--pretzel-readout-glow));
   }
 
-  .pretzel-wx-temp {
-    display: inline-block;
-    width: calc(3ch + 3 * 0.12em);
-    text-align: right;
-  }
 
   .pretzel-wx-deg {
     font-size: 0.975rem;
     letter-spacing: 1px;
   }
 
-  /* Pixel-font lamp (Sonos now playing). 24px = Zpix at 2x, about the size
-     of the sun-time digits; height is the glyph box plus even padding. */
+  /* Pixel-font lamp (Sonos now playing); height is the glyph box plus even
+     padding. */
   .pretzel-pixel-readout {
     display: block;
     overflow: hidden;
     box-sizing: content-box;
-    height: 24px;
-    padding: 6px 8px;
+    height: 18px;
+    padding: 7px 8px;
     font-family: Zpix, ui-monospace, monospace;
-    font-size: 24px;
-    line-height: 24px;
+    font-size: 18px;
+    line-height: 18px;
     letter-spacing: 0;
     -webkit-font-smoothing: none;
     font-smooth: never;
@@ -1249,6 +1243,7 @@
   /* ── Light cards: a plate of the panel's own textured black, raised
    * off the base. When on, the bulb's light seeps out from under its edges
    * and radiates onto the panel around it; the face itself stays unlit. */
+  .pretzel-plate,
   .pretzel-light-card {
     position: relative;
     overflow: hidden;
@@ -1276,6 +1271,7 @@
       0 0 34px 8px color-mix(in srgb, var(--accent, #f0922a) 16%, transparent);
   }
 
+  .pretzel-plate,
   .pretzel-light-card--off {
     box-shadow:
       var(--plate-edge),

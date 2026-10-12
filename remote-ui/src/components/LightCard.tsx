@@ -145,8 +145,8 @@ export function LightCard({
     >
       <div className="flex items-start gap-3 p-4">
         <div className="min-w-0 flex-1">
-          {/* Name left, next scheduled change right on its own lamp. */}
-          <div className="flex min-h-[1.375rem] items-center justify-between gap-2">
+          {/* Name, then the next scheduled change on its own lamp beside it. */}
+          <div className="flex min-h-[1.375rem] items-center justify-start gap-2">
             <h3 className="pretzel-text-card-name min-w-0 truncate">
               {light.label}
             </h3>
