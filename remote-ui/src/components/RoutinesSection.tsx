@@ -90,7 +90,9 @@ function RoutineRow({ routine: r, cycleDate, isNext, now, expanded, busy, onTogg
           {actionIcons(r).map((icon) => (
             <Icon key={icon} name={icon} className="pretzel-sched-time__icon" />
           ))}
-          <span className={r.skipped ? "line-through" : undefined}>{r.time}</span>
+          <span className={`pretzel-sched-time__clock${r.skipped ? " line-through" : ""}`}>
+            {r.time}
+          </span>
         </span>
       </button>
 
@@ -255,9 +257,6 @@ export function RoutinesSection() {
           <span className={`pretzel-led ${led}`} aria-hidden />
           <div className="min-w-0">
             <h2 className="pretzel-text-panel-title">Routines</h2>
-            <p className="pretzel-text-panel-muted text-xs">
-              {data ? "Each day runs 04:00 to 04:00" : loading ? "Loading…" : "Unavailable"}
-            </p>
           </div>
         </div>
         {data && (

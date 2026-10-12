@@ -1528,9 +1528,11 @@
     opacity: 0.55;
   }
 
-  /* Routine lamp: action glyphs, then the run time at sun-time size. Sized
-     to its content so rows line up on the right without dead glass. */
+  /* Routine lamp: action glyphs on the left, run time at sun-time size on
+     the right. One fixed width (room for all three glyph kinds) so every
+     row's lamp, glyph column and time line up. */
   .pretzel-sched-time {
+    width: 9.25rem;
     display: inline-flex;
     flex-shrink: 0;
     align-items: center;
@@ -1547,8 +1549,9 @@
       drop-shadow(0 0 1px var(--pretzel-readout-glow));
   }
 
-  .pretzel-sched-time__icon:last-of-type {
-    margin-right: 0.25rem;
+  .pretzel-sched-time__clock {
+    margin-left: auto;
+    padding-left: 0.25rem;
   }
 
   .pretzel-sched-tag,
