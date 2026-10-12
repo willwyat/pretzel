@@ -30,6 +30,7 @@ const {
   createTuyaLocalClient,
   createTuyaClientWithFallback,
 } = require("./lib/tuyaLocal");
+const { createWyatSonos, createSonosRouter } = require("./lib/sonos");
 const { WebSocketServer } = require("ws");
 
 const PORT =
@@ -469,6 +470,11 @@ app.put("/pretzel/tuya/switches/:id/state", async (req, res) => {
     res.status(502).json({ error: e.message });
   }
 });
+// ── Sonos (through the Wyat backend, which holds the Sonos tokens) ──
+app.use(
+  "/pretzel/sonos",
+  createSonosRouter(createWyatSonos({ baseUrl: process.env.WYAT_API_URL })),
+);
 
 app.get("/pretzel/weather", async (req, res) => {
   const now = new Date();

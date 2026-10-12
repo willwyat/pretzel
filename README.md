@@ -1,12 +1,12 @@
 # Pretzel
 
-Node services and scripts that run on the **Pretzel** Pi: LG TV relay, Pi speaker API (TTS, volume, weather, LIFX proxy, WiZ bulbs, Tuya switches), and a LAN guest UI (**Vite + React**, built to `remote-ui/dist/`) that proxies to them.
+Node services and scripts that run on the **Pretzel** Pi: LG TV relay, Pi speaker API (TTS, volume, weather, LIFX proxy, WiZ bulbs, Tuya switches, Sonos via Wyat), and a LAN guest UI (**Vite + React**, built to `remote-ui/dist/`) that proxies to them.
 
 ## Components
 
 | Area | Path | Role | Default port | Systemd example |
 |------|------|------|--------------|-----------------|
-| Pi speaker / TTS / volume / weather / LIFX proxy / WiZ bulbs / Tuya switches | [pretzel-server/](pretzel-server/) | Express (`/pretzel/*` incl. **`/pretzel/wiz/*`**, **`/pretzel/tuya/*`**, `/lifx/*`, operator **`/pretzel/admin/*`** on **3001**) | **3001** | [pretzel-server/pretzel-server.service.example](pretzel-server/pretzel-server.service.example) |
+| Pi speaker / TTS / volume / weather / LIFX proxy / WiZ bulbs / Tuya switches / Sonos | [pretzel-server/](pretzel-server/) | Express (`/pretzel/*` incl. **`/pretzel/wiz/*`**, **`/pretzel/tuya/*`**, **`/pretzel/sonos/*`**, `/lifx/*`, operator **`/pretzel/admin/*`** on **3001**) | **3001** | [pretzel-server/pretzel-server.service.example](pretzel-server/pretzel-server.service.example) |
 | LG TV relay (HTTP + WebSocket to TV) | [tv-relay/](tv-relay/) | Express + `ws`; `GET /tv/status` adds `screenOn` via LG `getPowerState` when the main socket is up (standby can leave the socket open) | **3000** | [tv-relay/tv-relay.service.example](tv-relay/tv-relay.service.example) |
 | Guest LAN UI + reverse proxy | [remote-ui/](remote-ui/) | Vite + React → `dist/`; `/` home, **`/settings`** operator page, **`/chess`** two-player chess, **`/tetris`** two-player versus Tetris; `/tv` → 3000, `/pretzel` and `/lifx` → 3001; **PWA** (manifest + service worker after `npm run build`) | **8080** | [remote-ui/remote-ui.service.example](remote-ui/remote-ui.service.example) |
 | Shell helpers | [scripts/](scripts/) | `speak.sh TEXT [INSTRUCTIONS]` → OpenAI speech; no instructions uses **tts-1**, non-empty instructions use **gpt-4o-mini-tts** (see `SPEAK_SCRIPT` in pretzel-server) | — | — |
@@ -21,6 +21,8 @@ Ports for pretzel-server and tv-relay are set in their `index.js` files unless y
 
 - **Local (LAN):** done by [tinytuya](https://github.com/jasonacox/tinytuya), which handles every Tuya protocol version including 3.5. One-time setup on the Pi, while the Tuya IoT Core subscription is active (the wizard fetches each device's local key from the cloud; after that the cloud is not needed): `mkdir -p ~/tuya && cd ~/tuya && python3 -m venv venv && venv/bin/pip install tinytuya && venv/bin/python -m tinytuya wizard` (API key/secret from the cloud project, region e.g. `us`, answer **Y** to the DP-name mappings and to polling). pretzel-server runs `pretzel-server/scripts/tuya_local.py` with that Python and reads `~/tuya/devices.json` (override with **`TUYA_LOCAL_DEVICES`** and **`TUYA_LOCAL_PYTHON`**). `devices.json` holds the local keys: keep it out of git. Give each switch a fixed IP (DHCP reservation). **Adding a switch:** pair it in Smart Life, reserve its IP, re-run the wizard (it rewrites `devices.json` with every device on the account), add it to `TUYA_SWITCHES`, restart pretzel-server. Re-pairing a switch changes its key, so re-run the wizard after that too.
 - **Cloud (fallback):** **`TUYA_CLIENT_ID`**, **`TUYA_CLIENT_SECRET`** and optional **`TUYA_API_BASE`** (default `https://openapi.tuyaus.com`), the same Tuya IoT project credentials wyat-ai uses. Used for switches not in `devices.json`, or when the LAN call fails. Needs an active IoT Core subscription.
+
+**Sonos (via Wyat):** the **Sonos** panel on the Lounge tab plays, pauses and sets the volume of each Sonos group, and shows what is playing. pretzel-server does not talk to Sonos itself: the Sonos Control API needs OAuth with a public callback and rotating refresh tokens, and the Wyat backend already holds and refreshes them (it also drives Sonos from routines and MCP). So `/pretzel/sonos/*` calls Wyat's `/sonos/*` routes at **`WYAT_API_URL`** (default `https://api.wyat.ai`), server side. Wyat lets the request in as a Home guest because the Pi's traffic leaves from the home public IP, which must be in **`HOME_PUBLIC_IP`** on Wyat; no key is stored on the Pi. Routes: `GET /pretzel/sonos/groups` (all groups in all households), `GET /pretzel/sonos/groups/:id` (play state, track, artist, source, volume in one call), `POST /pretzel/sonos/groups/:id/play`, `…/pause`, and `…/volume` with `{ "volume": 0–100 }`. A 401 saying the Pi was refused means the home IP is not in `HOME_PUBLIC_IP`; "No Sonos tokens" means Sonos is not linked in Wyat (Settings → Home there). Sonos on the Pi needs the internet and Wyat to be up.
 
 **TV power:** the **POWER** key in the LG TV panel calls `POST /tv/power/on` on tv-relay, which needs **`TV_WOL_MAC`** (the TV's MAC) to wake it from full off via Wake-on-LAN; from standby it also works over the open WebSocket. If neither is possible the panel shows the relay's error. Turning off needs a second tap to confirm.
 
@@ -119,6 +121,7 @@ curl -sS http://127.0.0.1:8080/pretzel/status
 curl -sS http://127.0.0.1:8080/lifx/scenes
 curl -sS http://127.0.0.1:8080/pretzel/wiz/lights
 curl -sS http://127.0.0.1:8080/pretzel/tuya/switches
+curl -sS http://127.0.0.1:8080/pretzel/sonos/groups
 ```
 
 If **8080** refuses connections: confirm `remote-ui` is running (`systemctl status remote-ui`), that you ran `npm run build` in `remote-ui` (so `dist/index.html` exists), and read logs: `journalctl -u remote-ui -n 40 --no-pager`. Foreground check: `sudo systemctl stop remote-ui` first if 8080 is busy, then `cd ~/pretzel/remote-ui && node server.cjs` (Ctrl+C to stop). If your unit still says `server.js`, update **ExecStart** to `node server.cjs` after pull.
