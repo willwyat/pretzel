@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { fetchJson } from "../lib/fetchJson";
 import { WEEKDAYS } from "../lib/routines";
 import type {
@@ -6,8 +6,34 @@ import type {
   Routine,
   RoutineAction,
   RoutineStep,
+  SonosAction,
+  SonosFavorite,
+  SonosPlayer,
   SpeakAction,
 } from "../types/routines";
+
+/** Sonos speakers and favorites (through Wyat), loaded once for every step's pickers. */
+type SonosCatalog = {
+  players: SonosPlayer[];
+  favorites: SonosFavorite[];
+  error: string | null;
+};
+const SonosCatalogContext = createContext<SonosCatalog>({ players: [], favorites: [], error: null });
+
+async function loadSonosCatalog(): Promise<SonosCatalog> {
+  try {
+    const [p, f] = await Promise.all([fetchJson("/pretzel/sonos/players"), fetchJson("/pretzel/sonos/favorites")]);
+    const players = (p.data as { players?: SonosPlayer[] }).players;
+    const favorites = (f.data as { favorites?: SonosFavorite[] }).favorites;
+    if (!p.ok || !f.ok || !Array.isArray(players) || !Array.isArray(favorites)) {
+      const err = (p.data as { error?: string }).error ?? (f.data as { error?: string }).error;
+      return { players: [], favorites: [], error: err ?? "Could not load Sonos speakers" };
+    }
+    return { players, favorites, error: null };
+  } catch {
+    return { players: [], favorites: [], error: "Could not reach Pretzel" };
+  }
+}
 
 type FetchAdmin = (
   path: string,
@@ -67,7 +93,122 @@ const newLights = (): LightsAction => ({
   kelvin: 4000,
   fadeS: 60,
 });
-const newSpeak = (): SpeakAction => ({ type: "speak", text: "", style: "cheerful" });
+const newSpeak = (): SpeakAction => ({ type: "speak", text: "", style: "cheerful", sonos: "all" });
+const newSonos = (): SonosAction => ({ type: "sonos", playerId: "", favoriteId: "", volume: 4, rampTo: 15, rampS: 600 });
+
+function SonosFields({ action, onChange }: { action: SonosAction; onChange: (a: SonosAction) => void }) {
+  const { players, favorites, error } = useContext(SonosCatalogContext);
+  const set = (patch: Partial<SonosAction>) => onChange({ ...action, ...patch });
+  const ramping = action.rampTo !== undefined;
+  return (
+    <div className="flex flex-col gap-2.5 text-xs">
+      {error && <p className="pretzel-text-warn">{error}</p>}
+      <label className="flex items-center gap-2">
+        <span className="pretzel-text-panel-muted w-14">Speaker</span>
+        <select
+          className="pretzel-input w-auto min-w-0 flex-1 py-1"
+          value={action.playerId}
+          onChange={(e) => {
+            const pl = players.find((x) => x.id === e.target.value);
+            set({ playerId: e.target.value, playerName: pl?.name });
+          }}
+        >
+          <option value="">Choose…</option>
+          {players.map((pl) => (
+            <option key={pl.id} value={pl.id}>
+              {pl.name}
+            </option>
+          ))}
+          {action.playerId && !players.some((x) => x.id === action.playerId) && (
+            <option value={action.playerId}>{action.playerName ?? action.playerId}</option>
+          )}
+        </select>
+      </label>
+      <label className="flex items-center gap-2">
+        <span className="pretzel-text-panel-muted w-14">Play</span>
+        <select
+          className="pretzel-input w-auto min-w-0 flex-1 py-1"
+          value={action.favoriteId}
+          onChange={(e) => {
+            const fav = favorites.find((x) => x.id === e.target.value);
+            set({ favoriteId: e.target.value, favoriteName: fav?.name });
+          }}
+        >
+          <option value="">Choose a Sonos Favorite…</option>
+          {favorites.map((f) => (
+            <option key={`${f.householdId}:${f.id}`} value={f.id}>
+              {f.name}
+            </option>
+          ))}
+          {action.favoriteId && !favorites.some((x) => x.id === action.favoriteId) && (
+            <option value={action.favoriteId}>{action.favoriteName ?? `Favorite ${action.favoriteId}`}</option>
+          )}
+        </select>
+      </label>
+      <p className="pretzel-text-panel-subtle">
+        A Spotify playlist shows up here after “Add to My Sonos” in the Sonos app.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="pretzel-text-panel-muted w-14">Volume</span>
+        <input
+          type="number"
+          min={0}
+          max={100}
+          value={action.volume ?? ""}
+          placeholder="keep"
+          onChange={(e) => {
+            const v = e.target.value === "" ? undefined : Math.max(0, Math.min(100, Math.round(Number(e.target.value))));
+            set(v === undefined ? { volume: undefined, rampTo: undefined, rampS: undefined } : { volume: v });
+          }}
+          className="pretzel-input w-20 py-1"
+          aria-label="Start volume"
+        />
+        {action.volume !== undefined && (
+          <label className="flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              checked={ramping}
+              onChange={(e) =>
+                set(e.target.checked ? { rampTo: Math.min(100, (action.volume ?? 0) + 10), rampS: 600 } : { rampTo: undefined, rampS: undefined })
+              }
+            />
+            <span className="pretzel-text-panel-body">then change to</span>
+          </label>
+        )}
+        {ramping && (
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={action.rampTo}
+            onChange={(e) => set({ rampTo: Math.max(0, Math.min(100, Math.round(Number(e.target.value)))) })}
+            className="pretzel-input w-20 py-1"
+            aria-label="Volume to ramp to"
+          />
+        )}
+      </div>
+      {ramping && (
+        <label className="flex items-center gap-2">
+          <span className="pretzel-text-panel-muted w-14">Over</span>
+          <input
+            type="number"
+            min={0}
+            max={60}
+            value={Math.round((action.rampS ?? 0) / 60)}
+            onChange={(e) => set({ rampS: Math.max(0, Math.min(3600, Math.round(Number(e.target.value)) * 60)) })}
+            className="pretzel-input w-20 py-1"
+            aria-label="Ramp minutes"
+          />
+          <span className="pretzel-text-panel-subtle">min</span>
+        </label>
+      )}
+      <label className="flex items-center gap-2">
+        <input type="checkbox" checked={Boolean(action.shuffle)} onChange={(e) => set({ shuffle: e.target.checked || undefined })} />
+        <span className="pretzel-text-panel-body">Shuffle</span>
+      </label>
+    </div>
+  );
+}
 
 function LightsFields({
   action,
@@ -215,6 +356,89 @@ function LightsFields({
   );
 }
 
+function SpeakSonosFields({ action, onChange }: { action: SpeakAction; onChange: (a: SpeakAction) => void }) {
+  const { players, error } = useContext(SonosCatalogContext);
+  const choice = action.sonos ?? "all";
+  const mode = Array.isArray(choice) ? "some" : choice;
+  const clipPlayers = players.filter((p) => p.audioClip);
+  return (
+    <div className="flex flex-col gap-2 text-xs">
+      <label className="flex items-center gap-2">
+        <span className="pretzel-text-panel-muted">Speakers</span>
+        <select
+          className="pretzel-input w-auto py-1"
+          value={mode}
+          onChange={(e) => {
+            const v = e.target.value;
+            onChange({
+              ...action,
+              sonos: v === "some" ? clipPlayers.slice(0, 1).map((p) => p.id) : (v as "all" | "none"),
+            });
+          }}
+        >
+          <option value="all">Pi + all Sonos</option>
+          <option value="some" disabled={clipPlayers.length === 0 && mode !== "some"}>
+            Pi + chosen Sonos
+          </option>
+          <option value="none">Pi only</option>
+        </select>
+      </label>
+      {Array.isArray(choice) && (
+        <div className="flex flex-wrap gap-1.5">
+          {clipPlayers.map((p) => {
+            const on = choice.includes(p.id);
+            return (
+              <button
+                key={p.id}
+                type="button"
+                aria-pressed={on}
+                onClick={() => {
+                  const next = on ? choice.filter((x) => x !== p.id) : [...choice, p.id];
+                  onChange({ ...action, sonos: next.length > 0 ? next : "none" });
+                }}
+                className={`pretzel-btn-ghost pretzel-btn-ghost--sm${on ? " pretzel-key--accent" : ""}`}
+              >
+                {p.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {mode !== "none" && (
+        <label className="flex items-center gap-2">
+          <span className="pretzel-text-panel-muted">Sonos volume</span>
+          <input
+            type="checkbox"
+            checked={action.sonosVolume !== undefined}
+            onChange={(e) => onChange({ ...action, sonosVolume: e.target.checked ? 30 : undefined })}
+            aria-label="Set Sonos volume"
+          />
+          {action.sonosVolume !== undefined ? (
+            <>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={action.sonosVolume}
+                onChange={(e) => onChange({ ...action, sonosVolume: Number(e.target.value) })}
+                className="pretzel-range pretzel-range--accent min-w-0 flex-1"
+                aria-label="Sonos volume"
+              />
+              <span className="pretzel-vol-pct">{action.sonosVolume}</span>
+            </>
+          ) : (
+            <span className="pretzel-text-panel-subtle">speaker's own</span>
+          )}
+        </label>
+      )}
+      {error && mode !== "none" && <p className="pretzel-text-warn">{error}</p>}
+      <p className="pretzel-text-panel-subtle">
+        Sonos lowers any music, says it, then carries on. Older speakers without clip support are skipped.
+      </p>
+    </div>
+  );
+}
+
 function SpeakFields({ action, onChange }: { action: SpeakAction; onChange: (a: SpeakAction) => void }) {
   return (
     <div className="flex flex-col gap-2">
@@ -228,6 +452,7 @@ function SpeakFields({ action, onChange }: { action: SpeakAction; onChange: (a: 
         aria-label="Spoken text"
       />
       <p className="pretzel-text-panel-subtle text-xs">Fill-ins: {FILL_INS}</p>
+      <SpeakSonosFields action={action} onChange={onChange} />
       <label className="flex items-center gap-2 text-xs">
         <span className="pretzel-text-panel-muted">Voice</span>
         <select
@@ -259,16 +484,19 @@ function StepFields({
   const setAction = (action: RoutineAction) => onChange({ ...step, action });
   return (
     <div className="pretzel-well flex flex-col gap-2.5">
-      <div className="flex items-center gap-2 text-xs">
-        <span className="pretzel-text-group-label">Step {index + 1}</span>
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="pretzel-text-group-label whitespace-nowrap">Step {index + 1}</span>
         <select
           className="pretzel-input w-auto py-1"
           value={step.action.type}
-          onChange={(e) => setAction(e.target.value === "speak" ? newSpeak() : newLights())}
+          onChange={(e) =>
+            setAction(e.target.value === "speak" ? newSpeak() : e.target.value === "sonos" ? newSonos() : newLights())
+          }
           aria-label="Step type"
         >
           <option value="lights">Lights</option>
           <option value="speak">Speak</option>
+          <option value="sonos">Sonos music</option>
         </select>
         <input
           type="number"
@@ -276,7 +504,7 @@ function StepFields({
           max={240}
           value={step.offsetMin}
           onChange={(e) => onChange({ ...step, offsetMin: Math.round(Number(e.target.value)) || 0 })}
-          className="pretzel-input w-16 py-1"
+          className="pretzel-input w-14 py-1"
           aria-label="Minutes from the routine time"
         />
         <span className="pretzel-text-panel-subtle">min</span>
@@ -288,8 +516,10 @@ function StepFields({
       </div>
       {step.action.type === "lights" ? (
         <LightsFields action={step.action} onChange={setAction} />
-      ) : (
+      ) : step.action.type === "speak" ? (
         <SpeakFields action={step.action} onChange={setAction} />
+      ) : (
+        <SonosFields action={step.action} onChange={setAction} />
       )}
     </div>
   );
@@ -441,7 +671,7 @@ function RoutineCard({
                 type="time"
                 value={draft.anchor.time}
                 onChange={(e) => e.target.value && set({ anchor: { type: "time", time: e.target.value } })}
-                className="pretzel-input w-28 py-1"
+                className="pretzel-input w-32 py-1"
                 aria-label="Time"
               />
             ) : (
@@ -516,6 +746,13 @@ function RoutineCard({
               >
                 + Speak step
               </button>
+              <button
+                type="button"
+                className="pretzel-btn-ghost pretzel-btn-ghost--sm"
+                onClick={() => set({ steps: [...draft.steps, { offsetMin: 0, action: newSonos() }] })}
+              >
+                + Sonos music
+              </button>
             </div>
           )}
 
@@ -554,6 +791,7 @@ export function RoutinesEditor({ fetchAdmin }: { fetchAdmin: FetchAdmin }) {
   const [routines, setRoutines] = useState<Routine[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Routine[]>([]);
+  const [sonosCatalog, setSonosCatalog] = useState<SonosCatalog>({ players: [], favorites: [], error: null });
 
   const load = useCallback(async () => {
     try {
@@ -571,6 +809,7 @@ export function RoutinesEditor({ fetchAdmin }: { fetchAdmin: FetchAdmin }) {
 
   useEffect(() => {
     void load();
+    void loadSonosCatalog().then(setSonosCatalog);
   }, [load]);
 
   const addDraft = () =>
@@ -596,6 +835,7 @@ export function RoutinesEditor({ fetchAdmin }: { fetchAdmin: FetchAdmin }) {
           </p>
         </div>
       </div>
+      <SonosCatalogContext.Provider value={sonosCatalog}>
       <div className="pretzel-panel__body flex flex-col gap-3">
         {error && <p className="pretzel-text-alert text-sm">{error}</p>}
         {routines?.map((r) => (
@@ -627,6 +867,7 @@ export function RoutinesEditor({ fetchAdmin }: { fetchAdmin: FetchAdmin }) {
           + New routine
         </button>
       </div>
+      </SonosCatalogContext.Provider>
     </section>
   );
 }

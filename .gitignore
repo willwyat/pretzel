@@ -12,3 +12,4 @@ remote-ui/public/fonts/Pixelta.ttf
 pretzel-server/data/routines.json
 pretzel-server/data/routine-overrides.json
 pretzel-server/data/routine-runs.json
+pretzel-server/data/clips/

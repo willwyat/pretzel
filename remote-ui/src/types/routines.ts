@@ -16,9 +16,29 @@ export type SpeakAction = {
   type: "speak";
   text: string;
   style?: "cheerful" | "plain";
+  /** Sonos speakers that also say it: every clip-capable one, none (Pi only), or chosen player ids. */
+  sonos?: "all" | "none" | string[];
+  sonosVolume?: number;
 };
 
-export type RoutineAction = LightsAction | SpeakAction;
+export type SonosAction = {
+  type: "sonos";
+  playerId: string;
+  playerName?: string;
+  favoriteId: string;
+  favoriteName?: string;
+  /** Volume to start at (set before playback). */
+  volume?: number;
+  /** Raise or lower to this over `rampS` seconds. */
+  rampTo?: number;
+  rampS?: number;
+  shuffle?: boolean;
+};
+
+export type RoutineAction = LightsAction | SpeakAction | SonosAction;
+
+export type SonosPlayer = { id: string; name: string; householdId: string; audioClip: boolean };
+export type SonosFavorite = { id: string; name: string; householdId: string };
 
 export type RoutineAnchor =
   | { type: "time"; time: string }

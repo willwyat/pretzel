@@ -197,3 +197,46 @@ test("explains Wyat refusing the Pi and passes Wyat errors through", async () =>
     },
   );
 });
+
+test("lists speakers with clip support, and favorites, for the routine editor", async () => {
+  await withApp(
+    {
+      "GET /sonos/households": [200, { households: [{ id: "HH1" }] }],
+      "GET /sonos/households/HH1/groups": [
+        200,
+        {
+          groups: [],
+          players: [
+            { id: "RINCON_A", name: "Bedroom", capabilities: ["PLAYBACK", "AUDIO_CLIP"] },
+            { id: "RINCON_B", name: "Play:1", capabilities: ["PLAYBACK"] },
+          ],
+        },
+      ],
+      "GET /sonos/households/HH1/favorites": [200, { items: [{ id: "4", name: "Morning" }] }],
+    },
+    async (base) => {
+      const players = await (await fetch(`${base}/players`)).json();
+      assert.deepEqual(players.players, [
+        { id: "RINCON_A", name: "Bedroom", householdId: "HH1", audioClip: true },
+        { id: "RINCON_B", name: "Play:1", householdId: "HH1", audioClip: false },
+      ]);
+      const favs = await (await fetch(`${base}/favorites`)).json();
+      assert.deepEqual(favs.favorites, [{ id: "4", name: "Morning", householdId: "HH1" }]);
+    },
+  );
+});
+
+test("plays a favorite and an audio clip by player id", async () => {
+  const fake = fakeFetch({
+    "POST /sonos/players/RINCON_A/favorites": [200, { status: "ok", groupId: GROUP }],
+    "POST /sonos/players/RINCON_A/audio-clip": [200, { status: "ok" }],
+  });
+  const client = createWyatSonos({ baseUrl: "https://wyat.test", fetchImpl: fake.impl });
+  assert.equal(await client.playFavoriteOnPlayer("RINCON_A", { favoriteId: "4", volume: 4 }), GROUP);
+  assert.deepEqual(JSON.parse(fake.calls[0].body), { favoriteId: "4", shuffle: false, volume: 4 });
+  await client.audioClip("RINCON_A", { streamUrl: "http://192.168.1.20:3001/pretzel/clips/a.mp3", name: "Noon" });
+  assert.deepEqual(JSON.parse(fake.calls[1].body), {
+    streamUrl: "http://192.168.1.20:3001/pretzel/clips/a.mp3",
+    name: "Noon",
+  });
+});

@@ -77,7 +77,7 @@ test("validation rejects bad input", () => {
     /power, brightness or kelvin/,
   );
   assert.match(validateRoutine(routine({ steps: [{ offsetMin: 0, action: { type: "speak", text: " " } }] })), /text/);
-  assert.match(validateRoutine(routine({ steps: [{ offsetMin: 0, action: { type: "tv" } }] })), /lights or speak/);
+  assert.match(validateRoutine(routine({ steps: [{ offsetMin: 0, action: { type: "tv" } }] })), /lights, speak or sonos/);
 });
 
 test("cycles run 04:00 to 04:00", () => {

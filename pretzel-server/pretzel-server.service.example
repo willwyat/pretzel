@@ -22,12 +22,16 @@ Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
 # Optional: match repo root VERSION after deploy (see README).
-# Environment=PRETZEL_STACK_VERSION=2.1.0
+# Environment=PRETZEL_STACK_VERSION=2.2.0
 # Needed for the /settings page, /pretzel/admin/* and editing routines (no default:
 # without it those answer 503). Typed into the UI, which sends it as X-Pretzel-Settings-Passcode.
 # Environment=PRETZEL_SETTINGS_PASSCODE=change_me
 # Optional: git pull repo root (default: parent of this directory).
 # Environment=PRETZEL_REPO_ROOT=/home/pi/pretzel
+# Optional: how Sonos speakers reach this Pi to fetch routine speech (default: first private IPv4, port 3001).
+# Environment=PRETZEL_LAN_URL=http://192.168.1.20:3001
+# Optional: speak script path (default /home/william/pretzel/scripts/speak.sh).
+# Environment=PRETZEL_SPEAK_SCRIPT=/home/pi/pretzel/scripts/speak.sh
 # Optional LIFX Cloud API proxy (/lifx/*), also used by routines for LIFX lights:
 # Environment=LIFX_API_TOKEN=your_token
 # Environment=LIFX_API_URL=https://api.lifx.com/v1

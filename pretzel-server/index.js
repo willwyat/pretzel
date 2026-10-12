@@ -10,7 +10,12 @@ const { join, dirname } = require("path");
 const weather = require("./lib/weather");
 const { ChoresManager } = require("./lib/chores");
 const { RoutineStore, RoutineEngine } = require("./lib/routines");
-const { createLights, createSpeaker } = require("./lib/routineActions");
+const {
+  createLights,
+  createSpeaker,
+  createSonosMusic,
+} = require("./lib/routineActions");
+const { ClipStore, lanBaseUrl } = require("./lib/clips");
 const { createRoutinesRouter } = require("./lib/routinesRouter");
 const { sunTimes } = require("./lib/sun");
 const { hmInTz } = require("./lib/tztime");
@@ -44,7 +49,11 @@ const PORT =
   Number(process.env.PORT) && Number.isFinite(Number(process.env.PORT))
     ? Number(process.env.PORT)
     : 3001;
-const SPEAK_SCRIPT = "/home/william/pretzel/scripts/speak.sh";
+const SPEAK_SCRIPT =
+  typeof process.env.PRETZEL_SPEAK_SCRIPT === "string" &&
+  process.env.PRETZEL_SPEAK_SCRIPT.trim() !== ""
+    ? process.env.PRETZEL_SPEAK_SCRIPT.trim()
+    : "/home/william/pretzel/scripts/speak.sh";
 
 const REMINDER_BEEP_MP3 = join(__dirname, "beep.mp3");
 /** ALSA output for mpg123; default matches scripts/speak.sh `-a hw:2,0`. */
@@ -235,17 +244,25 @@ choresManager.reload();
 const bulletin = new Bulletin(dataDir);
 bulletin.load();
 
-/** Like {@link speakWithReminderSfx}, but rejects when the speak script fails (routines log it). */
-async function speakForRoutine(text, style) {
+// Routine speech is rendered to an MP3 once (speak.sh with SPEAK_OUT), then played
+// on the Pi and fetched by Sonos speakers from /pretzel/clips/:name.
+const routineClips = new ClipStore({
+  dir: join(dataDir, "clips"),
+  render: (text, instructions, outPath) =>
+    execFileAsync(SPEAK_SCRIPT, speakScriptArgs(text, instructions), {
+      timeout: 120_000,
+      env: { ...process.env, SPEAK_OUT: outPath },
+    }),
+});
+
+/** Beep, then the clip, on the Pi speaker; rejects if the clip can't play. */
+async function playClipOnPi(path) {
   try {
     await playReminderSfx(REMINDER_BEEP_MP3);
   } catch (e) {
     console.error("routine beep:", e.message);
   }
-  const instructions = style === "plain" ? "" : SPEAK_INSTRUCTIONS_REMINDERS;
-  await execFileAsync(SPEAK_SCRIPT, speakScriptArgs(text, instructions), {
-    timeout: 120_000,
-  });
+  await playReminderSfx(path);
 }
 
 const speakHint =
@@ -477,10 +494,8 @@ app.put("/pretzel/tuya/switches/:id/state", async (req, res) => {
   }
 });
 // ── Sonos (through the Wyat backend, which holds the Sonos tokens) ──
-app.use(
-  "/pretzel/sonos",
-  createSonosRouter(createWyatSonos({ baseUrl: process.env.WYAT_API_URL })),
-);
+const wyatSonos = createWyatSonos({ baseUrl: process.env.WYAT_API_URL });
+app.use("/pretzel/sonos", createSonosRouter(wyatSonos));
 
 app.get("/pretzel/weather", async (req, res) => {
   const now = new Date();
@@ -997,7 +1012,11 @@ const sunToday = () => {
   };
 };
 const routineSpeaker = createSpeaker({
-  speak: speakForRoutine,
+  clips: routineClips,
+  instructionsFor: (style) => (style === "plain" ? "" : SPEAK_INSTRUCTIONS_REMINDERS),
+  playOnPi: playClipOnPi,
+  sonos: wyatSonos,
+  lanUrl: () => lanBaseUrl(PORT),
   weather,
   sunToday,
   choresManager,
@@ -1008,7 +1027,17 @@ const routineEngine = new RoutineEngine({
   tz: weather.TZ,
   lat: weather.LAT,
   lon: weather.LON,
-  actions: { lights: routineLights.apply, speak: routineSpeaker.apply },
+  actions: {
+    lights: routineLights.apply,
+    speak: routineSpeaker.apply,
+    sonos: createSonosMusic({ sonos: wyatSonos }).apply,
+  },
+});
+// Sonos speakers fetch routine speech from here (LAN, short-lived files).
+app.get("/pretzel/clips/:name", (req, res) => {
+  const path = routineClips.pathFor(req.params.name);
+  if (!path) return res.status(404).end();
+  res.type("audio/mpeg").sendFile(path);
 });
 app.use(
   "/pretzel/routines",
