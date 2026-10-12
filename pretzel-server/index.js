@@ -25,6 +25,11 @@ const {
   getTuyaSwitch,
   setTuyaSwitch,
 } = require("./lib/tuya");
+const {
+  loadTuyaLocalConfig,
+  createTuyaLocalClient,
+  createTuyaClientWithFallback,
+} = require("./lib/tuyaLocal");
 const { WebSocketServer } = require("ws");
 
 const PORT =
@@ -423,17 +428,30 @@ app.put("/pretzel/wiz/lights/:id/state", async (req, res) => {
   }
 });
 
-// ── Tuya switches (Tuya Cloud API, LIFX-shaped JSON) ────────────
+// ── Tuya switches (LAN via tinytuya, else Tuya Cloud) ───────────
 const TUYA_SWITCHES = parseTuyaSwitches(process.env.TUYA_SWITCHES);
 const tuyaConfig = loadTuyaConfig();
-const tuyaClient = tuyaConfig ? createTuyaClient(tuyaConfig) : null;
+const tuyaLocalConfig = loadTuyaLocalConfig();
+const tuyaClient =
+  tuyaConfig || tuyaLocalConfig
+    ? createTuyaClientWithFallback(
+        tuyaLocalConfig &&
+          createTuyaLocalClient(tuyaLocalConfig, {
+            ipFor: (id) => TUYA_SWITCHES.find((s) => s.id === id)?.ip ?? null,
+          }),
+        tuyaConfig && createTuyaClient(tuyaConfig),
+      )
+    : null;
 
 app.get("/pretzel/tuya/switches", async (req, res) => {
   if (TUYA_SWITCHES.length === 0) return res.json([]);
   if (!tuyaClient) {
     return res
       .status(500)
-      .json({ error: "Tuya not configured on Pi (set TUYA_CLIENT_ID and TUYA_CLIENT_SECRET)" });
+      .json({
+        error:
+          "Tuya not configured on Pi (run the tinytuya wizard in ~/tuya, or set TUYA_CLIENT_ID and TUYA_CLIENT_SECRET)",
+      });
   }
   res.json(await Promise.all(TUYA_SWITCHES.map((s) => getTuyaSwitch(tuyaClient, s))));
 });
