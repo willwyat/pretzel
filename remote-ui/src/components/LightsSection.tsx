@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchJson } from "../lib/fetchJson";
 import { lightStatePath } from "../lib/lifxPaths";
+import { isLightsNextResponse } from "../lib/routines";
 import type { LifxRoom } from "../types/homeRoom";
 import type { Light } from "../types/lifx";
+import type { LightsNextResponse } from "../types/routines";
 import { LightCard } from "./LightCard";
+
+/** Scheduled changes shift as routines run, so refresh them more often than the lights. */
+const NEXT_POLL_MS = 60_000;
 
 function isLightArray(data: unknown): data is Light[] {
   return Array.isArray(data);
@@ -77,6 +82,7 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
   const [fetching, setFetching] = useState(true);
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nextChanges, setNextChanges] = useState<LightsNextResponse | null>(null);
   /** Avoid stale closure in fetchLights (useCallback []); used for initial vs refetch loading UX */
   const lightsCountRef = useRef(0);
   lightsCountRef.current = lights.length;
@@ -111,9 +117,25 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
     }
   }, []);
 
+  // Each light's next routine change; missing data just hides the hint.
+  const fetchNextChanges = useCallback(async () => {
+    try {
+      const res = await fetchJson("/pretzel/routines/lights-next");
+      if (res.ok && isLightsNextResponse(res.data)) setNextChanges(res.data);
+    } catch {
+      /* keep the last hints */
+    }
+  }, []);
+
   useEffect(() => {
     void fetchLights();
   }, [fetchLights]);
+
+  useEffect(() => {
+    void fetchNextChanges();
+    const id = setInterval(() => void fetchNextChanges(), NEXT_POLL_MS);
+    return () => clearInterval(id);
+  }, [fetchNextChanges]);
 
   const handleToggle = useCallback(async (light: Light) => {
     const newPower = light.power === "on" ? "off" : "on";
@@ -226,6 +248,7 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
             type="button"
             onClick={() => {
               void fetchLights();
+              void fetchNextChanges();
             }}
             className="pretzel-btn-ghost"
           >
@@ -254,6 +277,8 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
                   <LightCard
                     key={light.id}
                     light={light}
+                    nextChange={nextChanges?.lights[light.id]}
+                    tz={nextChanges?.tz}
                     onToggle={handleToggle}
                     onBrightness={handleBrightness}
                     onColor={handleColor}

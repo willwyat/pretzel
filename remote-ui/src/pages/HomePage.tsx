@@ -4,6 +4,7 @@ import { BulletinSection } from "../components/BulletinSection";
 import { ChoresSection } from "../components/ChoresSection";
 import { GamesSection } from "../components/GamesSection";
 import { PretzelSection } from "../components/PretzelSection";
+import { RoutinesSection } from "../components/RoutinesSection";
 import { SonosSection } from "../components/SonosSection";
 import { TvSection } from "../components/TvSection";
 import { useCallback, useEffect, useState } from "react";
@@ -159,6 +160,7 @@ export function HomePage({ activeRoom }: HomePageProps) {
         {activeRoom === "bedroom" ? <TvSection /> : null}
         {activeRoom === "pretzel" ? (
           <>
+            <RoutinesSection />
             <BulletinSection />
             <PretzelSection />
             <GamesSection />

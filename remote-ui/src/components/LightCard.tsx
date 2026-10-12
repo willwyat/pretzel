@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { dayWord, lightChangeLabel } from "../lib/routines";
 import type { Light } from "../types/lifx";
+import type { LightNextChange } from "../types/routines";
 
 interface LightCardProps {
   light: Light;
+  /** The next routine step that changes this light, if any. */
+  nextChange?: LightNextChange;
+  tz?: string;
   onToggle: (light: Light) => void;
   onBrightness: (light: Light, brightness: number) => void;
   onColor: (light: Light, color: string) => void;
@@ -89,6 +94,8 @@ function lightAccent(light: Light): string {
 
 export function LightCard({
   light,
+  nextChange,
+  tz,
   onToggle,
   onBrightness,
   onColor,
@@ -145,6 +152,19 @@ export function LightCard({
               <span className="pretzel-tag--alert">Offline</span>
             )}
           </div>
+          {nextChange && (
+            <p
+              className="pretzel-light-next mt-1"
+              title={`${nextChange.routineName}: ${nextChange.summary}`}
+            >
+              <span aria-hidden>⏱</span>
+              <b>{nextChange.time}</b>
+              <span className="truncate">
+                {tz && dayWord(nextChange.at, tz) ? `${dayWord(nextChange.at, tz)} · ` : ""}
+                {nextChange.routineName} · {lightChangeLabel(nextChange)}
+              </span>
+            </p>
+          )}
 
           {/* The fader and swatches stay mounted when the light is off (dark and
               inert) so the card keeps the same height, like a real panel. */}
