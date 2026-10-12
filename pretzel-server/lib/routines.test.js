@@ -213,7 +213,7 @@ test("upcoming lists two cycles in time order with the next routine", (t) => {
   );
   assert.equal(today.sunset, "18:22");
   assert.equal(today.routines[0].past, true);
-  assert.equal(up.next, "noon");
+  assert.deepEqual(up.next, { id: "noon", cycleDate: "2026-10-12", at: today.routines[1].at });
 });
 
 test("each light gets its next scheduled change", (t) => {
@@ -228,6 +228,24 @@ test("each light gets its next scheduled change", (t) => {
   assert.equal(next.tripod.routineId, "sunset");
   assert.equal(next.tripod.onlyIfOff, true);
   assert.equal(next.lamp.routineId, "wind-down", "all-lights steps reach every room");
+});
+
+test("light hints pass over steps that won't touch the light as it is now", (t) => {
+  const { engine } = setup(t, { now: at("2026-10-12", "10:00") });
+  const next = engine.nextForLights([
+    { id: "off-lounge", room: "Lounge", power: "off" },
+    { id: "on-lounge", room: "Lounge", power: "on" },
+  ]);
+  // Off: Sunset (only if off) turns it on; Wind Down would leave it alone.
+  assert.equal(next["off-lounge"].routineId, "sunset");
+  // On: Sunset leaves it alone, so the next change is Wind Down.
+  assert.equal(next["on-lounge"].routineId, "wind-down");
+  // After sunset an off light's next change is tomorrow's Sunset, not Wind Down or Sleep.
+  const late = setup(t, { now: at("2026-10-12", "22:00") }).engine.nextForLights([
+    { id: "off-lounge", room: "Lounge", power: "off" },
+  ]);
+  assert.equal(late["off-lounge"].routineId, "sunset");
+  assert.equal(late["off-lounge"].at, new Date(at("2026-10-13", "17:21")).toISOString());
 });
 
 test("routines persist and invalid saved entries are skipped", (t) => {

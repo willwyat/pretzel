@@ -540,15 +540,22 @@ class RoutineEngine {
         routines: items,
       };
     });
-    const next = cycles
-      .flatMap((c) => c.routines)
-      .find((r) => r.enabled && !r.skipped && Date.parse(r.at) > now);
-    return { now: new Date(now).toISOString(), tz: this.geo.tz, cycleDate: cur, next: next?.id ?? null, cycles };
+    let next = null;
+    for (const c of cycles) {
+      const r = c.routines.find((x) => x.enabled && !x.skipped && Date.parse(x.at) > now);
+      if (r) {
+        next = { id: r.id, cycleDate: c.date, at: r.at };
+        break;
+      }
+    }
+    return { now: new Date(now).toISOString(), tz: this.geo.tz, cycleDate: cur, next, cycles };
   }
 
   /**
-   * The next scheduled lights step for each light (`{ id, room }`), from now
-   * through the end of the next cycle.
+   * The next scheduled lights step for each light (`{ id, room, power? }`), from
+   * now through the end of the next cycle. With `power` known, steps that won't
+   * touch the light as it is now are passed over: dimming or turning off skips a
+   * light that is off, and `onlyIfOff` skips one that is on.
    */
   nextForLights(lights) {
     const now = this.now();
@@ -567,7 +574,13 @@ class RoutineEngine {
     steps.sort((a, b) => a.s.at - b.s.at);
     const out = {};
     for (const light of lights) {
-      const hit = steps.find(({ s }) => targetsLight(s.action.targets, light));
+      const hit = steps.find(({ s }) => {
+        const a = s.action;
+        if (!targetsLight(a.targets, light)) return false;
+        if (light.power === "off" && a.power !== "on") return false;
+        if (light.power === "on" && a.onlyIfOff) return false;
+        return true;
+      });
       if (!hit) continue;
       const a = hit.s.action;
       out[light.id] = {

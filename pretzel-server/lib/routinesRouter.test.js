@@ -58,7 +58,7 @@ test("schedule, one-off changes and light hints are open on the LAN", async (t) 
   const { call } = await serve(t);
   const up = await call("/upcoming");
   assert.equal(up.status, 200);
-  assert.equal(up.data.next, "noon");
+  assert.equal(up.data.next.id, "noon");
 
   const skip = await call("/wake-up/override/2026-10-13", { method: "PUT", body: { skip: true } });
   assert.equal(skip.status, 200);

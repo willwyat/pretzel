@@ -39,7 +39,12 @@ function createRoutinesRouter({ engine, listLights, requirePasscode }) {
   router.get("/lights-next", async (req, res) => {
     try {
       const lights = await cachedLights();
-      res.json({ ok: true, lights: engine.nextForLights(lights) });
+      res.json({
+        ok: true,
+        tz: engine.geo.tz,
+        now: new Date(engine.now()).toISOString(),
+        lights: engine.nextForLights(lights),
+      });
     } catch (e) {
       res.status(502).json({ ok: false, error: e.message });
     }

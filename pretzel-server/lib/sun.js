@@ -33,7 +33,7 @@ function solarTransitJ(ds, M, L) {
 }
 
 /**
- * Sunrise and sunset (epoch ms) for the local calendar date `ymd` in `tz`.
+ * Sunrise and sunset (epoch ms, rounded to the minute) for the local calendar date `ymd` in `tz`.
  * Either is null when the sun doesn't cross the horizon that day.
  */
 function sunTimes(ymd, lat, lon, tz) {
@@ -52,7 +52,9 @@ function sunTimes(ymd, lat, lon, tz) {
   const w = Math.acos(cosW);
   const jSet = solarTransitJ(J0 + (w + lw) / (2 * Math.PI) + n, M, L);
   const jRise = jNoon - (jSet - jNoon);
-  return { sunrise: Math.round(fromJulian(jRise)), sunset: Math.round(fromJulian(jSet)) };
+  // Whole minutes, so what the schedule shows is exactly when it runs.
+  const toMinute = (ms) => Math.round(ms / 60_000) * 60_000;
+  return { sunrise: toMinute(fromJulian(jRise)), sunset: toMinute(fromJulian(jSet)) };
 }
 
 module.exports = { sunTimes };

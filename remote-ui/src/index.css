@@ -1400,6 +1400,91 @@
     color: var(--pretzel-accent);
   }
 
+  /* ── Routines schedule ────────────────────────────────────────── */
+  .pretzel-sched-row {
+    border-radius: 0.375rem;
+    background-color: var(--pretzel-well-bg);
+    box-shadow: var(--pretzel-well-shadow);
+    border: 1px solid transparent;
+    padding: 0.625rem 0.75rem;
+  }
+
+  .pretzel-sched-row--next {
+    border-color: rgba(240, 129, 42, 0.7);
+    box-shadow:
+      var(--pretzel-well-shadow),
+      0 0 14px -4px rgba(240, 129, 42, 0.45);
+  }
+
+  .pretzel-sched-row--dim {
+    opacity: 0.55;
+  }
+
+  .pretzel-sched-time {
+    min-width: 3.9rem;
+    text-align: center;
+    font-size: 1.125rem;
+  }
+
+  .pretzel-sched-tag,
+  .pretzel-light-next {
+    flex-shrink: 0;
+    border-radius: 0.25rem;
+    padding: 0 0.375rem;
+    font-size: 0.625rem;
+    line-height: 1.125rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+
+  .pretzel-sched-tag--next {
+    background: var(--pretzel-accent);
+    color: var(--pretzel-amber-fg);
+  }
+
+  .pretzel-sched-tag--ok,
+  .pretzel-sched-tag--muted,
+  .pretzel-sched-tag--moved {
+    border: 1px solid currentColor;
+    color: var(--pretzel-fg-muted);
+  }
+
+  .pretzel-sched-tag--moved {
+    color: var(--pretzel-accent);
+  }
+
+  .pretzel-sched-tag--alert {
+    border: 1px solid currentColor;
+    color: var(--pretzel-alert-fg);
+  }
+
+  /* Next scheduled change on a light card: "⏱ 17:22 Sunset · on 100%" */
+  .pretzel-light-next {
+    display: inline-flex;
+    max-width: 100%;
+    align-items: center;
+    gap: 0.375rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0;
+    color: var(--pretzel-fg-subtle);
+    text-transform: none;
+    letter-spacing: 0.02em;
+    font-weight: 600;
+    font-size: 0.6875rem;
+  }
+
+  .pretzel-light-next b {
+    font-family: "Digital-7 Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+      monospace;
+    font-weight: 400;
+    font-size: 0.8125rem;
+    letter-spacing: 0.08em;
+    color: var(--pretzel-readout-fg);
+  }
+
   /* ── Post-it board ────────────────────────────────────────────── */
   .pretzel-board {
     display: flex;

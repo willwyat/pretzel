@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { DevicesSection } from "./DevicesSection";
+import { RoutinesEditor } from "./RoutinesEditor";
 
 /** The passcode lives on the Pi (`PRETZEL_SETTINGS_PASSCODE`); this tab keeps what was typed. */
 const SESSION_PASSCODE_KEY = "pretzel_settings_passcode";
@@ -560,6 +561,7 @@ export function SettingsSection() {
         )}
       </div>
     </section>
+    {unlocked ? <RoutinesEditor fetchAdmin={adminFetchJson} /> : null}
     {unlocked ? <DevicesSection fetchAdmin={adminFetchJson} /> : null}
     </>
   );
