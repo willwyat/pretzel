@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { fetchJson } from "../lib/fetchJson";
 import { LedRefresh } from "./LedRefresh";
+import { PixelMarquee } from "./PixelMarquee";
 import { VuMeter } from "./VuMeter";
 
 /** Track and play state change on their own; re-read them while the tab is open. */
@@ -33,7 +34,14 @@ function errorOf(data: unknown, fallback: string): string {
 const groupPath = (id: string) =>
   `/pretzel/sonos/groups/${encodeURIComponent(id)}`;
 
-function SonosGroupCard({ group }: { group: SonosGroup }) {
+function SonosGroupCard({
+  group,
+  showName,
+}: {
+  group: SonosGroup;
+  /** Only worth printing when the tab holds more than one group. */
+  showName: boolean;
+}) {
   const [status, setStatus] = useState<GroupStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [localVolume, setLocalVolume] = useState(0);
@@ -122,28 +130,20 @@ function SonosGroupCard({ group }: { group: SonosGroup }) {
 
   const ready = status !== null;
   const shownVolume = dragging ? localVolume : (status?.volume ?? 0);
-  const nowPlaying =
-    status?.track ??
-    status?.source ??
-    (!ready ? "Loading…" : isPlaying ? "Playing" : "Paused");
-  const subline = status?.track ? status.artist : null;
+  const nowPlaying = status?.track
+    ? status.artist
+      ? `${status.track} - ${status.artist}`
+      : status.track
+    : (status?.source ??
+      (!ready ? "Loading…" : isPlaying ? "Playing" : "Paused"));
 
   return (
-    // Sits straight on the panel plate: name, track lamp and transport in one
-    // row, then the meter and fader. No inner card.
+    // Sits straight on the panel plate: track lamp and transport in one row,
+    // then the meter and fader. No inner card.
     <div className="space-y-2.5">
+      {showName && <h3 className="pretzel-text-card-name">{group.name}</h3>}
       <div className="flex items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2">
-            <h3 className="pretzel-text-card-name flex-shrink-0">{group.name}</h3>
-            {subline && (
-              <p className="pretzel-text-panel-muted min-w-0 truncate text-xs">
-                {subline}
-              </p>
-            )}
-          </div>
-          <p className="pretzel-readout mt-1.5 block truncate">{nowPlaying}</p>
-        </div>
+        <PixelMarquee text={nowPlaying} className="min-w-0 flex-1" />
         <button
           type="button"
           disabled={!ready || busy}
@@ -258,7 +258,7 @@ export function SonosSection() {
             key={`${g.id}:${generation}`}
             className={i > 0 ? "pretzel-panel__block-bordered" : ""}
           >
-            <SonosGroupCard group={g} />
+            <SonosGroupCard group={g} showName={groups.length > 1} />
           </div>
         ))}
         {!loading && !error && groups.length === 0 && (

@@ -42,29 +42,20 @@ function isWeatherPayload(data: unknown): data is {
   return true;
 }
 
-/** WMO weather code → short label + Material Symbols Sharp glyph. */
-function weatherGlyph(
-  code: number | undefined,
-  isDay: boolean,
-): { label: string; icon: IconName } | null {
+/** WMO weather code → Material Symbols Sharp glyph. */
+function weatherGlyph(code: number | undefined, isDay: boolean): IconName | null {
   if (code === undefined) return null;
-  if (code === 0)
-    return { label: "Clear", icon: isDay ? "clear_day" : "clear_night" };
+  if (code === 0) return isDay ? "clear_day" : "clear_night";
   if (code === 1 || code === 2)
-    return {
-      label: code === 1 ? "Fair" : "Cloudy",
-      icon: isDay ? "partly_cloudy_day" : "partly_cloudy_night",
-    };
-  if (code === 3) return { label: "Overcast", icon: "cloud" };
-  if (code === 45 || code === 48) return { label: "Fog", icon: "foggy" };
-  if (code >= 51 && code <= 57) return { label: "Drizzle", icon: "rainy_light" };
-  if (code === 66 || code === 67) return { label: "Sleet", icon: "weather_mix" };
-  if (code === 65 || code === 82) return { label: "Heavy rain", icon: "rainy_heavy" };
-  if ((code >= 61 && code <= 64) || code === 80 || code === 81)
-    return { label: "Rain", icon: "rainy" };
-  if ((code >= 71 && code <= 77) || code === 85 || code === 86)
-    return { label: "Snow", icon: "weather_snowy" };
-  if (code >= 95) return { label: "Storm", icon: "thunderstorm" };
+    return isDay ? "partly_cloudy_day" : "partly_cloudy_night";
+  if (code === 3) return "cloud";
+  if (code === 45 || code === 48) return "foggy";
+  if (code >= 51 && code <= 57) return "rainy_light";
+  if (code === 66 || code === 67) return "weather_mix";
+  if (code === 65 || code === 82) return "rainy_heavy";
+  if ((code >= 61 && code <= 64) || code === 80 || code === 81) return "rainy";
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "weather_snowy";
+  if (code >= 95) return "thunderstorm";
   return null;
 }
 
@@ -151,50 +142,27 @@ export function HomePage({ activeRoom }: HomePageProps) {
             <div className="pretzel-text-sun-title">{sunTitle}</div>
             <div className="pretzel-text-sun-time">{sunTimeFormatted}</div>
           </div>
-          {glyph && sunState.status === "ok" ? (
-            <div className="pretzel-text-sun-block">
-              <div className="pretzel-text-sun-title">{glyph.label}</div>
-              <div
-                className="pretzel-text-sun-time pretzel-wx-readout"
-                title={sunState.current.condition}
-              >
-                <Icon
-                  name={glyph.icon}
-                  className="pretzel-wx-icon"
-                  title={sunState.current.condition}
-                />
-              </div>
-            </div>
-          ) : null}
           <div className="pretzel-text-sun-block">
             <div className="pretzel-text-sun-title">Outside</div>
+            {/* One lamp: weather glyph, then the temperature in a fixed
+                three-digit field so -10 or 100 never shifts the layout. */}
             <button
               type="button"
-              className="pretzel-text-sun-time"
+              className="pretzel-text-sun-time pretzel-wx-readout"
               onClick={() => setUnit((current) => (current === "C" ? "F" : "C"))}
+              title={sunState.status === "ok" ? sunState.current.condition : undefined}
               aria-label={
                 temperature === null
                   ? "Outside temperature unavailable"
-                  : `Outside temperature ${temperature} degrees ${unit === "C" ? "Celsius" : "Fahrenheit"}`
+                  : `Outside ${sunState.status === "ok" ? sunState.current.condition : ""}, ${temperature} degrees ${unit === "C" ? "Celsius" : "Fahrenheit"}`
               }
             >
-              {temperature === null ? (
-                "--"
-              ) : (
-                <>
-                  {temperature}
-                  <span
-                    style={{
-                      fontSize: "0.975rem",
-                      verticalAlign: "middle",
-                      letterSpacing: "1px",
-                    }}
-                  >
-                    °
-                  </span>
-                  {unit}
-                </>
-              )}
+              {glyph ? <Icon name={glyph} className="pretzel-wx-icon" /> : null}
+              <span className="pretzel-wx-temp">
+                {temperature === null ? "--" : temperature}
+              </span>
+              <span className="pretzel-wx-deg">°</span>
+              {unit}
             </button>
           </div>
         </div>

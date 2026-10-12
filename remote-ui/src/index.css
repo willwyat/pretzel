@@ -122,6 +122,16 @@
     font-display: swap;
   }
 
+  /* Zpix (SolidZORO): 12px bitmap CJK font, free for personal use. Draw it
+     at whole multiples of 12px so pixels stay square. */
+  @font-face {
+    font-family: Zpix;
+    src: url("/fonts/zpix.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+
   @font-face {
     font-family: "Digital-7 Mono";
     src: url("/fonts/digital-7-mono.ttf") format("truetype");
@@ -326,20 +336,54 @@
     padding: 0.12rem 0.4rem;
   }
 
-  /* Weather lamp: a glowing Material Symbols Sharp glyph behind amber glass. */
+  /* Outside lamp: glowing Material Symbols Sharp weather glyph, then the
+     temperature in a fixed three-digit field (-10, 100). */
   .pretzel-wx-readout {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    min-width: 2.5rem;
   }
 
   .pretzel-wx-icon {
     width: 1.375rem;
     height: 1.375rem;
+    flex-shrink: 0;
     color: var(--pretzel-readout-fg);
+    margin-right: 0.3rem;
     filter: drop-shadow(0 0 3px var(--pretzel-readout-glow))
       drop-shadow(0 0 1px var(--pretzel-readout-glow));
+  }
+
+  .pretzel-wx-temp {
+    display: inline-block;
+    width: calc(3ch + 3 * 0.12em);
+    text-align: right;
+  }
+
+  .pretzel-wx-deg {
+    font-size: 0.975rem;
+    letter-spacing: 1px;
+  }
+
+  /* Pixel-font lamp (Sonos now playing). 24px = Zpix at 2x, about the size
+     of the sun-time digits; height is the glyph box plus even padding. */
+  .pretzel-pixel-readout {
+    display: block;
+    overflow: hidden;
+    box-sizing: content-box;
+    height: 24px;
+    padding: 6px 8px;
+    font-family: Zpix, ui-monospace, monospace;
+    font-size: 24px;
+    line-height: 24px;
+    letter-spacing: 0;
+    -webkit-font-smoothing: none;
+    font-smooth: never;
+  }
+
+  .pretzel-pixel-readout__strip {
+    display: inline-flex;
+    white-space: nowrap;
+    will-change: transform;
   }
 
   .pretzel-vol-pct {
@@ -1539,6 +1583,16 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--pretzel-readout-fg);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .pretzel-light-next__icon {
+    width: 0.875rem;
+    height: 0.875rem;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 2px var(--pretzel-readout-glow));
   }
 
   /* ── Post-it board ────────────────────────────────────────────── */

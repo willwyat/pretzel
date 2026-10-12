@@ -22,7 +22,7 @@ Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
 # Optional: match repo root VERSION after deploy (see README).
-# Environment=PRETZEL_STACK_VERSION=2.2.0
+# Environment=PRETZEL_STACK_VERSION=2.2.1
 # Needed for the /settings page, /pretzel/admin/* and editing routines (no default:
 # without it those answer 503). Typed into the UI, which sends it as X-Pretzel-Settings-Passcode.
 # Environment=PRETZEL_SETTINGS_PASSCODE=change_me
