@@ -24,9 +24,9 @@ type ProviderResult = {
 
 async function loadLights(
   url: string,
-  provider: "lifx" | "wiz",
+  provider: NonNullable<Light["provider"]>,
 ): Promise<ProviderResult> {
-  const name = provider === "lifx" ? "LIFX" : "WiZ";
+  const name = { lifx: "LIFX", wiz: "WiZ", tuya: "Tuya" }[provider];
   try {
     const res = await fetchJson(url);
     if (!res.ok) {
@@ -93,6 +93,7 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
       const results = await Promise.all([
         loadLights("/lifx/lights/all", "lifx"),
         loadLights("/pretzel/wiz/lights", "wiz"),
+        loadLights("/pretzel/tuya/switches", "tuya"),
       ]);
       if (results.every((r) => r.unreachable)) {
         setOffline(true);
@@ -277,8 +278,9 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
               No lights assigned to this room. In the LIFX app, use group or
               location names <span className="font-mono">Lounge</span> or{" "}
               <span className="font-mono">Bedroom</span> (case-insensitive);
-              WiZ bulbs take their room from{" "}
-              <span className="font-mono">WIZ_LIGHTS</span> on the Pi.
+              WiZ bulbs and Tuya switches take their room from{" "}
+              <span className="font-mono">WIZ_LIGHTS</span> and{" "}
+              <span className="font-mono">TUYA_SWITCHES</span> on the Pi.
             </p>
           )}
       </div>
