@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
-import { dayWord, lightChangeLabel } from "../lib/routines";
+import { dayWord, lightChangeLabel, lightChangeShort } from "../lib/routines";
 import type { Light } from "../types/lifx";
 import type { LightNextChange } from "../types/routines";
 
@@ -144,27 +144,22 @@ export function LightCard({
     >
       <div className="flex items-start gap-3 p-4">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="pretzel-text-card-name truncate">
+          {/* Name left, next scheduled change right on its own lamp. */}
+          <div className="flex min-h-[1.375rem] items-center justify-between gap-2">
+            <h3 className="pretzel-text-card-name min-w-0 truncate">
               {light.label}
             </h3>
-            {!light.connected && (
+            {!light.connected ? (
               <span className="pretzel-tag--alert">Offline</span>
-            )}
-          </div>
-          {nextChange && (
-            <p
-              className="pretzel-light-next mt-1"
-              title={`${nextChange.routineName}: ${nextChange.summary}`}
-            >
-              <span aria-hidden>⏱</span>
-              <b>{nextChange.time}</b>
-              <span className="truncate">
-                {tz && dayWord(nextChange.at, tz) ? `${dayWord(nextChange.at, tz)} · ` : ""}
-                {nextChange.routineName} · {lightChangeLabel(nextChange)}
+            ) : nextChange ? (
+              <span
+                className="pretzel-readout pretzel-light-next"
+                title={`${tz && dayWord(nextChange.at, tz) ? `${dayWord(nextChange.at, tz)} · ` : ""}${nextChange.routineName} · ${lightChangeLabel(nextChange)}`}
+              >
+                {lightChangeShort(nextChange)}
               </span>
-            </p>
-          )}
+            ) : null}
+          </div>
 
           {/* The fader and swatches stay mounted when the light is off (dark and
               inert) so the card keeps the same height, like a real panel. */}
@@ -196,9 +191,9 @@ export function LightCard({
               </span>
             </div>
           ) : (
-            <span className="pretzel-vol-pct mt-3 block">
-              {isOn ? "ON" : "OFF"}
-            </span>
+            <div className="mt-3">
+              <span className="pretzel-vol-pct">{isOn ? "ON" : "OFF"}</span>
+            </div>
           )}
 
           {swatches.length > 0 && (

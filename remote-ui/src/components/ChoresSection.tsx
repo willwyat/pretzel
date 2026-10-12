@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchJson } from "../lib/fetchJson";
+import { Icon } from "./Icon";
+import { LedRefresh } from "./LedRefresh";
 import {
   type Chore,
   choreDurationSeconds,
@@ -359,7 +361,7 @@ export function ChoresSection() {
                   title="Screen wake lock on"
                   aria-hidden
                 >
-                  🔒
+                  <Icon name="lock" className="h-5 w-5" />
                 </span>
               ) : null}
             </div>
@@ -534,10 +536,11 @@ export function ChoresSection() {
     <section className="pretzel-panel mt-6">
       <div className="pretzel-panel__header">
         <div className="flex min-w-0 flex-1 items-start gap-3">
-          <span
-            className={`pretzel-led mt-1.5 ${statusDotClass}`}
-            title={statusTitle}
-            aria-hidden
+          <LedRefresh
+            className="mt-1.5"
+            ledClass={statusDotClass}
+            status={statusTitle}
+            onRefresh={() => void loadChores()}
           />
           <div className="min-w-0">
             <h2 className="pretzel-text-panel-title">Chores</h2>
@@ -550,13 +553,6 @@ export function ChoresSection() {
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          className="pretzel-btn-ghost pretzel-btn-ghost--sm flex-shrink-0"
-          onClick={() => void loadChores()}
-        >
-          Refresh
-        </button>
       </div>
       <div className="pretzel-panel__body space-y-3">
         {pendingChores.length > 0 ? (

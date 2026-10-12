@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { fetchJson } from "../lib/fetchJson";
+import { LedRefresh } from "./LedRefresh";
 import { VuMeter } from "./VuMeter";
 
 export const PRETZEL_SPEAK_MAX_CHARS = 8000;
@@ -105,10 +106,12 @@ export function PretzelSection() {
     <section className="pretzel-panel">
       <div className="pretzel-panel__header">
         <div className="flex min-w-0 flex-1 items-start gap-3">
-          <span
-            className={`pretzel-led mt-1.5 ${statusDotClass}`}
-            title={statusTitle}
-            aria-hidden
+          <LedRefresh
+            className="mt-1.5"
+            ledClass={statusDotClass}
+            status={statusTitle}
+            disabled={loading}
+            onRefresh={() => void fetchVolume()}
           />
           <div className="min-w-0">
             <h2 className="pretzel-text-panel-title">Pi speaker</h2>
@@ -123,15 +126,6 @@ export function PretzelSection() {
             </p>
           </div>
         </div>
-        {!loading && (
-          <button
-            type="button"
-            onClick={() => void fetchVolume()}
-            className="pretzel-btn-ghost"
-          >
-            Refresh
-          </button>
-        )}
       </div>
 
       <div className="pretzel-panel__body space-y-3">

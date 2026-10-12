@@ -592,6 +592,7 @@ class RoutineEngine {
         brightness: a.brightness ?? null,
         kelvin: a.kelvin ?? null,
         onlyIfOff: Boolean(a.onlyIfOff),
+        fadeS: a.fadeS ?? 0,
         summary: describeAction(a),
       };
     }

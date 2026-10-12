@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchJson } from "../lib/fetchJson";
+import { Icon } from "./Icon";
+import { LedRefresh } from "./LedRefresh";
 import { VuMeter } from "./VuMeter";
 
 interface TvStatusBody {
@@ -337,9 +339,10 @@ export function TvSection() {
     <section className="pretzel-panel">
       <div className="pretzel-panel__header">
         <div className="flex min-w-0 flex-1 items-start gap-3">
-          <span
-            className={`pretzel-led mt-1.5 ${statusDotClass}`}
-            title={
+          <LedRefresh
+            className="mt-1.5"
+            ledClass={statusDotClass}
+            status={
               relayOffline
                 ? "Relay offline"
                 : !connected
@@ -348,7 +351,8 @@ export function TvSection() {
                     ? "On (Active)"
                     : "Standby (socket up, screen not Active)"
             }
-            aria-hidden
+            disabled={loading}
+            onRefresh={() => void fetchAll()}
           />
           <div className="min-w-0">
             <h2 className="pretzel-text-panel-title">LG TV</h2>
@@ -400,15 +404,6 @@ export function TvSection() {
               </span>
             </button>
           </div>
-          {!loading && (
-            <button
-              type="button"
-              onClick={() => void fetchAll()}
-              className="pretzel-btn-ghost"
-            >
-              Refresh
-            </button>
-          )}
         </div>
       </div>
       {powerError && (
@@ -460,8 +455,12 @@ export function TvSection() {
                     onClick={toggleMute}
                     className="pretzel-btn-icon mt-1 h-14 min-w-32"
                     title={muted ? "Unmute" : "Mute"}
+                    aria-label={muted ? "Unmute" : "Mute"}
                   >
-                    {muted ? "🔇" : "🔈"}
+                    <Icon
+                      name={muted ? "volume_off" : "volume_up"}
+                      className="mx-auto h-6 w-6"
+                    />
                   </button>
                 </div>
                 {/* Navigation controls */}
@@ -511,10 +510,11 @@ export function TvSection() {
                         type="button"
                         disabled={remoteDisabled}
                         title="OK / Enter"
+                        aria-label="OK / play-pause"
                         className="pretzel-tv-dpad__ok"
                         onClick={() => sendRemote("/tv/enter")}
                       >
-                        ⏯
+                        <Icon name="play_pause" className="pretzel-tv-dpad__ok-icon" />
                       </button>
                     </div>
                   ) : null}

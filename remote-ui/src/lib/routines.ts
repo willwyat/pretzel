@@ -71,5 +71,13 @@ export function lightChangeLabel(c: LightNextChange): string {
   return parts.join(" ");
 }
 
+/** Light-card readout: "Fade off at 01:00", "On at 07:15", "Dim at 22:30". */
+export function lightChangeShort(c: LightNextChange): string {
+  const verb = c.power === "off" ? "off" : c.power === "on" ? "on" : "dim";
+  const fade = (c.fadeS ?? 0) > 0;
+  const head = fade ? `Fade ${verb}` : verb[0].toUpperCase() + verb.slice(1);
+  return `${head} at ${c.time}`;
+}
+
 /** "Mon" … "Sun", index 0 = Monday like the server. */
 export const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];

@@ -9,6 +9,7 @@ import { SonosSection } from "../components/SonosSection";
 import { TvSection } from "../components/TvSection";
 import { useCallback, useEffect, useState } from "react";
 import { fetchJson } from "../lib/fetchJson";
+import { Icon, type IconName } from "../components/Icon";
 import type { HomeRoomTab } from "../types/homeRoom";
 
 const SUN_POLL_MS = 60_000;
@@ -16,7 +17,7 @@ const SUN_POLL_MS = 60_000;
 function isWeatherPayload(data: unknown): data is {
   ok: true;
   time: { timezone: string; localDate: string };
-  current: { temperatureC: number; condition: string };
+  current: { temperatureC: number; weathercode?: number; condition: string };
   sun: { mode: "sunset" | "sunrise"; iso: string };
 } {
   if (typeof data !== "object" || data === null) return false;
@@ -39,6 +40,32 @@ function isWeatherPayload(data: unknown): data is {
   if (s.mode !== "sunset" && s.mode !== "sunrise") return false;
   if (typeof s.iso !== "string") return false;
   return true;
+}
+
+/** WMO weather code → short label + Material Symbols Sharp glyph. */
+function weatherGlyph(
+  code: number | undefined,
+  isDay: boolean,
+): { label: string; icon: IconName } | null {
+  if (code === undefined) return null;
+  if (code === 0)
+    return { label: "Clear", icon: isDay ? "clear_day" : "clear_night" };
+  if (code === 1 || code === 2)
+    return {
+      label: code === 1 ? "Fair" : "Cloudy",
+      icon: isDay ? "partly_cloudy_day" : "partly_cloudy_night",
+    };
+  if (code === 3) return { label: "Overcast", icon: "cloud" };
+  if (code === 45 || code === 48) return { label: "Fog", icon: "foggy" };
+  if (code >= 51 && code <= 57) return { label: "Drizzle", icon: "rainy_light" };
+  if (code === 66 || code === 67) return { label: "Sleet", icon: "weather_mix" };
+  if (code === 65 || code === 82) return { label: "Heavy rain", icon: "rainy_heavy" };
+  if ((code >= 61 && code <= 64) || code === 80 || code === 81)
+    return { label: "Rain", icon: "rainy" };
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86)
+    return { label: "Snow", icon: "weather_snowy" };
+  if (code >= 95) return { label: "Storm", icon: "thunderstorm" };
+  return null;
 }
 
 function celsiusToFahrenheit(celsius: number): number {
@@ -66,7 +93,7 @@ export function HomePage({ activeRoom }: HomePageProps) {
     | {
         status: "ok";
         timezone: string;
-        current: { temperatureC: number; condition: string };
+        current: { temperatureC: number; weathercode?: number; condition: string };
         sun: { mode: "sunset" | "sunrise"; iso: string };
       }
   >({ status: "loading" });
@@ -104,6 +131,11 @@ export function HomePage({ activeRoom }: HomePageProps) {
     sunState.status === "ok"
       ? formatSunTime(sunState.sun.iso, sunState.timezone)
       : "00:00";
+  // Next event is sunset → the sun is up.
+  const glyph =
+    sunState.status === "ok"
+      ? weatherGlyph(sunState.current.weathercode, sunState.sun.mode === "sunset")
+      : null;
   const temperature =
     sunState.status === "ok"
       ? unit === "C"
@@ -114,11 +146,26 @@ export function HomePage({ activeRoom }: HomePageProps) {
   return (
     <div className="py-4">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-end gap-4" aria-live="polite">
+        <div className="flex min-w-0 items-start gap-4" aria-live="polite">
           <div className="pretzel-text-sun-block">
             <div className="pretzel-text-sun-title">{sunTitle}</div>
             <div className="pretzel-text-sun-time">{sunTimeFormatted}</div>
           </div>
+          {glyph && sunState.status === "ok" ? (
+            <div className="pretzel-text-sun-block">
+              <div className="pretzel-text-sun-title">{glyph.label}</div>
+              <div
+                className="pretzel-text-sun-time pretzel-wx-readout"
+                title={sunState.current.condition}
+              >
+                <Icon
+                  name={glyph.icon}
+                  className="pretzel-wx-icon"
+                  title={sunState.current.condition}
+                />
+              </div>
+            </div>
+          ) : null}
           <div className="pretzel-text-sun-block">
             <div className="pretzel-text-sun-title">Outside</div>
             <button
