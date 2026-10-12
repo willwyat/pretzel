@@ -57,7 +57,6 @@ const DEFAULT_ROUTINES = [
         action: {
           type: "speak",
           text: "It's noon! Time to take your supplements, drink a glass of water, and feed the cats.",
-          style: "cheerful",
           sonos: "all",
         },
       },
@@ -75,7 +74,6 @@ const DEFAULT_ROUTINES = [
         action: {
           type: "speak",
           text: "It's three o'clock. Time to drink some water!",
-          style: "cheerful",
           sonos: "all",
         },
       },
@@ -155,7 +153,7 @@ function validateAction(a) {
     if (typeof a.text !== "string" || a.text.trim() === "" || a.text.length > 1000) {
       return "speak: text is 1–1000 characters";
     }
-    if (a.style !== undefined && a.style !== "cheerful" && a.style !== "plain") return "speak: style is cheerful or plain";
+    // `style` (cheerful / plain) was for the old OpenAI voice; saved routines may still carry it.
     if (
       a.sonos !== undefined &&
       a.sonos !== "all" &&
@@ -243,7 +241,6 @@ function cleanRoutine(r) {
       action = dropUndefined({
         type: "speak",
         text: a.text.trim(),
-        style: a.style ?? "cheerful",
         // Both speakers by default: the Pi and every Sonos speaker that can play clips.
         sonos: Array.isArray(a.sonos) ? [...a.sonos] : (a.sonos ?? "all"),
         sonosVolume: a.sonosVolume,

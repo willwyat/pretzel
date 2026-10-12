@@ -15,7 +15,6 @@ export type LightsAction = {
 export type SpeakAction = {
   type: "speak";
   text: string;
-  style?: "cheerful" | "plain";
   /** Sonos speakers that also say it: every clip-capable one, none (Pi only), or chosen player ids. */
   sonos?: "all" | "none" | string[];
   sonosVolume?: number;

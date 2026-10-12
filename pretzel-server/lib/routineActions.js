@@ -246,8 +246,7 @@ const WEATHER_KEYS = ["tempC", "condition", "rainNote", "sunClause"];
  * speaker played it.
  *
  * @param {{
- *   clips: { create: (text: string, instructions: string) => Promise<{ name: string, path: string }> },
- *   instructionsFor: (style: "cheerful"|"plain") => string,
+ *   clips: { create: (text: string) => Promise<{ name: string, path: string }> },
  *   playOnPi: (path: string) => Promise<void>,
  *   sonos?: { listPlayers: () => Promise<{ id: string, name: string, audioClip: boolean }[]>, audioClip: Function } | null,
  *   lanUrl: () => string|null,
@@ -258,7 +257,7 @@ const WEATHER_KEYS = ["tempC", "condition", "rainNote", "sunClause"];
  *   now?: () => Date,
  * }} deps
  */
-function createSpeaker({ clips, instructionsFor, playOnPi, sonos = null, lanUrl, weather, sunToday, choresManager, tz, now = () => new Date() }) {
+function createSpeaker({ clips, playOnPi, sonos = null, lanUrl, weather, sunToday, choresManager, tz, now = () => new Date() }) {
   async function context(text) {
     const t = now();
     const sun = sunToday();
@@ -291,7 +290,7 @@ function createSpeaker({ clips, instructionsFor, playOnPi, sonos = null, lanUrl,
 
   async function apply(a, { routine } = {}) {
     const text = interpolate(a.text, await context(a.text));
-    const clip = await clips.create(text, instructionsFor(a.style ?? "cheerful"));
+    const clip = await clips.create(text);
 
     const outputs = [
       playOnPi(clip.path).then(

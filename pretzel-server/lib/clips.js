@@ -35,7 +35,7 @@ function lanBaseUrl(port, env = process.env, interfaces = os.networkInterfaces()
 
 class ClipStore {
   /**
-   * @param {{ dir: string, render: (text: string, instructions: string, outPath: string) => Promise<void>, now?: () => number }} opts
+   * @param {{ dir: string, render: (text: string, outPath: string) => Promise<void>, now?: () => number }} opts
    */
   constructor({ dir, render, now = () => Date.now() }) {
     this.dir = dir;
@@ -45,11 +45,11 @@ class ClipStore {
   }
 
   /** Render `text` to a new MP3; resolves with `{ name, path }`. */
-  async create(text, instructions) {
+  async create(text) {
     this.prune();
     const name = `${randomBytes(8).toString("hex")}.mp3`;
     const path = join(this.dir, name);
-    await this.render(text, instructions, path);
+    await this.render(text, path);
     if (!existsSync(path) || statSync(path).size === 0) {
       rmSync(path, { force: true });
       throw new Error("speech came back empty");

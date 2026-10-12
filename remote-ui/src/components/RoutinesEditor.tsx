@@ -93,7 +93,7 @@ const newLights = (): LightsAction => ({
   kelvin: 4000,
   fadeS: 60,
 });
-const newSpeak = (): SpeakAction => ({ type: "speak", text: "", style: "cheerful", sonos: "all" });
+const newSpeak = (): SpeakAction => ({ type: "speak", text: "", sonos: "all" });
 const newSonos = (): SonosAction => ({ type: "sonos", playerId: "", favoriteId: "", volume: 4, rampTo: 15, rampS: 600 });
 
 function SonosFields({ action, onChange }: { action: SonosAction; onChange: (a: SonosAction) => void }) {
@@ -453,17 +453,6 @@ function SpeakFields({ action, onChange }: { action: SpeakAction; onChange: (a: 
       />
       <p className="pretzel-text-panel-subtle text-xs">Fill-ins: {FILL_INS}</p>
       <SpeakSonosFields action={action} onChange={onChange} />
-      <label className="flex items-center gap-2 text-xs">
-        <span className="pretzel-text-panel-muted">Voice</span>
-        <select
-          className="pretzel-input w-auto py-1"
-          value={action.style ?? "cheerful"}
-          onChange={(e) => onChange({ ...action, style: e.target.value as "cheerful" | "plain" })}
-        >
-          <option value="cheerful">Cheerful (reminder voice)</option>
-          <option value="plain">Plain</option>
-        </select>
-      </label>
     </div>
   );
 }

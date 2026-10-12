@@ -27,10 +27,10 @@ test("clips are rendered to files, served by name only, and pruned", async (t) =
   let now = Date.now();
   const store = new ClipStore({
     dir,
-    render: async (text, _instructions, out) => writeFileSync(out, `mp3:${text}`),
+    render: async (text, out) => writeFileSync(out, `mp3:${text}`),
     now: () => now,
   });
-  const clip = await store.create("hello", "");
+  const clip = await store.create("hello");
   assert.match(clip.name, /^[a-f0-9]{16}\.mp3$/);
   assert.equal(store.pathFor(clip.name), clip.path);
   assert.equal(store.pathFor("../routines.json"), null);
@@ -39,9 +39,9 @@ test("clips are rendered to files, served by name only, and pruned", async (t) =
   // An hour later the old clip is pruned when the next one is made.
   const old = new Date(now - 2 * 3600_000);
   utimesSync(clip.path, old, old);
-  await store.create("again", "");
+  await store.create("again");
   assert.equal(readdirSync(dir).length, 1);
 
-  const empty = new ClipStore({ dir, render: async (_t, _i, out) => writeFileSync(out, "") });
-  await assert.rejects(empty.create("x", ""), /empty/);
+  const empty = new ClipStore({ dir, render: async (_t, out) => writeFileSync(out, "") });
+  await assert.rejects(empty.create("x"), /empty/);
 });

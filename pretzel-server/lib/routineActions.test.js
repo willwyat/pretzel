@@ -151,12 +151,11 @@ function speakerWith({ players, piFails = false, clipFails = new Set(), lan = "h
   };
   const speaker = createSpeaker({
     clips: {
-      create: async (text, instructions) => {
-        log.rendered.push({ text, instructions });
+      create: async (text) => {
+        log.rendered.push(text);
         return { name: "abcd.mp3", path: "/clips/abcd.mp3" };
       },
     },
-    instructionsFor: (style) => (style === "plain" ? "" : "CHEER"),
     playOnPi: async (path) => {
       if (piFails) throw new Error("mpg123 failed");
       log.pi.push(path);
@@ -182,7 +181,7 @@ test("speak renders once, fills in its text and plays on the Pi and every clip-c
     { type: "speak", text: "It's {{time}}, {{tempC}} degrees. {{chores}} Sunset {{sunset}}.{{nope}}" },
     { routine: { name: "Noon" } },
   );
-  assert.deepEqual(log.rendered, [{ text: "It's 12:00 PM, 18 degrees. Laundry is due. Sunset 18:22.", instructions: "CHEER" }]);
+  assert.deepEqual(log.rendered, ["It's 12:00 PM, 18 degrees. Laundry is due. Sunset 18:22."]);
   assert.deepEqual(log.pi, ["/clips/abcd.mp3"]);
   assert.deepEqual(log.clips.map((c) => c.id), ["RINCON_A", "RINCON_B"]);
   assert.equal(log.clips[0].streamUrl, "http://192.168.1.20:3001/pretzel/clips/abcd.mp3");
@@ -193,9 +192,8 @@ test("speak renders once, fills in its text and plays on the Pi and every clip-c
 
 test("speak can target chosen speakers, a Sonos volume, or the Pi only", async () => {
   const a = speakerWith();
-  await a.speaker.apply({ type: "speak", text: "hi", sonos: ["RINCON_B"], sonosVolume: 30, style: "plain" });
+  await a.speaker.apply({ type: "speak", text: "hi", sonos: ["RINCON_B"], sonosVolume: 30 });
   assert.deepEqual(a.log.clips, [{ id: "RINCON_B", streamUrl: "http://192.168.1.20:3001/pretzel/clips/abcd.mp3", volume: 30, name: "Pretzel" }]);
-  assert.equal(a.log.rendered[0].instructions, "");
   const b = speakerWith();
   await b.speaker.apply({ type: "speak", text: "hi", sonos: "none" });
   assert.equal(b.log.clips.length, 0);

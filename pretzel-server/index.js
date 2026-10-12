@@ -174,25 +174,10 @@ function normalizeSpeakText(s) {
     .trim();
 }
 
-/** Passed to `speak.sh` for routine speech + speak-weather (gpt-4o-mini-tts + `instructions`). */
-const SPEAK_INSTRUCTIONS_REMINDERS =
-  "Personality/affect: a high-energy cheerleader helping with administrative tasks.\n\n" +
-  "Voice: Enthusiastic, and bubbly, with an uplifting and motivational quality.\n\n" +
-  "Tone: Encouraging and playful, making even simple tasks feel exciting and fun.\n\n" +
-  "Dialect: Casual and upbeat, using informal phrasing and pep talk-style expressions. Use a very strong New York Jewish accent.\n\n" +
-  "Pronunciation: Crisp and lively, with exaggerated emphasis on positive words to keep the energy high.\n\n" +
-  "Features: Uses motivational phrases, cheerful exclamations, and an energetic rhythm to create a sense of excitement and engagement.";
-
-function speakScriptArgs(text, instructions) {
-  return typeof instructions === "string" && instructions.trim() !== ""
-    ? [text, instructions]
-    : [text];
-}
-
 // ── speak() ────────────────────────────────────────────────────
-/** @param {string} [instructions] — non-empty → `speak.sh` uses gpt-4o-mini-tts + OpenAI `instructions`. */
-function speak(text, instructions) {
-  execFile(SPEAK_SCRIPT, speakScriptArgs(text, instructions), (err) => {
+// `speak.sh` speaks with Piper on the Pi (voice en_GB-semaine-medium, speaker prudence).
+function speak(text) {
+  execFile(SPEAK_SCRIPT, [text], (err) => {
     if (err) console.error("speak error:", err.message);
   });
 }
@@ -212,30 +197,23 @@ function playReminderSfx(mp3Path) {
   });
 }
 
-/** @param {string} [instructions] — see {@link speak}. */
-function speakAsync(text, instructions) {
+function speakAsync(text) {
   return new Promise((resolve) => {
-    execFile(SPEAK_SCRIPT, speakScriptArgs(text, instructions), (err) => {
+    execFile(SPEAK_SCRIPT, [text], (err) => {
       if (err) console.error("speak error:", err.message);
       resolve();
     });
   });
 }
 
-/**
- * Short beep before TTS for routine speech and speak-weather.
- * @param {string} [instructions] — defaults to {@link SPEAK_INSTRUCTIONS_REMINDERS}; pass `""` for neutral tts-1.
- */
-async function speakWithReminderSfx(
-  text,
-  instructions = SPEAK_INSTRUCTIONS_REMINDERS,
-) {
+/** Short beep before speech, for speak-weather. */
+async function speakWithReminderSfx(text) {
   try {
     await playReminderSfx(REMINDER_BEEP_MP3);
   } catch (e) {
     console.error("reminder beep:", e.message);
   }
-  await speakAsync(text, instructions);
+  await speakAsync(text);
 }
 
 const choresManager = new ChoresManager(dataDir);
@@ -248,8 +226,8 @@ bulletin.load();
 // on the Pi and fetched by Sonos speakers from /pretzel/clips/:name.
 const routineClips = new ClipStore({
   dir: join(dataDir, "clips"),
-  render: (text, instructions, outPath) =>
-    execFileAsync(SPEAK_SCRIPT, speakScriptArgs(text, instructions), {
+  render: (text, outPath) =>
+    execFileAsync(SPEAK_SCRIPT, [text], {
       timeout: 120_000,
       env: { ...process.env, SPEAK_OUT: outPath },
     }),
@@ -1013,7 +991,6 @@ const sunToday = () => {
 };
 const routineSpeaker = createSpeaker({
   clips: routineClips,
-  instructionsFor: (style) => (style === "plain" ? "" : SPEAK_INSTRUCTIONS_REMINDERS),
   playOnPi: playClipOnPi,
   sonos: wyatSonos,
   lanUrl: () => lanBaseUrl(PORT),
