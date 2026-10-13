@@ -30,6 +30,7 @@ function routineStatus(r: UpcomingRoutine, isNext: boolean, now: number): Status
 function stepIcon(s: UpcomingStep): IconName | null {
   if (s.type === "speak") return "notifications_active";
   if (s.type === "lights") return s.power === "off" ? "light_off" : "lightbulb";
+  if (s.type === "sonos") return "volume_up";
   return null;
 }
 

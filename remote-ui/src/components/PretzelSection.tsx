@@ -177,7 +177,7 @@ export function PretzelSection() {
           placeholder={
             offline
               ? "Connect to Pretzel to send speech…"
-              : "Type something for OpenAI TTS on the Pi…"
+              : "Type something for Pretzel to say…"
           }
           className="pretzel-input mb-2 min-h-[4.5rem] resize-y disabled:cursor-not-allowed disabled:opacity-50"
         />

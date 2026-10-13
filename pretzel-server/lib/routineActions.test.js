@@ -2,7 +2,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { createLights, createSpeaker, interpolate } = require("./routineActions");
+const { createLights, createSpeaker, createSonosMusic, interpolate } = require("./routineActions");
 
 const WIZ = [
   { ip: "10.0.0.5", label: "Onion", room: "Lounge" },
@@ -135,37 +135,126 @@ test("a step fails only when no light changed", async () => {
   assert.match(note, /^2 lights; LIFX API 500/);
 });
 
-test("speak fills in its text and counts toward chores", async () => {
-  const said = [];
-  let fires = 0;
+function speakerWith({ players, piFails = false, clipFails = new Set(), lan = "http://192.168.1.20:3001" } = {}) {
+  const log = { pi: [], clips: [], rendered: [], fires: 0 };
+  const sonos = {
+    listPlayers: async () =>
+      players ?? [
+        { id: "RINCON_A", name: "Bedroom", audioClip: true },
+        { id: "RINCON_B", name: "Lounge", audioClip: true },
+        { id: "RINCON_OLD", name: "Play:1", audioClip: false },
+      ],
+    audioClip: async (id, body) => {
+      if (clipFails.has(id)) throw new Error("Sonos API 400");
+      log.clips.push({ id, ...body });
+    },
+  };
   const speaker = createSpeaker({
-    speak: async (text, style) => said.push({ text, style }),
+    clips: {
+      create: async (text) => {
+        log.rendered.push(text);
+        return { name: "abcd.mp3", path: "/clips/abcd.mp3" };
+      },
+    },
+    playOnPi: async (path) => {
+      if (piFails) throw new Error("mpg123 failed");
+      log.pi.push(path);
+    },
+    sonos,
+    lanUrl: () => lan,
     weather: {
       todayLabel: () => "Monday, October 12th",
       fetchWeather: async () => ({}),
       buildWeatherContext: () => ({ tempC: 18, condition: "sunny", rainNote: "", sunClause: "" }),
     },
     sunToday: () => ({ sunrise: "07:04", sunset: "18:22" }),
-    choresManager: { onReminderFired: () => (fires += 1), pendingSummaryShort: () => "Laundry is due." },
+    choresManager: { onReminderFired: () => (log.fires += 1), pendingSummaryShort: () => "Laundry is due." },
     tz: "America/New_York",
     now: () => new Date("2026-10-12T16:00:00Z"),
   });
-  await speaker.apply({ type: "speak", text: "It's {{time}}, {{tempC}} degrees. {{chores}} Sunset {{sunset}}.{{nope}}" });
-  assert.deepEqual(said, [{ text: "It's 12:00 PM, 18 degrees. Laundry is due. Sunset 18:22.", style: "cheerful" }]);
-  assert.equal(fires, 1);
+  return { speaker, log };
+}
+
+test("speak renders once, fills in its text and plays on the Pi and every clip-capable Sonos", async () => {
+  const { speaker, log } = speakerWith();
+  const note = await speaker.apply(
+    { type: "speak", text: "It's {{time}}, {{tempC}} degrees. {{chores}} Sunset {{sunset}}.{{nope}}" },
+    { routine: { name: "Noon" } },
+  );
+  assert.deepEqual(log.rendered, ["It's 12:00 PM, 18 degrees. Laundry is due. Sunset 18:22."]);
+  assert.deepEqual(log.pi, ["/clips/abcd.mp3"]);
+  assert.deepEqual(log.clips.map((c) => c.id), ["RINCON_A", "RINCON_B"]);
+  assert.equal(log.clips[0].streamUrl, "http://192.168.1.20:3001/pretzel/clips/abcd.mp3");
+  assert.equal(log.clips[0].name, "Noon");
+  assert.match(note, /on Pi, Bedroom, Lounge$/);
+  assert.equal(log.fires, 1);
 });
 
-test("speak failures reach the run log", async () => {
-  const speaker = createSpeaker({
-    speak: async () => {
-      throw new Error("speak.sh exited 1");
+test("speak can target chosen speakers, a Sonos volume, or the Pi only", async () => {
+  const a = speakerWith();
+  await a.speaker.apply({ type: "speak", text: "hi", sonos: ["RINCON_B"], sonosVolume: 30 });
+  assert.deepEqual(a.log.clips, [{ id: "RINCON_B", streamUrl: "http://192.168.1.20:3001/pretzel/clips/abcd.mp3", volume: 30, name: "Pretzel" }]);
+  const b = speakerWith();
+  await b.speaker.apply({ type: "speak", text: "hi", sonos: "none" });
+  assert.equal(b.log.clips.length, 0);
+  assert.equal(b.log.pi.length, 1);
+});
+
+test("speak succeeds if any speaker played it, and reports the rest", async () => {
+  const { speaker } = speakerWith({ piFails: true, clipFails: new Set(["RINCON_A"]) });
+  const note = await speaker.apply({ type: "speak", text: "hi" });
+  assert.match(note, /on Lounge; Pi: mpg123 failed; Bedroom: Sonos API 400/);
+  const lanless = speakerWith({ lan: null });
+  assert.match(await lanless.speaker.apply({ type: "speak", text: "hi" }), /on Pi; Sonos: no LAN address/);
+});
+
+test("speak fails when no speaker played it", async () => {
+  const { speaker, log } = speakerWith({ piFails: true, players: [{ id: "X", name: "Old", audioClip: false }] });
+  await assert.rejects(speaker.apply({ type: "speak", text: "hi" }), /Pi: mpg123 failed; Sonos: no Sonos speaker can play clips/);
+  assert.equal(log.fires, 0);
+});
+
+test("Sonos music starts the favorite, then ramps the volume in steps", async () => {
+  const calls = [];
+  const music = createSonosMusic({
+    sonos: {
+      playFavoriteOnPlayer: async (id, body) => {
+        calls.push(["play", id, body]);
+        return "GROUP_1";
+      },
+      setVolume: async (group, v) => calls.push(["vol", group, v]),
     },
-    weather: { todayLabel: () => "" },
-    sunToday: () => ({}),
-    choresManager: { onReminderFired: () => {} },
-    tz: "America/New_York",
+    sleepImpl: async () => {},
   });
-  await assert.rejects(speaker.apply({ type: "speak", text: "hi", style: "plain" }), /exited 1/);
+  const note = await music.apply({
+    type: "sonos",
+    playerId: "RINCON_A",
+    playerName: "Bedroom",
+    favoriteId: "4",
+    favoriteName: "Morning",
+    volume: 4,
+    rampTo: 15,
+    rampS: 600,
+  });
+  for (let i = 0; i < 100; i += 1) await tick();
+  assert.equal(note, "playing Morning on Bedroom, volume 4 → 15");
+  assert.deepEqual(calls[0], ["play", "RINCON_A", { favoriteId: "4", volume: 4, shuffle: false }]);
+  const vols = calls.slice(1).map((c) => c[2]);
+  assert.equal(vols.length, 30);
+  assert.equal(vols.at(-1), 15);
+  assert.ok(vols.every((v, i) => i === 0 || v >= vols[i - 1]));
+  assert.ok(calls.slice(1).every((c) => c[1] === "GROUP_1"));
+});
+
+test("Sonos music without a ramp just plays", async () => {
+  const calls = [];
+  const music = createSonosMusic({
+    sonos: { playFavoriteOnPlayer: async () => "G", setVolume: async () => calls.push("vol") },
+    sleepImpl: async () => {},
+  });
+  assert.equal(await music.apply({ type: "sonos", playerId: "P", favoriteId: "4", volume: 10 }), "playing favorite 4 on P");
+  for (let i = 0; i < 10; i += 1) await tick();
+  assert.equal(calls.length, 0);
 });
 
 test("interpolate leaves no gaps for empty fill-ins", () => {

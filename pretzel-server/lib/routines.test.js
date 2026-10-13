@@ -77,7 +77,7 @@ test("validation rejects bad input", () => {
     /power, brightness or kelvin/,
   );
   assert.match(validateRoutine(routine({ steps: [{ offsetMin: 0, action: { type: "speak", text: " " } }] })), /text/);
-  assert.match(validateRoutine(routine({ steps: [{ offsetMin: 0, action: { type: "tv" } }] })), /lights or speak/);
+  assert.match(validateRoutine(routine({ steps: [{ offsetMin: 0, action: { type: "tv" } }] })), /lights, speak or sonos/);
 });
 
 test("cycles run 04:00 to 04:00", () => {
@@ -246,6 +246,16 @@ test("light hints pass over steps that won't touch the light as it is now", (t) 
   ]);
   assert.equal(late["off-lounge"].routineId, "sunset");
   assert.equal(late["off-lounge"].at, new Date(at("2026-10-13", "17:21")).toISOString());
+});
+
+test("speak steps saved with the old voice style still load, without it", (t) => {
+  const { engine } = setup(t);
+  const res = engine.saveRoutine({
+    ...routine(),
+    steps: [{ offsetMin: 0, action: { type: "speak", text: "hi", style: "cheerful" } }],
+  });
+  assert.equal(res.ok, true);
+  assert.deepEqual(res.routine.steps[0].action, { type: "speak", text: "hi", sonos: "all" });
 });
 
 test("routines persist and invalid saved entries are skipped", (t) => {

@@ -28,6 +28,8 @@ const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 const ID_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TARGET_RE = /^(all|room:[^,]{1,40}|light:[A-Za-z0-9.:_-]{1,64})$/;
+/** Sonos player and favorite ids, e.g. `RINCON_74CA…` and `4`. */
+const SONOS_ID_RE = /^[A-Za-z0-9_.:-]{1,128}$/;
 
 const DEFAULT_ROUTINES = [
   {
@@ -55,7 +57,7 @@ const DEFAULT_ROUTINES = [
         action: {
           type: "speak",
           text: "It's noon! Time to take your supplements, drink a glass of water, and feed the cats.",
-          style: "cheerful",
+          sonos: "all",
         },
       },
     ],
@@ -69,7 +71,11 @@ const DEFAULT_ROUTINES = [
     steps: [
       {
         offsetMin: 0,
-        action: { type: "speak", text: "It's three o'clock. Time to drink some water!", style: "cheerful" },
+        action: {
+          type: "speak",
+          text: "It's three o'clock. Time to drink some water!",
+          sonos: "all",
+        },
       },
     ],
   },
@@ -120,6 +126,7 @@ const DEFAULT_ROUTINES = [
 
 // ── Validation ─────────────────────────────────────────────────
 
+const dropUndefined = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
 const isInt = (n, lo, hi) => Number.isInteger(n) && n >= lo && n <= hi;
 const isNum = (n, lo, hi) => typeof n === "number" && Number.isFinite(n) && n >= lo && n <= hi;
 
@@ -146,10 +153,37 @@ function validateAction(a) {
     if (typeof a.text !== "string" || a.text.trim() === "" || a.text.length > 1000) {
       return "speak: text is 1–1000 characters";
     }
-    if (a.style !== undefined && a.style !== "cheerful" && a.style !== "plain") return "speak: style is cheerful or plain";
+    // `style` (cheerful / plain) was for the old OpenAI voice; saved routines may still carry it.
+    if (
+      a.sonos !== undefined &&
+      a.sonos !== "all" &&
+      a.sonos !== "none" &&
+      !(
+        Array.isArray(a.sonos) &&
+        a.sonos.length >= 1 &&
+        a.sonos.length <= 10 &&
+        a.sonos.every((id) => typeof id === "string" && SONOS_ID_RE.test(id))
+      )
+    ) {
+      return "speak: sonos is all, none or a list of player ids";
+    }
+    if (a.sonosVolume !== undefined && !isInt(a.sonosVolume, 0, 100)) return "speak: sonosVolume is 0–100";
     return null;
   }
-  return "action type is lights or speak";
+  if (a.type === "sonos") {
+    if (typeof a.playerId !== "string" || !SONOS_ID_RE.test(a.playerId)) return "sonos: pick a speaker";
+    if (typeof a.favoriteId !== "string" || !SONOS_ID_RE.test(a.favoriteId)) return "sonos: pick a favorite";
+    if (a.volume !== undefined && !isInt(a.volume, 0, 100)) return "sonos: volume is 0–100";
+    if (a.rampTo !== undefined && !isInt(a.rampTo, 0, 100)) return "sonos: rampTo is 0–100";
+    if (a.rampS !== undefined && !isNum(a.rampS, 0, 3600)) return "sonos: rampS is 0–3600";
+    if (a.rampTo !== undefined && a.volume === undefined) return "sonos: set a start volume to ramp from";
+    if (a.shuffle !== undefined && typeof a.shuffle !== "boolean") return "sonos: shuffle is a boolean";
+    for (const k of ["playerName", "favoriteName"]) {
+      if (a[k] !== undefined && (typeof a[k] !== "string" || a[k].length > 120)) return `sonos: ${k} is text`;
+    }
+    return null;
+  }
+  return "action type is lights, speak or sonos";
 }
 
 /** Returns an error message, or null when `r` is a valid routine. */
@@ -192,20 +226,38 @@ function cleanRoutine(r) {
       : { type: "sun", event: r.anchor.event, offsetMin: r.anchor.offsetMin };
   const steps = r.steps.map((s) => {
     const a = s.action;
-    const action =
-      a.type === "lights"
-        ? Object.fromEntries(
-            Object.entries({
-              type: "lights",
-              targets: [...a.targets],
-              power: a.power,
-              brightness: a.brightness,
-              kelvin: a.kelvin,
-              fadeS: a.fadeS,
-              onlyIfOff: a.onlyIfOff,
-            }).filter(([, v]) => v !== undefined),
-          )
-        : { type: "speak", text: a.text.trim(), style: a.style ?? "cheerful" };
+    let action;
+    if (a.type === "lights") {
+      action = dropUndefined({
+        type: "lights",
+        targets: [...a.targets],
+        power: a.power,
+        brightness: a.brightness,
+        kelvin: a.kelvin,
+        fadeS: a.fadeS,
+        onlyIfOff: a.onlyIfOff,
+      });
+    } else if (a.type === "speak") {
+      action = dropUndefined({
+        type: "speak",
+        text: a.text.trim(),
+        // Both speakers by default: the Pi and every Sonos speaker that can play clips.
+        sonos: Array.isArray(a.sonos) ? [...a.sonos] : (a.sonos ?? "all"),
+        sonosVolume: a.sonosVolume,
+      });
+    } else {
+      action = dropUndefined({
+        type: "sonos",
+        playerId: a.playerId,
+        playerName: a.playerName,
+        favoriteId: a.favoriteId,
+        favoriteName: a.favoriteName,
+        volume: a.volume,
+        rampTo: a.rampTo,
+        rampS: a.rampTo !== undefined ? a.rampS : undefined,
+        shuffle: a.shuffle,
+      });
+    }
     return { offsetMin: s.offsetMin, action };
   });
   return {
@@ -265,7 +317,22 @@ const runKey = (routineId, cycleDate, stepIdx) => `${routineId}|${cycleDate}|${s
 
 /** "Bedroom lights on · 50% · 4000K" style one-liner for the UI and logs. */
 function describeAction(a) {
-  if (a.type === "speak") return `Speak: “${a.text}”`;
+  if (a.type === "speak") {
+    const where = a.sonos === "none" ? " · Pi only" : Array.isArray(a.sonos) ? ` · Pi + ${a.sonos.length} Sonos` : "";
+    return `Speak: “${a.text}”${where}`;
+  }
+  if (a.type === "sonos") {
+    const parts = [`Sonos ${a.playerName ?? a.playerId}: ${a.favoriteName ?? `favorite ${a.favoriteId}`}`];
+    if (a.volume !== undefined) {
+      parts.push(
+        a.rampTo !== undefined
+          ? `vol ${a.volume} → ${a.rampTo}${a.rampS ? ` over ${Math.round(a.rampS / 60)} min` : ""}`
+          : `vol ${a.volume}`,
+      );
+    }
+    if (a.shuffle) parts.push("shuffle");
+    return parts.join(" · ");
+  }
   const who = a.targets
     .map((t) => (t === "all" ? "All" : t.startsWith("room:") ? t.slice(5) : t.slice(6)))
     .join(", ");

@@ -237,12 +237,19 @@ function interpolate(template, ctx) {
 const WEATHER_KEYS = ["tempC", "condition", "rainNote", "sunClause"];
 
 /**
- * Speak a routine's text on the Pi speaker. Fill-ins: {{time}} {{date}}
- * {{sunrise}} {{sunset}} {{chores}}, and with a weather fetch {{tempC}}
- * {{condition}} {{rainNote}} {{sunClause}}.
+ * Speak a routine's text on the Pi speaker and on Sonos. Fill-ins: {{time}}
+ * {{date}} {{sunrise}} {{sunset}} {{chores}}, and with a weather fetch
+ * {{tempC}} {{condition}} {{rainNote}} {{sunClause}}.
+ *
+ * The speech is rendered once (an MP3 in `clips`); the Pi plays it and each
+ * Sonos speaker fetches it from `lanUrl()`. The step fails only when no
+ * speaker played it.
  *
  * @param {{
- *   speak: (text: string, style: "cheerful"|"plain") => Promise<void>,
+ *   clips: { create: (text: string) => Promise<{ name: string, path: string }> },
+ *   playOnPi: (path: string) => Promise<void>,
+ *   sonos?: { listPlayers: () => Promise<{ id: string, name: string, audioClip: boolean }[]>, audioClip: Function } | null,
+ *   lanUrl: () => string|null,
  *   weather: typeof import('./weather'),
  *   sunToday: () => { sunrise: string|null, sunset: string|null },
  *   choresManager: import('./chores').ChoresManager,
@@ -250,7 +257,7 @@ const WEATHER_KEYS = ["tempC", "condition", "rainNote", "sunClause"];
  *   now?: () => Date,
  * }} deps
  */
-function createSpeaker({ speak, weather, sunToday, choresManager, tz, now = () => new Date() }) {
+function createSpeaker({ clips, playOnPi, sonos = null, lanUrl, weather, sunToday, choresManager, tz, now = () => new Date() }) {
   async function context(text) {
     const t = now();
     const sun = sunToday();
@@ -273,14 +280,101 @@ function createSpeaker({ speak, weather, sunToday, choresManager, tz, now = () =
     return ctx;
   }
 
-  async function apply(a) {
+  /** Sonos player ids for a step: every clip-capable speaker for "all". */
+  async function sonosTargets(choice) {
+    if (!sonos || choice === "none") return [];
+    if (Array.isArray(choice)) return choice.map((id) => ({ id, name: id }));
+    const players = await sonos.listPlayers();
+    return players.filter((p) => p.audioClip);
+  }
+
+  async function apply(a, { routine } = {}) {
     const text = interpolate(a.text, await context(a.text));
-    await speak(text, a.style ?? "cheerful");
+    const clip = await clips.create(text);
+
+    const outputs = [
+      playOnPi(clip.path).then(
+        () => ({ ok: true, label: "Pi" }),
+        (e) => ({ ok: false, label: "Pi", error: e.message }),
+      ),
+    ];
+    const choice = a.sonos ?? "all";
+    if (choice !== "none") {
+      outputs.push(
+        (async () => {
+          const base = lanUrl();
+          if (!base) throw new Error("no LAN address for the Pi (set PRETZEL_LAN_URL)");
+          const targets = await sonosTargets(choice);
+          if (targets.length === 0) throw new Error("no Sonos speaker can play clips");
+          const streamUrl = `${base}/pretzel/clips/${clip.name}`;
+          return Promise.all(
+            targets.map((p) =>
+              sonos
+                .audioClip(p.id, { streamUrl, volume: a.sonosVolume, name: routine?.name ?? "Pretzel" })
+                .then(
+                  () => ({ ok: true, label: p.name }),
+                  (e) => ({ ok: false, label: p.name, error: e.message }),
+                ),
+            ),
+          );
+        })().catch((e) => ({ ok: false, label: "Sonos", error: e.message })),
+      );
+    }
+    const results = (await Promise.all(outputs)).flat();
+    const played = results.filter((r) => r.ok).map((r) => r.label);
+    const failed = results.filter((r) => !r.ok).map((r) => `${r.label}: ${r.error}`);
+    if (played.length === 0) throw new Error(failed.join("; "));
     choresManager.onReminderFired(now());
-    return `said “${text.length > 60 ? `${text.slice(0, 57)}…` : text}”`;
+    const said = `said “${text.length > 50 ? `${text.slice(0, 47)}…` : text}” on ${played.join(", ")}`;
+    return failed.length > 0 ? `${said}; ${failed.join("; ")}` : said;
   }
 
   return { apply, interpolate };
 }
 
-module.exports = { createLights, createSpeaker, interpolate };
+const RAMP_STEP_MS = 20_000;
+
+/**
+ * Start a Sonos Favorite on a speaker, then (optionally) raise or lower its
+ * volume gradually in the background.
+ *
+ * @param {{ sonos: { playFavoriteOnPlayer: Function, setVolume: Function }, sleepImpl?: (ms: number) => Promise<void> }} deps
+ */
+function createSonosMusic({ sonos, sleepImpl = sleep }) {
+  /** player id → ramp generation; a newer step on the same speaker stops an older ramp. */
+  const rampGen = new Map();
+
+  async function apply(a) {
+    const gen = (rampGen.get(a.playerId) ?? 0) + 1;
+    rampGen.set(a.playerId, gen);
+    const groupId = await sonos.playFavoriteOnPlayer(a.playerId, {
+      favoriteId: a.favoriteId,
+      volume: a.volume,
+      shuffle: a.shuffle ?? false,
+    });
+    const what = `${a.favoriteName ?? `favorite ${a.favoriteId}`} on ${a.playerName ?? a.playerId}`;
+    if (a.rampTo === undefined || a.volume === undefined || a.rampTo === a.volume || !groupId) {
+      return `playing ${what}`;
+    }
+    const from = a.volume;
+    const to = a.rampTo;
+    const totalMs = (a.rampS ?? 0) * 1000;
+    const n = Math.max(1, Math.round(totalMs / RAMP_STEP_MS));
+    void (async () => {
+      for (let i = 1; i <= n; i += 1) {
+        await sleepImpl(totalMs / n);
+        if (rampGen.get(a.playerId) !== gen) return;
+        try {
+          await sonos.setVolume(groupId, Math.round(from + ((to - from) * i) / n));
+        } catch (e) {
+          console.error(`Sonos ramp ${a.playerName ?? a.playerId}: ${e.message}`);
+        }
+      }
+    })();
+    return `playing ${what}, volume ${from} → ${to}`;
+  }
+
+  return { apply };
+}
+
+module.exports = { createLights, createSpeaker, createSonosMusic, interpolate };
