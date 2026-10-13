@@ -62,6 +62,9 @@ export type UpcomingStep = {
   idx: number;
   at: string;
   time: string;
+  /** Action kind and, for lights, the power it sets (null = level only). */
+  type?: RoutineAction["type"];
+  power?: "on" | "off" | null;
   summary: string;
   run: StepRun | null;
 };

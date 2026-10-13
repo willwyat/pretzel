@@ -47,6 +47,7 @@ export default defineConfig(({ mode }) => {
           "pwa-512.png",
           "apple-touch-icon.png",
           "fonts/*.ttf",
+          "fonts/*.woff2",
           "icons/*.svg",
         ],
         manifest: {

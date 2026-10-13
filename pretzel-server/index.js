@@ -18,7 +18,7 @@ const {
 const { ClipStore, lanBaseUrl } = require("./lib/clips");
 const { createRoutinesRouter } = require("./lib/routinesRouter");
 const { sunTimes } = require("./lib/sun");
-const { hmInTz } = require("./lib/tztime");
+const { addDays, hmInTz } = require("./lib/tztime");
 const { ChessManager } = require("./lib/chess");
 const { createChessHub } = require("./lib/chessHub");
 const { TetrisManager } = require("./lib/tetris");
@@ -475,6 +475,17 @@ app.put("/pretzel/tuya/switches/:id/state", async (req, res) => {
 const wyatSonos = createWyatSonos({ baseUrl: process.env.WYAT_API_URL });
 app.use("/pretzel/sonos", createSonosRouter(wyatSonos));
 
+/** Next sun event for the home header: today's sunrise, else today's sunset, else tomorrow's sunrise. */
+function computedSunSummary(now) {
+  const today = weather.ymdInTz(now, weather.TZ);
+  const t = sunTimes(today, weather.LAT, weather.LON, weather.TZ);
+  const ms = now.getTime();
+  if (t.sunrise && ms < t.sunrise) return { mode: "sunrise", iso: new Date(t.sunrise).toISOString() };
+  if (t.sunset && ms < t.sunset) return { mode: "sunset", iso: new Date(t.sunset).toISOString() };
+  const next = sunTimes(addDays(today, 1), weather.LAT, weather.LON, weather.TZ);
+  return next.sunrise ? { mode: "sunrise", iso: new Date(next.sunrise).toISOString() } : null;
+}
+
 app.get("/pretzel/weather", async (req, res) => {
   const now = new Date();
   const TZ = weather.TZ;
@@ -499,6 +510,9 @@ app.get("/pretzel/weather", async (req, res) => {
   try {
     const wx = await weather.fetchWeather();
     const code = wx.current.weathercode;
+    // Same Pi-side sun maths the routines use, so the header and a
+    // sun-anchored routine never disagree by a minute or two.
+    const sun = computedSunSummary(now) ?? weather.sunSummaryForHomeUi(wx, now);
     res.json({
       ok: true,
       time,
@@ -514,7 +528,7 @@ app.get("/pretzel/weather", async (req, res) => {
         sunset: wx.daily.sunset[0],
         precipitationProbabilityMax: wx.daily.precipitation_probability_max[0],
       },
-      sun: weather.sunSummaryForHomeUi(wx, now),
+      sun,
     });
   } catch (e) {
     res.status(502).json({

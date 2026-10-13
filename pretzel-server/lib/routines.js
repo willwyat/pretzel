@@ -595,6 +595,8 @@ class RoutineEngine {
             idx: s.idx,
             at: new Date(s.at).toISOString(),
             time: hmInTz(s.at, this.geo.tz),
+            type: s.action.type,
+            power: s.action.power ?? null,
             summary: s.summary,
             run: s.run,
           })),
