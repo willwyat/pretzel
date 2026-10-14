@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import type { HomeRoomTab } from "../types/homeRoom";
 
 const navBtnBase =
@@ -60,6 +61,9 @@ type NavbarProps = {
 };
 
 export function Navbar({ activeRoom, onActiveRoomChange }: NavbarProps) {
+  const navigate = useNavigate();
+  // Settings is a page of its own: no room is "current" there, and any tab leads back home.
+  const onSettings = useLocation().pathname === "/settings";
   return (
     <nav
       className="pretzel-nav-gradient fixed bottom-0 left-0 right-0 z-30 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
@@ -77,9 +81,12 @@ export function Navbar({ activeRoom, onActiveRoomChange }: NavbarProps) {
                 : index === ROOMS.length - 1
                   ? "nav-button-end"
                   : "nav-button-center"
-            } ${activeRoom === id ? "pretzel-nav-tab-active" : ""}`.trim()}
-            aria-pressed={activeRoom === id}
-            onClick={() => onActiveRoomChange(id)}
+            } ${!onSettings && activeRoom === id ? "pretzel-nav-tab-active" : ""}`.trim()}
+            aria-pressed={!onSettings && activeRoom === id}
+            onClick={() => {
+              onActiveRoomChange(id);
+              if (onSettings) navigate("/");
+            }}
           >
             <span className="pretzel-nav-lamp" aria-hidden />
             {icon}
