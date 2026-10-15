@@ -1,3 +1,5 @@
+import { notifyIfRoutinesWrite } from "./routinesEvents";
+
 export type FetchJsonResult = {
   ok: boolean;
   data: unknown;
@@ -25,5 +27,6 @@ export async function fetchJson(
       data = {};
     }
   }
+  notifyIfRoutinesWrite(url, init, r.ok);
   return { ok: r.ok, data, status: r.status };
 }

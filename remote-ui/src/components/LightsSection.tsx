@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchJson } from "../lib/fetchJson";
 import { lightStatePath } from "../lib/lifxPaths";
 import { isLightsNextResponse } from "../lib/routines";
+import { ROUTINES_CHANGED_EVENT } from "../lib/routinesEvents";
 import type { LifxRoom } from "../types/homeRoom";
 import type { Light } from "../types/lifx";
 import type { LightsNextResponse } from "../types/routines";
@@ -135,8 +136,31 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
   useEffect(() => {
     void fetchNextChanges();
     const id = setInterval(() => void fetchNextChanges(), NEXT_POLL_MS);
-    return () => clearInterval(id);
+    // A routine was edited or skipped, or the app came back to the foreground.
+    const refresh = () => void fetchNextChanges();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    window.addEventListener(ROUTINES_CHANGED_EVENT, refresh);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener(ROUTINES_CHANGED_EVENT, refresh);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [fetchNextChanges]);
+
+  // When a displayed time arrives it is no longer "next": move on without waiting for the poll.
+  useEffect(() => {
+    if (!nextChanges) return;
+    const upcoming = Object.values(nextChanges.lights)
+      .map((c) => new Date(c.at).getTime())
+      .filter((t) => Number.isFinite(t) && t > Date.now());
+    if (upcoming.length === 0) return;
+    const delay = Math.min(Math.min(...upcoming) - Date.now() + 1_500, 2 ** 31 - 1);
+    const id = setTimeout(() => void fetchNextChanges(), delay);
+    return () => clearTimeout(id);
+  }, [nextChanges, fetchNextChanges]);
 
   const handleToggle = useCallback(async (light: Light) => {
     const newPower = light.power === "on" ? "off" : "on";
@@ -149,10 +173,11 @@ export function LightsSection({ room, heading }: LightsSectionProps) {
       setLights((prev) =>
         prev.map((l) => (l.id === light.id ? { ...l, power: newPower } : l)),
       );
+      void fetchNextChanges();
     } catch {
       /* resync on refresh */
     }
-  }, []);
+  }, [fetchNextChanges]);
 
   const handleBrightness = useCallback(
     async (light: Light, brightness: number) => {

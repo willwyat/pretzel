@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { DevicesSection } from "./DevicesSection";
+import { notifyIfRoutinesWrite } from "../lib/routinesEvents";
 import { RoutinesEditor } from "./RoutinesEditor";
 
 /** The passcode lives on the Pi (`PRETZEL_SETTINGS_PASSCODE`); this tab keeps what was typed. */
@@ -29,6 +30,8 @@ type AdminStatusBody = {
     /** Present after pretzel-server exposes `systemctl` for remote-ui.service */
     remoteUi?: ServiceStamp;
   };
+  /** Checked-out commit on the Pi; absent on older pretzel-server builds. */
+  head?: { commit: string; committedAt: string | null; subject: string | null };
   error?: string;
 };
 
@@ -111,6 +114,7 @@ async function adminFetchJson(
       data = {};
     }
   }
+  notifyIfRoutinesWrite(path, init, r.ok);
   return { ok: r.ok, status: r.status, data };
 }
 
@@ -125,9 +129,11 @@ export function SettingsSection() {
 
   const [gitBusy, setGitBusy] = useState(false);
   const [gitMessage, setGitMessage] = useState<string | null>(null);
-  const [lastPull, setLastPull] = useState<{
+  /** Set by a pull in this session; otherwise the Pi's checked-out commit is shown. */
+  const [pulledHead, setPulledHead] = useState<{
     commit: string;
-    pulledAt: string;
+    subject: string | null;
+    committedAt: string | null;
   } | null>(null);
 
   const [restartBusy, setRestartBusy] = useState<
@@ -227,13 +233,17 @@ export function SettingsSection() {
         ok?: boolean;
         commit?: string;
         pulledAt?: string;
+        subject?: string;
+        committedAt?: string;
         error?: string;
       };
       if (res.ok && d.ok && d.commit && d.pulledAt) {
-        setLastPull({ commit: d.commit, pulledAt: d.pulledAt });
-        setGitMessage(
-          `Pulled ${shortSha(d.commit)} at ${formatWhen(d.pulledAt, d.pulledAt)}`,
-        );
+        setPulledHead({
+          commit: d.commit,
+          subject: d.subject ?? null,
+          committedAt: d.committedAt ?? null,
+        });
+        setGitMessage(null);
       } else {
         setGitMessage(d.error || `Failed (${res.status})`);
       }
@@ -392,6 +402,7 @@ export function SettingsSection() {
   const ps = statusBody?.services?.pretzelServer;
   const tv = statusBody?.services?.tvRelay;
   const ui = statusBody?.services?.remoteUi;
+  const head = pulledHead ?? statusBody?.head;
 
   return (
     <>
@@ -478,13 +489,18 @@ export function SettingsSection() {
               </button>
             </div>
 
-            {lastPull && (
+            {head && (
               <p className="pretzel-text-panel-muted text-xs">
-                Last pull:{" "}
+                Latest commit:{" "}
                 <span className="font-mono pretzel-text-panel-title">
-                  {shortSha(lastPull.commit)}
-                </span>{" "}
-                at {formatWhen(lastPull.pulledAt, lastPull.pulledAt)}
+                  {shortSha(head.commit)}
+                </span>
+                {head.committedAt
+                  ? ` · ${formatWhen(head.committedAt, head.committedAt)}`
+                  : ""}
+                {head.subject ? (
+                  <span className="mt-0.5 block truncate">{head.subject}</span>
+                ) : null}
               </p>
             )}
 

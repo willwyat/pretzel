@@ -745,6 +745,21 @@ async function systemctlActiveEnterTimestamp(unit) {
   }
 }
 
+/** Checked-out commit (sha, commit time, subject); null if git is unavailable. */
+async function gitHead() {
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["-C", PRETZEL_REPO_ROOT, "log", "-1", "--format=%H%n%cI%n%s"],
+      { encoding: "utf8", timeout: 10_000 },
+    );
+    const [commit, committedAt, ...subject] = stdout.trim().split("\n");
+    return commit ? { commit, committedAt, subject: subject.join(" ") } : null;
+  } catch {
+    return null;
+  }
+}
+
 app.get("/pretzel/admin/status", assertSettingsPass, async (req, res) => {
   try {
     const pretzelServer = await systemctlActiveEnterTimestamp(
@@ -755,6 +770,7 @@ app.get("/pretzel/admin/status", assertSettingsPass, async (req, res) => {
     res.json({
       ok: true,
       services: { pretzelServer, tvRelay, remoteUi },
+      head: await gitHead(),
     });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
@@ -773,7 +789,14 @@ app.post("/pretzel/admin/git-pull", assertSettingsPass, async (req, res) => {
       { encoding: "utf8", timeout: 30_000 },
     );
     const pulledAt = new Date().toISOString();
-    res.json({ ok: true, commit: stdout.trim(), pulledAt });
+    const head = await gitHead();
+    res.json({
+      ok: true,
+      commit: stdout.trim(),
+      pulledAt,
+      subject: head?.subject,
+      committedAt: head?.committedAt,
+    });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
