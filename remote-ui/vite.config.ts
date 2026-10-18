@@ -46,6 +46,7 @@ export default defineConfig(({ mode }) => {
           "pwa-192.png",
           "pwa-512.png",
           "apple-touch-icon.png",
+          "favicon.ico",
           "fonts/*.ttf",
           "fonts/*.woff2",
           "icons/*.svg",
